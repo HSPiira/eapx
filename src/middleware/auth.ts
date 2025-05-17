@@ -169,55 +169,75 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
         },
 
         async session({ session, token }) {
-            if (session?.user) {
-                session.user.id = token.id as string
-                session.user.roles = token.roles as string[]
-                if (token.access_token) {
-                    session.user.access_token = token.access_token
-                }
+            try {
+                if (session?.user) {
+                    session.user.id = token.id as string
+                    session.user.roles = token.roles as string[]
+                    if (token.access_token) {
+                        session.user.access_token = token.access_token
+                    }
 
-                // Get user status from database
-                const dbUser = await prismaClient.user.findUnique({
-                    where: { id: token.id },
-                    select: { status: true },
-                })
-                if (dbUser?.status) {
-                    session.user.status = dbUser.status as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+                    // Get user status from database
+                    const dbUser = await prismaClient.user.findUnique({
+                        where: { id: token.id },
+                        select: { status: true },
+                    })
+                    if (dbUser?.status) {
+                        session.user.status = dbUser.status as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+                    }
                 }
+                return session
+            } catch (error) {
+                console.error('Error in session callback:', error)
+                return session
             }
-            return session
         },
 
         async jwt({ token, user, account }) {
-            if (user) {
-                token.id = user.id
-                token.email = user.email
+            try {
+                if (user) {
+                    token.id = user.id
+                    token.email = user.email
+                }
+                if (account?.access_token) {
+                    token.access_token = account.access_token
+                }
+                return token
+            } catch (error) {
+                console.error('Error in jwt callback:', error)
+                return token
             }
-            if (account?.access_token) {
-                token.access_token = account.access_token
-            }
-            return token
         },
 
         authorized({ auth, request }) {
-            const isLoggedIn = !!auth?.user
-            const isOnDashboard = request.nextUrl.pathname.startsWith('/admin')
+            try {
+                const isLoggedIn = !!auth?.user
+                const isOnDashboard = request.nextUrl.pathname.startsWith('/admin')
 
-            if (isOnDashboard) {
-                return isLoggedIn
+                if (isOnDashboard) {
+                    return isLoggedIn
+                }
+
+                // For non-dashboard routes, allow public access
+                return true
+            } catch (error) {
+                console.error('Error in authorized callback:', error)
+                return false
             }
-
-            // For non-dashboard routes, allow public access
-            return true
         },
 
         // Handle redirect URLs properly
         async redirect({ url, baseUrl }) {
-            // Allows relative callback URLs
-            if (url.startsWith("/")) return `${baseUrl}${url}`
-            // Allows callback URLs on the same origin
-            else if (new URL(url).origin === baseUrl) return url
-            return baseUrl
+            try {
+                // Allows relative callback URLs
+                if (url.startsWith("/")) return `${baseUrl}${url}`
+                // Allows callback URLs on the same origin
+                else if (new URL(url).origin === baseUrl) return url
+                return baseUrl
+            } catch (error) {
+                console.error('Error in redirect callback:', error)
+                return baseUrl
+            }
         }
     },
     session: {
@@ -227,28 +247,33 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
     },
     events: {
         async signOut(message) {
-            if ('token' in message && message.token?.id) {
-                // Get the user from the database
-                const dbUser = await prismaClient.user.findUnique({
-                    where: { id: message.token.id }
-                })
-
-                if (dbUser) {
-                    await prismaClient.auditLog.create({
-                        data: {
-                            action: "LOGOUT",
-                            entityType: "User",
-                            entityId: dbUser.id,
-                            userId: dbUser.id,
-                            data: {
-                                email: dbUser.email,
-                            }
-                        }
+            try {
+                if ('token' in message && message.token?.id) {
+                    // Get the user from the database
+                    const dbUser = await prismaClient.user.findUnique({
+                        where: { id: message.token.id }
                     })
+
+                    if (dbUser) {
+                        await prismaClient.auditLog.create({
+                            data: {
+                                action: "LOGOUT",
+                                entityType: "User",
+                                entityId: dbUser.id,
+                                userId: dbUser.id,
+                                data: {
+                                    email: dbUser.email,
+                                }
+                            }
+                        })
+                    }
                 }
+            } catch (error) {
+                console.error('Error in signOut event:', error)
             }
         }
     },
+    debug: process.env.NODE_ENV === 'development',
 })
 
 export const { auth, handlers, signIn, signOut } = NextAuth(createConfig())

@@ -1,9 +1,9 @@
 'use client'
 
 import React from "react";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import {Settings} from "lucide-react";
+import { Settings } from "lucide-react";
 
 interface HeaderProps {
     logo?: React.ReactNode;
@@ -36,6 +36,8 @@ export function Header(props: HeaderProps) {
                     <Image
                         src={props.user.avatar || '/placeholder-avatar.png'}
                         alt={props.user.name || 'User avatar'}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-700 object-cover"
                         onError={(e) => {
                             e.currentTarget.onerror = null;

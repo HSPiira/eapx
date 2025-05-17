@@ -13,7 +13,7 @@ export default function SignInPage() {
         if (isLoading) return
         setIsLoading(true)
         try {
-            await signIn("microsoft-entra-id", { redirectTo: "/admin/dashboard" })
+            await signIn("microsoft-entra-id", { redirectTo: "/dashboard" })
         } catch (error) {
             console.error("Sign in error:", error)
             setIsLoading(false)

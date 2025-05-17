@@ -1,3 +1,3 @@
-export default function SettingsPage () {
-    return <h1>Settings</h1>
+export default function InsightsPage () {
+    return <h1>Insights</h1>
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import Image from 'next/image';
 import { LoadingSpinner } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -123,10 +123,37 @@ const ProfilePage = () => {
                     src={profile?.image || session?.user?.image || 'https://i.pravatar.cc/100'}
                     alt="Profile"
                     className="w-16 h-16 rounded-full object-cover"
+
                 />
                 <div>
-                    <button className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded mr-2 bg-white dark:bg-black text-gray-700 dark:text-gray-200">Upload Avatar</button>
-                    <button className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded text-red-500 bg-white dark:bg-black">Remove</button>
+                    <label
+                        htmlFor="avatar-upload"
+                        className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded mr-2 bg-white dark:bg-black text-gray-700 dark:text-gray-200 cursor-pointer"
+                    >
+                        Upload Avatar
+                        <input
+                            id="avatar-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    setFormData(prev => ({ ...prev, avatar: file }));
+                                }
+                            }}
+                        />
+                    </label>
+                    <button
+                        type="button"
+                        className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded text-red-500 bg-white dark:bg-black"
+                        onClick={() => {
+                            // Reset avatar in state (and optionally call API)  
+                            setFormData(prev => ({ ...prev, avatar: null }));
+                        }}
+                    >
+                        Remove
+                    </button>
                 </div>
             </div>
 
@@ -176,9 +203,61 @@ const ProfilePage = () => {
                     <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-200">About</label>
                     <div className="border border-gray-300 dark:border-gray-700 rounded p-2 bg-gray-50 dark:bg-gray-900">
                         <div className="flex gap-2 mb-2">
-                            <button type="button" className="px-1 text-gray-700 dark:text-gray-200"><b>B</b></button>
-                            <button type="button" className="px-1 text-gray-700 dark:text-gray-200"><i>I</i></button>
-                            <button type="button" className="px-1 text-gray-700 dark:text-gray-200">✎</button>
+                            <button
+                                type="button"
+                                className="px-1 text-gray-700 dark:text-gray-200"
+                                onClick={() => {
+                                    const textarea = document.querySelector('textarea');
+                                    if (!textarea) return;
+                                    const start = textarea.selectionStart;
+                                    const end = textarea.selectionEnd;
+                                    const text = formData.about;
+                                    if (start === end) return;
+                                    const newText =
+                                        text.substring(0, start) +
+                                        '**' +
+                                        text.substring(start, end) +
+                                        '**' +
+                                        text.substring(end);
+                                    setFormData(prev => ({ ...prev, about: newText }));
+                                }}
+                                title="Bold"
+                            >
+                                <b>B</b>
+                            </button>
+                            <button
+                                type="button"
+                                className="px-1 text-gray-700 dark:text-gray-200"
+                                onClick={() => {
+                                    const textarea = document.querySelector('textarea');
+                                    if (!textarea) return;
+                                    const start = textarea.selectionStart;
+                                    const end = textarea.selectionEnd;
+                                    const text = formData.about;
+                                    if (start === end) return;
+                                    const newText =
+                                        text.substring(0, start) +
+                                        '*' +
+                                        text.substring(start, end) +
+                                        '*' +
+                                        text.substring(end);
+                                    setFormData(prev => ({ ...prev, about: newText }));
+                                }}
+                                title="Italic"
+                            >
+                                <i>I</i>
+                            </button>
+                            <button
+                                type="button"
+                                className="px-1 text-gray-700 dark:text-gray-200"
+                                onClick={() => {
+                                    // Focus the textarea for editing  
+                                    document.querySelector('textarea')?.focus();
+                                }}
+                                title="Edit"
+                            >
+                                ✎
+                            </button>
                         </div>
                         <Textarea
                             value={formData.about}

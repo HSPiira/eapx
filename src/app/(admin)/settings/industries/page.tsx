@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ const fetchIndustries = async (params: { page: number; limit: number; search: st
 
 const IndustriesPage = () => {
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
+    const [limit] = useState(10);
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
     const [parentId, setParentId] = useState<string | null>(null);

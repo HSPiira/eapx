@@ -34,7 +34,7 @@ export interface CreateIndustryInput {
     metadata?: Record<string, unknown>;
 }
 
-export interface UpdateIndustryInput extends Partial<CreateIndustryInput> { }
+export type UpdateIndustryInput = Partial<CreateIndustryInput>;
 
 export interface IndustryFilters {
     parentId?: string | null;

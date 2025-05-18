@@ -5,6 +5,7 @@ import * as Icons from 'lucide-react';
 import { useDrawerFocusTrap } from '@/hooks';
 import { settingsSections } from '@/config';
 import { ArrowLeft, UserIcon, X } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
 interface DrawerProps {
     open: boolean;
@@ -14,6 +15,7 @@ interface DrawerProps {
 export default function Drawer({ open, onClose }: DrawerProps) {
     const drawerRef = useRef<HTMLElement>(null!);
     useDrawerFocusTrap(open, onClose, drawerRef);
+    const router = useRouter();
 
     return (
         <aside
@@ -27,7 +29,7 @@ export default function Drawer({ open, onClose }: DrawerProps) {
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => (window.location.href = '/admin')}
+                        onClick={() => router.push('/dashboard')}
                         aria-label="Back"
                         className="p-2"
                     >

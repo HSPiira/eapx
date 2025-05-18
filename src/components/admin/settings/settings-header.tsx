@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import {ArrowLeft, MenuIcon} from 'lucide-react';
+import { ArrowLeft, MenuIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface SettingsHeaderProps {
@@ -24,7 +24,7 @@ export default function SettingsHeader({ onMenuClick }: SettingsHeaderProps) {
             >
                 <MenuIcon className="w-5 h-5 text-gray-500" />
             </button>
-            <button className="p-2" aria-label="Back" onClick={() => router.push('/admin')}>
+            <button className="p-2" aria-label="Back" onClick={() => router.push('/dashboard')}>
                 <ArrowLeft className="w-5 h-5 text-gray-500" />
             </button>
             <span className="font-bold text-lg">Settings</span>

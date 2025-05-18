@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withApiMiddleware } from '@/lib/api-middleware';
+import { withApiMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 

@@ -24,11 +24,16 @@ export const settingsSections: SettingsSection[] = [
         ],
     },
     {
+        title: 'Organization',
+        items: [
+            { label: 'Industries', icon: 'Briefcase', href: '/settings/industries' },
+        ],
+    },
+    {
         title: 'Security',
         items: [
             { label: 'Password', icon: 'Key', href: '/settings/password' },
             { label: 'Impersonation', icon: 'Lock', href: '/settings/impersonation' },
-            { label: 'Industries', icon: 'Briefcase', href: '/settings/industries' },
         ],
     },
     {

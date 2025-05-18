@@ -196,7 +196,11 @@ class Cache {
             const uniqueKeys = [...new Set(keysToDelete.flat())];
 
             if (uniqueKeys.length > 0) {
-                await this.redis.del(...uniqueKeys);
+                // Delete all keys with the specified version
+                const versionedKeys = uniqueKeys.filter(key => key.startsWith(`${this.VERSION_PREFIX}${version}:`));
+                if (versionedKeys.length > 0) {
+                    await this.redis.del(...versionedKeys);
+                }
                 // Clean up tag sets
                 await this.redis.del(...tagKeys);
             }

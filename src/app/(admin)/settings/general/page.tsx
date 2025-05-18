@@ -35,22 +35,32 @@ interface ToggleGroupProps<T extends string> {
     className?: string;
 }
 
-const ToggleGroup = <T extends string>({ value, onValueChange, options, className }: ToggleGroupProps<T>) => (
-    <div className={`grid grid-cols-${options.length} gap-4 ${className}`}>
-        {options.map(({ value: optionValue, label }) => (
-            <button
-                key={optionValue}
-                onClick={() => onValueChange(optionValue)}
-                className={`p-4 border rounded-lg text-center ${value === optionValue
-                    ? 'border-black dark:border-white bg-gray-100 dark:bg-gray-900'
-                    : 'border-gray-200 dark:border-gray-800'
-                    }`}
-            >
-                <span className="text-sm">{label}</span>
-            </button>
-        ))}
-    </div>
-);
+const ToggleGroup = <T extends string>({ value, onValueChange, options, className }: ToggleGroupProps<T>) => {
+    const gridCols = {
+        1: 'grid-cols-1',
+        2: 'grid-cols-2',
+        3: 'grid-cols-3',
+        4: 'grid-cols-4',
+        5: 'grid-cols-5',
+    }[options.length] || 'grid-cols-1';
+
+    return (
+        <div className={`grid ${gridCols} gap-4 ${className}`}>
+            {options.map(({ value: optionValue, label }) => (
+                <button
+                    key={optionValue}
+                    onClick={() => onValueChange(optionValue)}
+                    className={`p-2 border rounded-lg text-center ${value === optionValue
+                        ? 'border-black dark:border-white bg-gray-100 dark:bg-gray-900'
+                        : 'border-gray-200 dark:border-gray-800'
+                        }`}
+                >
+                    <span className="text-sm">{label}</span>
+                </button>
+            ))}
+        </div>
+    );
+};
 
 const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ label, description, checked, onChange }) => (
     <div className="flex items-center justify-between">

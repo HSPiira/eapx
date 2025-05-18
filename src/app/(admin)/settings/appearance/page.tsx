@@ -63,23 +63,33 @@ const RadioGroup = <T extends string>({ value, onValueChange, options, className
     </div>
 );
 
-const ToggleGroup = <T extends string>({ value, onValueChange, options, className }: ToggleGroupProps<T>) => (
-    <div className={`grid grid-cols-${options.length} gap-4 ${className}`}>
-        {options.map(({ value: optionValue, label, previewClass }) => (
-            <button
-                key={optionValue}
-                onClick={() => onValueChange(optionValue)}
-                className={`p-4 border rounded-lg text-center ${value === optionValue
-                    ? 'border-black dark:border-white bg-gray-100 dark:bg-gray-900'
-                    : 'border-gray-200 dark:border-gray-800'
-                    }`}
-            >
-                {previewClass && <div className={`w-full h-24 rounded mb-2 ${previewClass}`}></div>}
-                <span className="text-sm">{label}</span>
-            </button>
-        ))}
-    </div>
-);
+const ToggleGroup = <T extends string>({ value, onValueChange, options, className }: ToggleGroupProps<T>) => {
+    const gridCols = {
+        1: 'grid-cols-1',
+        2: 'grid-cols-2',
+        3: 'grid-cols-3',
+        4: 'grid-cols-4',
+        5: 'grid-cols-5',
+    }[options.length] || 'grid-cols-1';
+
+    return (
+        <div className={`grid ${gridCols} gap-4 ${className}`}>
+            {options.map(({ value: optionValue, label, previewClass }) => (
+                <button
+                    key={optionValue}
+                    onClick={() => onValueChange(optionValue)}
+                    className={`p-2 border rounded-lg text-center ${value === optionValue
+                        ? 'border-black dark:border-white bg-gray-100 dark:bg-gray-900'
+                        : 'border-gray-200 dark:border-gray-800'
+                        }`}
+                >
+                    {previewClass && <div className={`w-full h-16 rounded mb-1 ${previewClass}`}></div>}
+                    <span className="text-sm">{label}</span>
+                </button>
+            ))}
+        </div>
+    );
+};
 
 const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ label, description, checked, onChange }) => (
     <div className="flex items-center justify-between">
@@ -107,7 +117,13 @@ const AppearanceSettingsPage = () => {
     const { settings, updateSettings } = useSettings();
     const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [localSettings, setLocalSettings] = useState<Settings>(settings);
+    const [localSettings, setLocalSettings] = useState<Settings>({
+        theme: settings.theme ?? 'system',
+        colorScheme: settings.colorScheme ?? 'default',
+        fontSize: settings.fontSize ?? 'medium',
+        reducedMotion: settings.reducedMotion ?? false,
+        highContrast: settings.highContrast ?? false,
+    });
 
     const hasChanges = useMemo(() => !isEqual(localSettings, settings), [localSettings, settings]);
 

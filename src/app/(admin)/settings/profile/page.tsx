@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import Image from 'next/image';
 import { LoadingSpinner } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +16,15 @@ interface Profile {
     image?: string;
     phone?: string;
     about?: string;
+}
+
+interface ProfileFormData {
+    fullName: string;
+    preferredName: string;
+    email: string;
+    phone: string;
+    about: string;
+    avatar: File | null;
 }
 
 const fetchProfile = async (): Promise<Profile> => {
@@ -38,31 +48,19 @@ const ProfilePage = () => {
     const queryClient = useQueryClient();
     const [isUpdating, setIsUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const { data: profile, isLoading } = useQuery({
-        queryKey: ['profile'],
-        queryFn: fetchProfile,
-        enabled: !!session?.user?.id,
-    });
-
-    const updateProfileMutation = useMutation({
-        mutationFn: updateProfile,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['profile'] });
-            setIsUpdating(false);
-        },
-        onError: (error) => {
-            setError('Failed to update profile. Please try again.');
-            setIsUpdating(false);
-        },
-    });
-
-    const [formData, setFormData] = useState<Partial<Profile>>({
+    const [formData, setFormData] = useState<ProfileFormData>({
         fullName: '',
         preferredName: '',
         email: '',
         phone: '',
         about: '',
+        avatar: null,
+    });
+
+    const { data: profile, isLoading, error: fetchError } = useQuery({
+        queryKey: ['profile'],
+        queryFn: fetchProfile,
+        enabled: !!session?.user?.id,
     });
 
     useEffect(() => {
@@ -73,6 +71,7 @@ const ProfilePage = () => {
                 email: profile.email || '',
                 phone: profile.phone || '',
                 about: profile.about || '',
+                avatar: null,
             });
         }
     }, [profile]);
@@ -80,8 +79,16 @@ const ProfilePage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setIsUpdating(true);
-        updateProfileMutation.mutate(formData);
+        try {
+            setIsUpdating(true);
+            await updateProfile(formData);
+            await queryClient.invalidateQueries({ queryKey: ['profile'] });
+        } catch (err) {
+            console.error('Failed to update profile:', err);
+            setError('Failed to update profile. Please try again.');
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     if (isLoading) {
@@ -92,13 +99,27 @@ const ProfilePage = () => {
         );
     }
 
+    if (fetchError) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64">
+                <p className="text-red-500 mb-4">Failed to load profile data</p>
+                <button
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ['profile'] })}
+                    className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded hover:bg-gray-800 dark:hover:bg-gray-100"
+                >
+                    Try Again
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-semibold mb-1 text-gray-900 dark:text-white">Profile</h1>
             <p className="text-gray-500 dark:text-gray-400 mb-6">Manage settings for your careAxis profile</p>
 
             <div className="flex items-center gap-4 mb-6">
-                <img
+                <Image
                     src={profile?.image || session?.user?.image || 'https://i.pravatar.cc/100'}
                     alt="Profile"
                     className="w-16 h-16 rounded-full object-cover"

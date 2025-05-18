@@ -1,10 +1,10 @@
-import {DatabaseClient} from "@/lib/database_client";
+import { DatabaseClient } from "@/lib/database_client";
 
 interface ListParams<TEntity = unknown> {
     page?: number;
     limit?: number;
     search?: string;
-    filters?: Partial<Record<keyof TEntity, any>>;
+    filters?: Partial<Record<keyof TEntity, unknown>>;
     sort?: {
         field: keyof TEntity;
         direction: 'asc' | 'desc';
@@ -34,7 +34,6 @@ export abstract class BaseProvider<
     protected abstract defaultSort: { field: keyof TEntity; direction: 'asc' | 'desc' };
     protected includes?: TInclude = undefined;
     protected useSoftDelete: boolean = false;
-
     protected abstract transform(data: TEntity): TEntity;
 
     async list(params: ListParams): Promise<PaginatedResponse<TEntity>> {
@@ -115,7 +114,7 @@ export abstract class BaseProvider<
 
     // Default where clause
     protected buildWhereClause(filters: Partial<TWhere>, search: string): TWhere {
-        const base: Record<string, any> = { ...filters };
+        const base: Record<string, unknown> = { ...filters };
 
         if (this.useSoftDelete) {
             base.deletedAt = null;
@@ -131,10 +130,10 @@ export abstract class BaseProvider<
     }
 
     // Lifecycle hooks
-    protected async beforeCreate(data: TCreate): Promise<void> {}
-    protected async afterCreate(result: TEntity): Promise<void> {}
-    protected async beforeUpdate(id: string, data: TUpdate): Promise<void> {}
-    protected async afterUpdate(result: TEntity): Promise<void> {}
-    protected async beforeDelete(id: string): Promise<void> {}
-    protected async afterDelete(result: TEntity): Promise<void> {}
+    protected async beforeCreate(data: TCreate): Promise<void> { }
+    protected async afterCreate(result: TEntity): Promise<void> { }
+    protected async beforeUpdate(id: string, _data: TUpdate): Promise<void> { }
+    protected async afterUpdate(result: TEntity): Promise<void> { }
+    protected async beforeDelete(id: string): Promise<void> { }
+    protected async afterDelete(result: TEntity): Promise<void> { }
 }

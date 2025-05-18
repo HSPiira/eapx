@@ -18,6 +18,13 @@ interface Settings {
     fontSize: FontSize;
     reducedMotion: boolean;
     highContrast: boolean;
+    // General settings
+    language: string;
+    timezone: string;
+    timeFormat: '12 hour' | '24 hour';
+    startOfWeek: 'Sunday' | 'Monday';
+    dynamicGroupLinks: boolean;
+    searchEngineIndexing: boolean;
 }
 
 interface SettingsContextType {
@@ -31,6 +38,13 @@ const defaultSettings: Settings = {
     fontSize: 'medium',
     reducedMotion: false,
     highContrast: false,
+    // General settings defaults
+    language: 'English',
+    timezone: 'Africa/Kampala',
+    timeFormat: '12 hour',
+    startOfWeek: 'Sunday',
+    dynamicGroupLinks: false,
+    searchEngineIndexing: false,
 };
 
 const STORAGE_KEY = 'appSettings';

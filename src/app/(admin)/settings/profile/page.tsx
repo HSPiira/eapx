@@ -123,7 +123,8 @@ const ProfilePage = () => {
                     src={profile?.image || session?.user?.image || 'https://i.pravatar.cc/100'}
                     alt="Profile"
                     className="w-16 h-16 rounded-full object-cover"
-
+                    width={48}
+                    height={48}
                 />
                 <div>
                     <label

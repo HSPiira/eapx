@@ -20,8 +20,7 @@ export const settingsSections: SettingsSection[] = [
             { label: 'General', icon: 'Settings', href: '/settings/general' },
             { label: 'Calendars', icon: 'Calendar', href: '/settings/calendars' },
             { label: 'Appearance', icon: 'Eye', href: '/settings/appearance' },
-            { label: 'Out of office', icon: 'Calendar', href: '/settings/out-of-office' },
-            { label: 'Push Notifications', icon: 'Bell', href: '/settings/push-notifications' },
+            { label: 'Notifications', icon: 'Bell', href: '/settings/notifications' },
         ],
     },
     {

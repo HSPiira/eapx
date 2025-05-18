@@ -1,39 +1,17 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/middleware/auth';
 import { cache } from '@/lib/cache';
-import { rateLimiter } from '@/lib/rate-limiter';
 import { prisma } from '@/lib/prisma';
-import { Prisma, ContractStatus, PaymentStatus } from '@prisma/client';
+import { ContractStatus, PaymentStatus, Frequency } from '@prisma/client';
+import { withApiMiddleware } from '@/middleware/api-middleware';
+import { getPaginationParams } from '@/lib/api-utils';
 
 // GET /api/contracts
 export async function GET(request: Request) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
+    return withApiMiddleware(request, async (request) => {
+        const { page, limit, offset, search, status } = getPaginationParams(request);
 
-        // Authentication
-        const session = await auth();
-        if (!session) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
-        // Pagination
-        const { searchParams } = new URL(request.url);
-        const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-        const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10')));
-        const offset = (page - 1) * limit;
-
-        // Cache key based on pagination parameters
-        const cacheKey = `contracts:${page}:${limit}`;
+        // Cache key based on all query parameters
+        const cacheKey = `contracts:${request.url.search}`;
 
         // Try to get from cache first
         const cachedData = await cache.get(cacheKey);
@@ -42,10 +20,21 @@ export async function GET(request: Request) {
         }
 
         // Get total count for pagination metadata
-        const totalCount = await prisma.contract.count();
+        const where = {
+            ...(search && {
+                OR: [
+                    { client: { name: { contains: search } } },
+                    { notes: { contains: search } }
+                ]
+            }),
+            ...(status && { status: status as ContractStatus })
+        };
+
+        const totalCount = await prisma.contract.count({ where });
 
         // Fetch contracts with pagination
         const contracts = await prisma.contract.findMany({
+            where,
             select: {
                 id: true,
                 clientId: true,
@@ -97,42 +86,59 @@ export async function GET(request: Request) {
         await cache.set(cacheKey, response);
 
         return NextResponse.json(response);
-    } catch (error) {
-        console.error('Error fetching contracts:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
 // POST /api/contracts
 export async function POST(request: Request) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
+    return withApiMiddleware(request, async (request) => {
+        let body;
+        try {
+            body = await request.json();
+        } catch {
             return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
+                { error: 'Invalid JSON payload' },
+                { status: 400 }
             );
         }
-
-        // Authentication
-        const session = await auth();
-        if (!session) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
-        const body = await request.json();
 
         // Input validation
         if (!body.clientId || !body.startDate || !body.endDate || !body.billingRate) {
             return NextResponse.json(
                 { error: 'Missing required fields' },
+                { status: 400 }
+            );
+        }
+
+        // Validate billing rate
+        const rate = Number(body.billingRate);
+        if (!Number.isFinite(rate) || rate <= 0) {
+            return NextResponse.json(
+                { error: 'Invalid billing rate - must be a positive number' },
+                { status: 400 }
+            );
+        }
+
+        // Validate payment frequency
+        if (body.paymentFrequency && !Object.values(Frequency).includes(body.paymentFrequency)) {
+            return NextResponse.json(
+                { error: 'Invalid payment frequency' },
+                { status: 400 }
+            );
+        }
+
+        // Validate payment terms (string validation)
+        if (body.paymentTerms && typeof body.paymentTerms !== 'string') {
+            return NextResponse.json(
+                { error: 'Payment terms must be a string' },
+                { status: 400 }
+            );
+        }
+
+        // Validate currency (string validation)
+        if (body.currency && typeof body.currency !== 'string') {
+            return NextResponse.json(
+                { error: 'Currency must be a string' },
                 { status: 400 }
             );
         }
@@ -171,7 +177,7 @@ export async function POST(request: Request) {
                 startDate,
                 endDate,
                 renewalDate,
-                billingRate: parseFloat(body.billingRate),
+                billingRate: rate,
                 isRenewable: body.isRenewable ?? true,
                 isAutoRenew: body.isAutoRenew ?? false,
                 paymentStatus: PaymentStatus.PENDING,
@@ -214,22 +220,8 @@ export async function POST(request: Request) {
         });
 
         // Invalidate cache
-        await cache.delete('contracts:1:10'); // Invalidate first page
+        await cache.deleteByPrefix('contracts:');
 
         return NextResponse.json(newContract, { status: 201 });
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2003') {
-                return NextResponse.json(
-                    { error: 'Client not found' },
-                    { status: 404 }
-                );
-            }
-        }
-        console.error('Error creating contract:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 } 

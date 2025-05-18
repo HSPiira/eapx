@@ -1,67 +1,34 @@
 import { Redis } from '@upstash/redis';
 
-interface RateLimitEntry {
-    count: number;
-    resetTime: number;
-}
-
 class RateLimiter {
     private redis: Redis;
     private windowMs: number;
     private maxRequests: number;
 
     constructor(windowMs = 60 * 1000, maxRequests = 100) { // Default: 100 requests per minute
-        this.redis = new Redis({
-            url: process.env.UPSTASH_REDIS_REST_URL!,
-            token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-        });
+        const { UPSTASH_REDIS_REST_URL: url, UPSTASH_REDIS_REST_TOKEN: token } = process.env;
+        if (!url || !token) {
+            throw new Error('RateLimiter: Upstash Redis env variables are not set');
+        }
+        this.redis = new Redis({ url, token });
         this.windowMs = windowMs;
         this.maxRequests = maxRequests;
     }
 
     async isAllowed(ip: string): Promise<boolean> {
         const now = Date.now();
-        const key = `ratelimit:${ip}`;
+        const key = `ratelimit:${ip}:${Math.floor(now / this.windowMs)}`;
 
         try {
-            // Get current rate limit data
-            const data = await this.redis.get<RateLimitEntry>(key);
+            // Use INCR for atomic increment
+            const count = await this.redis.incr(key);
 
-            if (!data) {
-                // First request from this IP
-                await this.redis.set(key, {
-                    count: 1,
-                    resetTime: now + this.windowMs
-                }, {
-                    ex: Math.ceil(this.windowMs / 1000) // Convert to seconds for Redis
-                });
-                return true;
+            // Set expiry on first request
+            if (count === 1) {
+                await this.redis.expire(key, Math.ceil(this.windowMs / 1000));
             }
 
-            if (now > data.resetTime) {
-                // Reset window
-                await this.redis.set(key, {
-                    count: 1,
-                    resetTime: now + this.windowMs
-                }, {
-                    ex: Math.ceil(this.windowMs / 1000)
-                });
-                return true;
-            }
-
-            if (data.count >= this.maxRequests) {
-                return false;
-            }
-
-            // Increment counter
-            await this.redis.set(key, {
-                count: data.count + 1,
-                resetTime: data.resetTime
-            }, {
-                ex: Math.ceil((data.resetTime - now) / 1000)
-            });
-
-            return true;
+            return count <= this.maxRequests;
         } catch (error) {
             console.error('Rate limiter Redis error:', error);
             // Fail open - allow request if Redis is down
@@ -71,7 +38,11 @@ class RateLimiter {
 
     async reset(ip: string): Promise<void> {
         try {
-            await this.redis.del(`ratelimit:${ip}`);
+            const pattern = `ratelimit:${ip}:*`;
+            const keys = await this.redis.keys(pattern);
+            if (keys.length > 0) {
+                await this.redis.del(...keys);
+            }
         } catch (error) {
             console.error('Rate limiter reset error:', error);
         }

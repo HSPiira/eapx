@@ -20,7 +20,10 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
 
     return (
         <div className="flex flex-col md:flex-row bg-white dark:bg-black h-full">
-            <SettingsHeader onMenuClick={() => setDrawerOpen(true)} />
+            <SettingsHeader
+                onMenuClick={() => setDrawerOpen(true)}
+                isMenuOpen={drawerOpen}
+            />
 
             {/* Drawer and Overlay container */}
             <div

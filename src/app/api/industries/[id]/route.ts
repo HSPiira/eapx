@@ -1,31 +1,22 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/middleware/auth';
 import { cache } from '@/lib/cache';
-import { rateLimiter } from '@/lib/rate-limiter';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { withApiMiddleware } from '@/middleware/api-middleware';
+import { isAdmin } from '@/lib/auth-utils';
 
 // GET /api/industries/[id]
 export async function GET(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
+    return withApiMiddleware(_request, async () => {
+        // Authorization - Check if user is admin
         const session = await auth();
-        if (!session) {
+        if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
             );
         }
 
@@ -39,8 +30,8 @@ export async function GET(
         }
 
         // Fetch industry from database
-        const industry = await prisma.industry.findUnique({
-            where: { id },
+        const industry = await prisma.industry.findFirst({
+            where: { id, deletedAt: null },
             select: {
                 id: true,
                 name: true,
@@ -79,41 +70,26 @@ export async function GET(
         await cache.set(cacheKey, industry);
 
         return NextResponse.json(industry);
-    } catch (error) {
-        console.error('Error fetching industry:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
 // PUT /api/industries/[id]
 export async function PUT(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
+    return withApiMiddleware(_request, async () => {
+        // Authorization - Check if user is admin
         const session = await auth();
-        if (!session) {
+        if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
             );
         }
 
         const { id } = await params;
-        const body = await request.json();
+        const body = await _request.json();
 
         // Input validation
         if (!body.name) {
@@ -166,66 +142,30 @@ export async function PUT(
                         name: true,
                         code: true
                     }
-                },
-                children: {
-                    select: {
-                        id: true,
-                        name: true,
-                        code: true
-                    }
                 }
             }
         });
 
         // Invalidate caches
         await cache.delete(`industry:${id}`);
-        await cache.delete('industries:1:10'); // Invalidate first page of industries list
+        await cache.invalidateByTags(['industries']);
 
         return NextResponse.json(updatedIndustry);
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') {
-                return NextResponse.json(
-                    { error: 'Industry not found' },
-                    { status: 404 }
-                );
-            }
-            if (error.code === 'P2003') {
-                return NextResponse.json(
-                    { error: 'Parent industry not found' },
-                    { status: 404 }
-                );
-            }
-        }
-        console.error('Error updating industry:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
 // DELETE /api/industries/[id]
 export async function DELETE(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
+    return withApiMiddleware(_request, async () => {
+        // Authorization - Check if user is admin
         const session = await auth();
-        if (!session) {
+        if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
             );
         }
 
@@ -271,22 +211,8 @@ export async function DELETE(
 
         // Invalidate caches
         await cache.delete(`industry:${id}`);
-        await cache.delete('industries:1:10'); // Invalidate first page of industries list
+        await cache.invalidateByTags(['industries']);
 
         return new NextResponse(null, { status: 204 });
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') {
-                return NextResponse.json(
-                    { error: 'Industry not found' },
-                    { status: 404 }
-                );
-            }
-        }
-        console.error('Error deleting industry:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 } 

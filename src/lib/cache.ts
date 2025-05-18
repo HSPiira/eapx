@@ -112,16 +112,16 @@ class Cache {
         return `${this.TAG_PREFIX}${tag}`;
     }
 
-    async get<T>(key: string, version?: string): Promise<T | null> {
+    async get<T>(key: string): Promise<T | null> {
         try {
-            const cacheKey = this.generateKey(key, version);
+            const cacheKey = this.generateKey(key);
             const value = await this.redis.get<CacheValue<T>>(cacheKey);
 
             if (!value) return null;
 
             // Check if the value has expired
             if (value.metadata.expiresAt < Date.now()) {
-                await this.delete(key, version);
+                await this.delete(key);
                 return null;
             }
 
@@ -175,7 +175,7 @@ class Cache {
         }
     }
 
-    async delete(key: string, version?: string): Promise<void> {
+    async delete(key: string, version: string = this.defaultVersion): Promise<void> {
         try {
             const cacheKey = this.generateKey(key, version);
             await this.redis.del(cacheKey);
@@ -185,7 +185,7 @@ class Cache {
         }
     }
 
-    async invalidateByTags(tags: string[]): Promise<void> {
+    async invalidateByTags(tags: string[], version: string = this.defaultVersion): Promise<void> {
         try {
             const tagKeys = tags.map(tag => this.generateTagKey(tag));
             const keysToDelete = await Promise.all(
@@ -228,6 +228,19 @@ class Cache {
         } catch (error) {
             console.error('Cache clear error:', error);
             throw new CacheError('Failed to clear cache', 'CACHE_CLEAR_ERROR');
+        }
+    }
+
+    async deleteByPrefix(prefix: string, version: string = this.defaultVersion): Promise<void> {
+        try {
+            const pattern = `${this.generateKey(prefix, version)}*`;
+            const keys = await this.redis.keys(pattern);
+            if (keys.length > 0) {
+                await this.redis.del(...keys);
+            }
+        } catch (error) {
+            console.error('Cache prefix deletion error:', error);
+            throw new CacheError('Failed to delete cache by prefix', 'CACHE_PREFIX_DELETE_ERROR');
         }
     }
 

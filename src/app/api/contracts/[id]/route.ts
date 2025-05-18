@@ -1,34 +1,14 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/middleware/auth';
 import { cache } from '@/lib/cache';
-import { rateLimiter } from '@/lib/rate-limiter';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { withApiMiddleware } from '@/middleware/api-middleware';
 
 // GET /api/contracts/[id]
 export async function GET(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
-        const session = await auth();
-        if (!session) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
+    return withApiMiddleware(_request, async () => {
         const { id } = await params;
 
         // Try to get from cache first
@@ -84,41 +64,17 @@ export async function GET(
         await cache.set(cacheKey, contract);
 
         return NextResponse.json(contract);
-    } catch (error) {
-        console.error('Error fetching contract:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
 // PUT /api/contracts/[id]
 export async function PUT(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
-        const session = await auth();
-        if (!session) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
+    return withApiMiddleware(_request, async () => {
         const { id } = await params;
-        const body = await request.json();
+        const body = await _request.json();
 
         // Validate dates if provided
         const startDate = body.startDate ? new Date(body.startDate) : undefined;
@@ -168,7 +124,9 @@ export async function PUT(
                 startDate,
                 endDate,
                 renewalDate,
-                billingRate: body.billingRate ? parseFloat(body.billingRate) : undefined,
+                billingRate: body.billingRate !== undefined && body.billingRate !== null
+                    ? parseFloat(body.billingRate)
+                    : undefined,
                 isRenewable: body.isRenewable,
                 isAutoRenew: body.isAutoRenew,
                 paymentStatus: body.paymentStatus,
@@ -212,56 +170,18 @@ export async function PUT(
 
         // Invalidate caches
         await cache.delete(`contract:${id}`);
-        await cache.delete('contracts:1:10'); // Invalidate first page of contracts list
+        await cache.invalidateByTags(['contracts']);
 
         return NextResponse.json(updatedContract);
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') {
-                return NextResponse.json(
-                    { error: 'Contract not found' },
-                    { status: 404 }
-                );
-            }
-            if (error.code === 'P2003') {
-                return NextResponse.json(
-                    { error: 'Client not found' },
-                    { status: 404 }
-                );
-            }
-        }
-        console.error('Error updating contract:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
 // DELETE /api/contracts/[id]
 export async function DELETE(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
-        const session = await auth();
-        if (!session) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
+    return withApiMiddleware(_request, async () => {
         const { id } = await params;
 
         // Delete contract
@@ -271,22 +191,8 @@ export async function DELETE(
 
         // Invalidate caches
         await cache.delete(`contract:${id}`);
-        await cache.delete('contracts:1:10'); // Invalidate first page of contracts list
+        await cache.invalidateByTags(['contracts']);
 
         return new NextResponse(null, { status: 204 });
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2025') {
-                return NextResponse.json(
-                    { error: 'Contract not found' },
-                    { status: 404 }
-                );
-            }
-        }
-        console.error('Error deleting contract:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 } 

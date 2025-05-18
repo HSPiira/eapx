@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 
 interface SettingsHeaderProps {
     onMenuClick: () => void;
+    isMenuOpen: boolean;
 }
 
-export default function SettingsHeader({ onMenuClick }: SettingsHeaderProps) {
+export default function SettingsHeader({ onMenuClick, isMenuOpen }: SettingsHeaderProps) {
     const router = useRouter();
 
     return (
@@ -19,7 +20,7 @@ export default function SettingsHeader({ onMenuClick }: SettingsHeaderProps) {
                 className="p-2"
                 aria-label="Menu"
                 aria-haspopup="true"
-                aria-expanded={false}
+                aria-expanded={isMenuOpen}
                 onClick={onMenuClick}
             >
                 <MenuIcon className="w-5 h-5 text-gray-500" />

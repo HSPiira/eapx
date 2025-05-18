@@ -27,10 +27,11 @@ interface Client {
     updatedAt: Date;
 }
 
-export function ClientList() {
-    // This would be replaced with actual data fetching
-    const clients: Client[] = [];
+interface ClientListProps {
+    clients: Client[];
+}
 
+export function ClientList({ clients }: ClientListProps) {
     return (
         <div className="rounded-md border">
             <Table>
@@ -73,7 +74,7 @@ export function ClientList() {
                             <TableCell>{client.activeContracts}</TableCell>
                             <TableCell>{client.totalStaff}</TableCell>
                             <TableCell>
-                                {format(client.updatedAt, 'MMM d, yyyy')}
+                                {format(new Date(client.updatedAt), 'MMM d, yyyy')}
                             </TableCell>
                             <TableCell>
                                 <Button variant="ghost" size="icon">

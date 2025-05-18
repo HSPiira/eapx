@@ -13,6 +13,7 @@ export type ColorScheme = 'default' | 'blue' | 'green' | 'purple';
 export type FontSize = 'small' | 'medium' | 'large';
 
 interface Settings {
+    version: number;
     theme: Theme;
     colorScheme: ColorScheme;
     fontSize: FontSize;
@@ -32,7 +33,10 @@ interface SettingsContextType {
     updateSettings: (newSettings: Partial<Settings>) => Promise<void>;
 }
 
+const CURRENT_VERSION = 1;
+
 const defaultSettings: Settings = {
+    version: CURRENT_VERSION,
     theme: 'system',
     colorScheme: 'default',
     fontSize: 'medium',
@@ -49,6 +53,29 @@ const defaultSettings: Settings = {
 
 const STORAGE_KEY = 'appSettings';
 
+// Migration function to handle version updates
+function migrateSettings(savedSettings: Partial<Settings>): Settings {
+    const version = savedSettings.version || 0;
+
+    // Start with default settings
+    let migratedSettings = { ...defaultSettings };
+
+    // Merge saved settings with defaults
+    migratedSettings = {
+        ...migratedSettings,
+        ...savedSettings,
+        version: CURRENT_VERSION, // Always update to current version
+    };
+
+    // Handle specific migrations based on version
+    if (version < 1) {
+        // Example: Migrate old settings format to new format
+        // This is where you'd add specific migration logic for version 0 to 1
+    }
+
+    return migratedSettings;
+}
+
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
@@ -60,10 +87,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
-                setSettings(JSON.parse(saved));
+                const parsedSettings = JSON.parse(saved);
+                const migratedSettings = migrateSettings(parsedSettings);
+                setSettings(migratedSettings);
             }
         } catch (e) {
             console.error('Failed to load settings:', e);
+            // If there's an error, use default settings
+            setSettings(defaultSettings);
         } finally {
             setIsLoading(false);
         }

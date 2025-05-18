@@ -1,4 +1,4 @@
-// src/components/clients/client-header.tsx
+// src/components/admin/clients/client-header.tsx
 'use client';
 
 import React from 'react';

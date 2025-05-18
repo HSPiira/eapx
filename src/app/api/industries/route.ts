@@ -4,35 +4,24 @@ import { cache } from '@/lib/cache';
 import { rateLimiter } from '@/lib/rate-limiter';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { withApiMiddleware } from '@/middleware/api-middleware';
+import { getPaginationParams } from '@/lib/api-utils';
+import { isAdmin } from '@/lib/auth-utils';
 
 // GET /api/industries
 export async function GET(request: Request) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
+    return withApiMiddleware(request, async (request) => {
+        // Authorization - Check if user is admin
         const session = await auth();
-        if (!session) {
+        if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
             );
         }
 
-        // Pagination and filtering
-        const { searchParams } = new URL(request.url);
-        const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-        const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10')));
-        const offset = (page - 1) * limit;
-        const search = searchParams.get('search') || '';
-        const parentId = searchParams.get('parentId');
+        const { page, limit, offset, search } = getPaginationParams(request);
+        const parentId = new URL(request.url).searchParams.get('parentId');
 
         // Cache key based on parameters
         const cacheKey = `industries:${page}:${limit}:${search}:${parentId}`;
@@ -105,36 +94,21 @@ export async function GET(request: Request) {
         };
 
         // Cache the results
-        await cache.set(cacheKey, response);
+        await cache.set(cacheKey, response, { tags: ['industries'] });
 
         return NextResponse.json(response);
-    } catch (error) {
-        console.error('Error fetching industries:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
 // POST /api/industries
 export async function POST(request: Request) {
-    try {
-        // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
-        }
-
-        // Authentication
+    return withApiMiddleware(request, async (request) => {
+        // Authorization - Check if user is admin
         const session = await auth();
-        if (!session) {
+        if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
             );
         }
 
@@ -194,19 +168,83 @@ export async function POST(request: Request) {
         });
 
         // Invalidate cache
-        await cache.delete('industries:1:10'); // Invalidate first page
+        await cache.invalidateByTags(['industries']);
 
         return NextResponse.json(newIndustry, { status: 201 });
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === 'P2003') {
-                return NextResponse.json(
-                    { error: 'Parent industry not found' },
-                    { status: 404 }
-                );
-            }
+    });
+}
+
+// PUT /api/industries
+export async function PUT(request: Request) {
+    try {
+        // Rate limiting
+        const ip = request.headers.get('x-forwarded-for') || 'unknown';
+        if (!(await rateLimiter.isAllowed(ip))) {
+            return NextResponse.json(
+                { error: 'Too many requests' },
+                { status: 429 }
+            );
         }
-        console.error('Error creating industry:', error);
+
+        // Authentication
+        const session = await auth();
+        if (!session) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        // Authorization - Check if user is admin
+        if (!(await isAdmin(session))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
+            );
+        }
+
+        // ... rest of PUT implementation ...
+    } catch (error) {
+        console.error('Error updating industry:', error);
+        return NextResponse.json(
+            { error: 'Internal Server Error' },
+            { status: 500 }
+        );
+    }
+}
+
+// DELETE /api/industries
+export async function DELETE(request: Request) {
+    try {
+        // Rate limiting
+        const ip = request.headers.get('x-forwarded-for') || 'unknown';
+        if (!(await rateLimiter.isAllowed(ip))) {
+            return NextResponse.json(
+                { error: 'Too many requests' },
+                { status: 429 }
+            );
+        }
+
+        // Authentication
+        const session = await auth();
+        if (!session) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        // Authorization - Check if user is admin
+        if (!(await isAdmin(session))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
+            );
+        }
+
+        // ... rest of DELETE implementation ...
+    } catch (error) {
+        console.error('Error deleting industry:', error);
         return NextResponse.json(
             { error: 'Internal Server Error' },
             { status: 500 }

@@ -39,6 +39,8 @@ const UserProfile: React.FC = () => {
                     src={displayImage}
                     alt={displayName || ''}
                     className="w-8 h-8 rounded-full object-cover"
+                    width={48}
+                    height={48}
                 />
             ) : (
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">

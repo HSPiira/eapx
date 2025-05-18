@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -62,7 +62,7 @@ const IndustriesPage = () => {
         const timer = setTimeout(() => {
             setSearch(searchInput);
             setPage(1); // Reset to first page on new search
-        }, 1000); // 2 seconds debounce
+        }, 1000); // 1 second debounce
 
         return () => clearTimeout(timer);
     }, [searchInput]);
@@ -72,24 +72,42 @@ const IndustriesPage = () => {
         queryFn: () => fetchIndustries({ page, limit, search, parentId }),
     });
 
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearch = useCallback((e: React.FormEvent) => {
         e.preventDefault();
         setSearch(searchInput);
         setPage(1);
-    };
+    }, [searchInput]);
 
-    const handleClearSearch = () => {
+    const handleClearSearch = useCallback(() => {
         setSearchInput('');
         setSearch('');
         setPage(1);
-    };
+    }, []);
 
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             handleSearch(e);
         }
-    };
+    }, [handleSearch]);
+
+    const handlePreviousPage = useCallback(() => {
+        setPage(prev => Math.max(1, prev - 1));
+    }, []);
+
+    const handleNextPage = useCallback(() => {
+        if (data?.metadata.totalPages) {
+            setPage(prev => Math.min(data.metadata.totalPages, prev + 1));
+        }
+    }, [data?.metadata.totalPages]);
+
+    const handleParentChange = useCallback((value: string) => {
+        setParentId(value === 'all' ? null : value);
+    }, []);
+
+    const handleReload = useCallback(() => {
+        window.location.reload();
+    }, []);
 
     if (isLoading) {
         return (
@@ -103,7 +121,7 @@ const IndustriesPage = () => {
         return (
             <div className="flex flex-col items-center justify-center h-64">
                 <p className="text-red-500 mb-4">Failed to load industries</p>
-                <Button onClick={() => window.location.reload()}>Try Again</Button>
+                <Button onClick={handleReload}>Try Again</Button>
             </div>
         );
     }
@@ -144,7 +162,7 @@ const IndustriesPage = () => {
                 </form>
                 <Select
                     value={parentId || 'all'}
-                    onValueChange={(value) => setParentId(value === 'all' ? null : value)}
+                    onValueChange={handleParentChange}
                 >
                     <SelectTrigger className="w-[200px]">
                         <SelectValue placeholder="Filter by parent" />
@@ -191,20 +209,20 @@ const IndustriesPage = () => {
 
             <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-500">
-                    Showing {data?.data.length} of {data?.pagination.total} industries
+                    Showing {data?.data.length} of {data?.metadata.total} industries
                 </div>
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => setPage(page - 1)}
+                        onClick={handlePreviousPage}
                         disabled={page === 1}
                     >
                         Previous
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => setPage(page + 1)}
-                        disabled={page >= data?.pagination.pages}
+                        onClick={handleNextPage}
+                        disabled={page >= data?.metadata.totalPages}
                     >
                         Next
                     </Button>

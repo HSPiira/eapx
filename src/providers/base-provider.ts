@@ -26,10 +26,11 @@ export abstract class BaseProvider<
     TCreate,
     TUpdate,
     TWhere,
+    TWhereUnique,
     TInclude = unknown,
     TSource = TModel
 > {
-    protected abstract client: DatabaseClient<TModel, TWhere, TCreate, TUpdate, TInclude>;
+    protected abstract client: DatabaseClient<TModel, TWhere, TWhereUnique, TCreate, TUpdate, TInclude>;
     protected abstract searchFields: (keyof TModel)[];
     protected abstract defaultSort: { field: keyof TModel; direction: 'asc' | 'desc' };
     protected includes?: TInclude = undefined;
@@ -71,7 +72,7 @@ export abstract class BaseProvider<
 
     async get(id: string): Promise<TModel | null> {
         const item = await this.client.findUnique({
-            where: { id } as TWhere,
+            where: { id } as TWhereUnique,
             include: this.includes
         });
         return item ? this.transform(item as unknown as TSource) : null;
@@ -90,7 +91,7 @@ export abstract class BaseProvider<
     async update(id: string, data: TUpdate): Promise<TModel> {
         await this.beforeUpdate();
         const item = await this.client.update({
-            where: { id } as TWhere,
+            where: { id } as TWhereUnique,
             data,
             include: this.includes
         });
@@ -102,11 +103,11 @@ export abstract class BaseProvider<
         await this.beforeDelete();
         const result = this.useSoftDelete
             ? await this.client.update({
-                where: { id } as TWhere,
+                where: { id } as TWhereUnique,
                 data: { deletedAt: new Date() } as unknown as TUpdate,
                 include: this.includes
             })
-            : await this.client.delete({ where: { id } as TWhere });
+            : await this.client.delete({ where: { id } as TWhereUnique });
 
         await this.afterDelete();
         return this.transform(result as unknown as TSource);

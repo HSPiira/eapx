@@ -1,120 +1,65 @@
-import type { DatabaseClient } from "@/lib/database-client";
+import type { DatabaseClient, QueryParams } from './database-client';
+import type { Prisma } from '@prisma/client';
 
-type QueryParams<TWhere, TInclude, TSelect> = {
-    where?: TWhere;
-    take?: number;
-    skip?: number;
-    orderBy?: Record<string, 'asc' | 'desc'>;
-    include?: TInclude;
-    select?: TSelect;
-    distinct?: string[];
+type PrismaDelegate<TModel> = {
+    findMany: (args?: Prisma.Args<TModel, 'findMany'>) => Promise<TModel[]>;
+    findUnique: (args: Prisma.Args<TModel, 'findUnique'>) => Promise<TModel | null>;
+    create: (args: Prisma.Args<TModel, 'create'>) => Promise<TModel>;
+    update: (args: Prisma.Args<TModel, 'update'>) => Promise<TModel>;
+    delete: (args: Prisma.Args<TModel, 'delete'>) => Promise<TModel>;
+    count: (args: Prisma.Args<TModel, 'count'>) => Promise<number>;
+    aggregate: (args: Prisma.Args<TModel, 'aggregate'>) => Promise<unknown>;
+    groupBy: (args: Prisma.Args<TModel, 'groupBy'>) => Promise<unknown[]>;
 };
 
-/**
- * A generic wrapper for Prisma delegate operations.
- * Adds optional logging, error handling, and extensibility points.
- */
-export class PrismaWrapper<
+export class PrismaWrapper<TModel> implements DatabaseClient<
     TModel,
-    TWhere extends Record<string, unknown>,
-    TCreate,
-    TUpdate,
-    TInclude = unknown
-> implements DatabaseClient<TModel, TWhere, TCreate, TUpdate, TInclude> {
-    constructor(
-        private readonly delegate: {
-            findMany: (params: QueryParams<TWhere, TInclude, unknown>) => Promise<TModel[]>;
-            findUnique: (params: { where: TWhere; include?: TInclude }) => Promise<TModel | null>;
-            create: (params: { data: TCreate; include?: TInclude }) => Promise<TModel>;
-            update: (params: { where: TWhere; data: TUpdate; include?: TInclude }) => Promise<TModel>;
-            delete: (params: { where: TWhere }) => Promise<TModel>;
-            count: (params: { where: TWhere }) => Promise<number>;
-            aggregate: (params: {
-                where?: TWhere;
-                _sum?: Partial<Record<keyof TModel, boolean>>;
-                _avg?: Partial<Record<keyof TModel, boolean>>;
-                _count?: Partial<Record<keyof TModel, boolean>>;
-            }) => Promise<unknown>;
-            groupBy: (params: {
-                by: (keyof TModel)[];
-                where?: TWhere;
-                _count?: boolean | Partial<Record<keyof TModel, boolean>>;
-            }) => Promise<unknown[]>;
-        }
-    ) { }
+    Prisma.Args<TModel, 'findMany'>['where'],
+    Prisma.Args<TModel, 'findUnique'>['where'],
+    Prisma.Args<TModel, 'create'>['data'],
+    Prisma.Args<TModel, 'update'>['data'],
+    Prisma.Args<TModel, 'findMany'>['include']
+> {
+    constructor(private delegate: PrismaDelegate<TModel>) { }
 
-    async findMany(params: QueryParams<TWhere, TInclude, unknown>): Promise<TModel[]> {
-        this.log("findMany", params);
-        return this.wrap(() => this.delegate.findMany(params));
+    async findMany(params: QueryParams<Prisma.Args<TModel, 'findMany'>['where'], Prisma.Args<TModel, 'findMany'>['include'], unknown>): Promise<TModel[]> {
+        return this.delegate.findMany(params as Prisma.Args<TModel, 'findMany'>);
     }
 
-    async findUnique(params: { where: TWhere; include?: TInclude }): Promise<TModel | null> {
-        this.log("findUnique", params);
-        return this.wrap(() => this.delegate.findUnique(params));
+    async findUnique(params: { where: Prisma.Args<TModel, 'findUnique'>['where']; include?: Prisma.Args<TModel, 'findMany'>['include'] }): Promise<TModel | null> {
+        return this.delegate.findUnique(params as Prisma.Args<TModel, 'findUnique'>);
     }
 
-    async create(params: { data: TCreate; include?: TInclude }): Promise<TModel> {
-        this.log("create", params);
-        return this.wrap(() => this.delegate.create(params));
+    async create(params: { data: Prisma.Args<TModel, 'create'>['data']; include?: Prisma.Args<TModel, 'findMany'>['include'] }): Promise<TModel> {
+        return this.delegate.create(params as Prisma.Args<TModel, 'create'>);
     }
 
-    async update(params: { where: TWhere; data: TUpdate; include?: TInclude }): Promise<TModel> {
-        this.log("update", params);
-        return this.wrap(() => this.delegate.update(params));
+    async update(params: { where: Prisma.Args<TModel, 'update'>['where']; data: Prisma.Args<TModel, 'update'>['data']; include?: Prisma.Args<TModel, 'findMany'>['include'] }): Promise<TModel> {
+        return this.delegate.update(params as Prisma.Args<TModel, 'update'>);
     }
 
-    async delete(params: { where: TWhere }): Promise<TModel> {
-        this.log("delete", params);
-        return this.wrap(() => this.delegate.delete(params));
+    async delete(params: { where: Prisma.Args<TModel, 'delete'>['where'] }): Promise<TModel> {
+        return this.delegate.delete(params as Prisma.Args<TModel, 'delete'>);
     }
 
-    async count(params: { where: TWhere }): Promise<number> {
-        this.log("count", params);
-        return this.wrap(() => this.delegate.count(params));
+    async count(params: { where: Prisma.Args<TModel, 'count'>['where'] }): Promise<number> {
+        return this.delegate.count(params as Prisma.Args<TModel, 'count'>);
     }
 
     async aggregate(params: {
-        where?: TWhere;
+        where?: Prisma.Args<TModel, 'aggregate'>['where'];
         _sum?: Partial<Record<keyof TModel, boolean>>;
         _avg?: Partial<Record<keyof TModel, boolean>>;
         _count?: Partial<Record<keyof TModel, boolean>>;
     }): Promise<unknown> {
-        this.log("aggregate", params);
-        return this.wrap(() => this.delegate.aggregate(params));
+        return this.delegate.aggregate(params as Prisma.Args<TModel, 'aggregate'>);
     }
 
     async groupBy(params: {
         by: (keyof TModel)[];
-        where?: TWhere;
+        where?: Prisma.Args<TModel, 'groupBy'>['where'];
         _count?: boolean | Partial<Record<keyof TModel, boolean>>;
     }): Promise<unknown[]> {
-        this.log("groupBy", params);
-        return this.wrap(() => this.delegate.groupBy(params));
-    }
-
-    /** Central error handling wrapper */
-    private async wrap<T>(fn: () => Promise<T>): Promise<T> {
-        try {
-            return await fn();
-        } catch (error) {
-            this.handleError(error);
-            throw error;
-        }
-    }
-
-    /** Logs the operation and its parameters */
-    private log(operation: string, params: unknown) {
-        if (process.env.NODE_ENV === "development") {
-            console.debug(`[PrismaWrapper] ${operation}`, JSON.stringify(params, null, 2));
-        }
-    }
-
-    /** Centralized error handling logic */
-    private handleError(error: unknown) {
-        if (error instanceof Error) {
-            console.error(`[PrismaWrapper Error] ${error.message}`);
-        } else {
-            console.error(`[PrismaWrapper Unknown Error]`, error);
-        }
+        return this.delegate.groupBy(params as Prisma.Args<TModel, 'groupBy'>);
     }
 }

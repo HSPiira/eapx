@@ -8,12 +8,12 @@ export interface QueryParams<TWhere, TInclude, TSelect> {
     distinct?: string[];
 }
 
-export interface DatabaseClient<T, TWhere, TCreate, TUpdate, TInclude = unknown> {
+export interface DatabaseClient<T, TWhere, TWhereUnique, TCreate, TUpdate, TInclude = unknown> {
     findMany(params: QueryParams<TWhere, TInclude, unknown>): Promise<T[]>;
-    findUnique(params: { where: TWhere; include?: TInclude }): Promise<T | null>;
+    findUnique(params: { where: TWhereUnique; include?: TInclude }): Promise<T | null>;
     create(params: { data: TCreate; include?: TInclude }): Promise<T>;
-    update(params: { where: TWhere; data: TUpdate; include?: TInclude }): Promise<T>;
-    delete(params: { where: TWhere }): Promise<T>;
+    update(params: { where: TWhereUnique; data: TUpdate; include?: TInclude }): Promise<T>;
+    delete(params: { where: TWhereUnique }): Promise<T>;
     count(params: { where: TWhere }): Promise<number>;
     aggregate(params: {
         where?: TWhere;

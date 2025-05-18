@@ -4,7 +4,7 @@ import type {
     Industry,
     Prisma
 } from "@prisma/client";
-import { DatabaseClient } from "@/lib/database_client";
+import { DatabaseClient } from "@/lib/database-client";
 
 // DTOs
 export interface IndustryModel {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/middleware/auth';
-import { IndustryProvider } from '@/lib/providers/industry-provider';
+import { IndustryProvider } from '@/providers/industry-provider';
 
 const industryProvider = new IndustryProvider();
 

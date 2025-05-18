@@ -1,17 +1,17 @@
-import { DatabaseClient } from "@/lib/database_client";
+import { DatabaseClient } from "@/lib/database-client";
 
-interface ListParams<TEntity = unknown> {
+interface ListParams<TModel = unknown> {
     page?: number;
     limit?: number;
     search?: string;
-    filters?: Partial<Record<keyof TEntity, unknown>>;
+    filters?: Partial<Record<keyof TModel, unknown>>;
     sort?: {
-        field: keyof TEntity;
+        field: keyof TModel;
         direction: 'asc' | 'desc';
     };
 }
 
-interface PaginatedResponse<T> {
+export interface PaginatedResponse<T> {
     data: T[];
     pagination: {
         total: number;
@@ -21,22 +21,22 @@ interface PaginatedResponse<T> {
     };
 }
 
-
 export abstract class BaseProvider<
-    TEntity,
+    TModel,
     TCreate,
     TUpdate,
     TWhere,
-    TInclude = unknown
+    TInclude = unknown,
+    TSource = TModel
 > {
-    protected abstract client: DatabaseClient<TEntity, TWhere, TCreate, TUpdate, TInclude>;
-    protected abstract searchFields: (keyof TEntity)[];
-    protected abstract defaultSort: { field: keyof TEntity; direction: 'asc' | 'desc' };
+    protected abstract client: DatabaseClient<TModel, TWhere, TCreate, TUpdate, TInclude>;
+    protected abstract searchFields: (keyof TModel)[];
+    protected abstract defaultSort: { field: keyof TModel; direction: 'asc' | 'desc' };
     protected includes?: TInclude = undefined;
     protected useSoftDelete: boolean = false;
-    protected abstract transform(data: TEntity): TEntity;
+    protected abstract transform(data: TSource): TModel;
 
-    async list(params: ListParams): Promise<PaginatedResponse<TEntity>> {
+    async list(params: ListParams): Promise<PaginatedResponse<TModel>> {
         const {
             page = 1,
             limit = 10,
@@ -59,7 +59,7 @@ export abstract class BaseProvider<
         ]);
 
         return {
-            data: items.map(item => this.transform(item)),
+            data: items.map(item => this.transform(item as unknown as TSource)),
             pagination: {
                 total,
                 pages: Math.ceil(total / limit),
@@ -69,37 +69,37 @@ export abstract class BaseProvider<
         };
     }
 
-    async get(id: string): Promise<TEntity | null> {
+    async get(id: string): Promise<TModel | null> {
         const item = await this.client.findUnique({
             where: { id } as TWhere,
             include: this.includes
         });
-        return item ? this.transform(item) : null;
+        return item ? this.transform(item as unknown as TSource) : null;
     }
 
-    async create(data: TCreate): Promise<TEntity> {
-        await this.beforeCreate(data);
+    async create(data: TCreate): Promise<TModel> {
+        await this.beforeCreate();
         const item = await this.client.create({
             data,
             include: this.includes
         });
-        await this.afterCreate(item);
-        return this.transform(item);
+        await this.afterCreate();
+        return this.transform(item as unknown as TSource);
     }
 
-    async update(id: string, data: TUpdate): Promise<TEntity> {
-        await this.beforeUpdate(id, data);
+    async update(id: string, data: TUpdate): Promise<TModel> {
+        await this.beforeUpdate();
         const item = await this.client.update({
             where: { id } as TWhere,
             data,
             include: this.includes
         });
-        await this.afterUpdate(item);
-        return this.transform(item);
+        await this.afterUpdate();
+        return this.transform(item as unknown as TSource);
     }
 
-    async delete(id: string): Promise<TEntity> {
-        await this.beforeDelete(id);
+    async delete(id: string): Promise<TModel> {
+        await this.beforeDelete();
         const result = this.useSoftDelete
             ? await this.client.update({
                 where: { id } as TWhere,
@@ -108,8 +108,8 @@ export abstract class BaseProvider<
             })
             : await this.client.delete({ where: { id } as TWhere });
 
-        await this.afterDelete(result);
-        return this.transform(result);
+        await this.afterDelete();
+        return this.transform(result as unknown as TSource);
     }
 
     // Default where clause
@@ -130,10 +130,10 @@ export abstract class BaseProvider<
     }
 
     // Lifecycle hooks
-    protected async beforeCreate(data: TCreate): Promise<void> { }
-    protected async afterCreate(result: TEntity): Promise<void> { }
-    protected async beforeUpdate(id: string, _data: TUpdate): Promise<void> { }
-    protected async afterUpdate(result: TEntity): Promise<void> { }
-    protected async beforeDelete(id: string): Promise<void> { }
-    protected async afterDelete(result: TEntity): Promise<void> { }
+    protected async beforeCreate(): Promise<void> { }
+    protected async afterCreate(): Promise<void> { }
+    protected async beforeUpdate(): Promise<void> { }
+    protected async afterUpdate(): Promise<void> { }
+    protected async beforeDelete(): Promise<void> { }
+    protected async afterDelete(): Promise<void> { }
 }

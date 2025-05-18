@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { BaseProvider } from './base-provider';
 import type { Document, Prisma, DocumentType } from '@prisma/client';
-import type { DatabaseClient } from '@/lib/database_client';
-import { PrismaClientAdapter } from '@/lib/database_client';
+import type { DatabaseClient } from '@/lib/database-client';
+import { PrismaWrapper } from '@/lib/prisma-wrapper';
 
 
 // Domain model returned to consumers (can be extended if needed)
@@ -36,7 +36,7 @@ export class DocumentProvider extends BaseProvider<
         Prisma.DocumentCreateInput,
         Prisma.DocumentUpdateInput,
         Prisma.DocumentInclude
-    > = new PrismaClientAdapter(prisma.document);
+    > = new PrismaWrapper(prisma.document);
 
     // Fields used for search functionality
     protected searchFields: (keyof Document)[] = ['title', 'description'];

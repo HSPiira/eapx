@@ -52,20 +52,7 @@ export async function PUT(
         try {
             const updatedProvider = await prisma.serviceProvider.update({
                 where: { id, deletedAt: null },
-                data: {
-                    name: body.name,
-                    type: body.type,
-                    contactEmail: body.contactEmail,
-                    contactPhone: body.contactPhone,
-                    location: body.location,
-                    qualifications: body.qualifications || [],
-                    specializations: body.specializations || [],
-                    availability: body.availability,
-                    rating: body.rating,
-                    isVerified: body.isVerified,
-                    status: body.status,
-                    metadata: body.metadata,
-                },
+                data: validationResult.data!,
                 select: providerSelectFields,
             });
 

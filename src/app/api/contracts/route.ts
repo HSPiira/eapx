@@ -9,7 +9,7 @@ import type { Prisma } from '@prisma/client';
 import { contractSelectFields } from '@/lib/select-fields';
 
 export async function GET(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ request, session }) => {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ request, session }) => {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(

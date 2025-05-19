@@ -52,7 +52,19 @@ export async function PUT(
         try {
             const updatedSession = await prisma.serviceSession.update({
                 where: { id },
-                data: validationResult.data!,
+                data: {
+                    ...validationResult.data!,
+                    scheduledAt: validationResult.data!.scheduledAt || undefined,
+                    completedAt: validationResult.data!.completedAt || undefined,
+                    rescheduleCount: validationResult.data!.rescheduleCount || undefined,
+                    duration: validationResult.data!.duration || undefined,
+                    notes: validationResult.data!.notes || undefined,
+                    feedback: validationResult.data!.feedback || undefined,
+                    location: validationResult.data!.location || undefined,
+                    cancellationReason: validationResult.data!.cancellationReason || undefined,
+                    isGroupSession: validationResult.data!.isGroupSession || undefined,
+                    metadata: validationResult.data!.metadata ? JSON.parse(JSON.stringify(validationResult.data!.metadata)) : undefined,
+                },
                 select: sessionSelectFields,
             });
 

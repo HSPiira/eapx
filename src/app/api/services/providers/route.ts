@@ -81,20 +81,7 @@ export async function POST(request: NextRequest) {
 
         try {
             const newProvider = await prisma.serviceProvider.create({
-                data: {
-                    name: body.name,
-                    type: body.type,
-                    contactEmail: body.contactEmail,
-                    contactPhone: body.contactPhone,
-                    location: body.location,
-                    qualifications: body.qualifications || [],
-                    specializations: body.specializations || [],
-                    availability: body.availability,
-                    rating: body.rating,
-                    isVerified: body.isVerified || false,
-                    status: body.status || WorkStatus.ACTIVE,
-                    metadata: body.metadata,
-                },
+                data: validationResult.data!,
                 select: providerSelectFields,
             });
 

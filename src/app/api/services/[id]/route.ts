@@ -4,11 +4,13 @@ import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { serviceSelectFields } from '@/lib/select-fields/services';
 
+type Params = Promise<{ id: string }>;
+
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
-    const { id } = params;
+    const { id } = await params;
 
     return withRouteMiddleware(request, async () => {
         // Check cache first
@@ -34,9 +36,9 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
-    const { id } = params;
+    const { id } = await params;
 
     return withRouteMiddleware(request, async () => {
         let body;
@@ -82,9 +84,9 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
-    const { id } = params;
+    const { id } = await params;
 
     return withRouteMiddleware(request, async () => {
         try {

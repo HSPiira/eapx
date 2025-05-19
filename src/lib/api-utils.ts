@@ -10,6 +10,57 @@ interface PaginationParams {
     status?: string | null;
 }
 
+interface ValidationResult<T = unknown> {
+    isValid: boolean;
+    error?: string;
+    data?: T;
+}
+
+interface DateValidationResult {
+    isValid: boolean;
+    date: Date | null;
+    error?: string;
+}
+
+interface ContractData {
+    clientId: string;
+    startDate: Date;
+    endDate: Date;
+    renewalDate: Date | null;
+    billingRate: number;
+    isRenewable: boolean;
+    isAutoRenew: boolean;
+    paymentStatus: PaymentStatus;
+    paymentFrequency?: string | null;
+    paymentTerms?: string | null;
+    currency: string;
+    status: ContractStatus;
+    notes?: string | null;
+}
+
+interface SessionData {
+    serviceId: string;
+    providerId: string;
+    beneficiaryId: string;
+    scheduledAt: Date | null;
+    completedAt: Date | null;
+    status?: SessionStatus;
+    notes?: string | null;
+    feedback?: string | null;
+    duration?: number | null;
+    location?: string | null;
+    cancellationReason?: string | null;
+    rescheduleCount?: number | null;
+    isGroupSession?: boolean | null;
+    metadata?: Record<string, unknown> | null;
+}
+
+interface ProviderData {
+    name: string;
+    type: ServiceProviderType;
+    status?: WorkStatus;
+}
+
 export function getPaginationParams(req: NextApiRequest | URLSearchParams): PaginationParams {
     const params = req instanceof URLSearchParams ? req : new URLSearchParams(req.query as Record<string, string>);
 
@@ -22,7 +73,7 @@ export function getPaginationParams(req: NextApiRequest | URLSearchParams): Pagi
     return { page, limit, offset, search, status };
 }
 
-export function validateDate(date: string | Date | null | undefined, fieldName: string): { isValid: boolean; date: Date | null; error?: string } {
+export function validateDate(date: string | Date | null | undefined, fieldName: string): DateValidationResult {
     if (!date) {
         return { isValid: true, date: null };
     }
@@ -39,7 +90,7 @@ export function validateDate(date: string | Date | null | undefined, fieldName: 
     return { isValid: true, date: parsedDate };
 }
 
-export function validateDateRange(startDate: Date, endDate: Date, renewalDate?: Date | null): { isValid: boolean; error?: string } {
+export function validateDateRange(startDate: Date, endDate: Date, renewalDate?: Date | null): ValidationResult<never> {
     if (endDate <= startDate) {
         return {
             isValid: false,
@@ -57,7 +108,7 @@ export function validateDateRange(startDate: Date, endDate: Date, renewalDate?: 
     return { isValid: true };
 }
 
-export function validateRequiredFields(body: Record<string, any>, fields: string[]): { isValid: boolean; error?: string } {
+export function validateRequiredFields(body: Record<string, unknown>, fields: string[]): ValidationResult<never> {
     const missingFields = fields.filter(field => !body[field]);
     if (missingFields.length > 0) {
         return {
@@ -68,12 +119,16 @@ export function validateRequiredFields(body: Record<string, any>, fields: string
     return { isValid: true };
 }
 
-export function validateEnumValue(value: string | undefined, enumType: Record<string, string>, fieldName: string): { isValid: boolean; error?: string } {
+export function validateEnumValue<T extends string>(
+    value: string | undefined,
+    enumType: Record<string, T>,
+    fieldName: string
+): ValidationResult<never> {
     if (!value) {
         return { isValid: true };
     }
 
-    if (!Object.values(enumType).includes(value)) {
+    if (!Object.values(enumType).includes(value as T)) {
         return {
             isValid: false,
             error: `Invalid ${fieldName}. Must be one of: ${Object.values(enumType).join(', ')}`
@@ -83,7 +138,7 @@ export function validateEnumValue(value: string | undefined, enumType: Record<st
     return { isValid: true };
 }
 
-export async function parseRequestBody<T extends Record<string, any>>(request: NextRequest): Promise<{ body: T; error?: string }> {
+export async function parseRequestBody<T extends Record<string, unknown>>(request: NextRequest): Promise<{ body: T; error?: string }> {
     try {
         const body = await request.json();
         return { body };
@@ -95,7 +150,7 @@ export async function parseRequestBody<T extends Record<string, any>>(request: N
     }
 }
 
-export function validateProviderData(body: Record<string, any>): { isValid: boolean; error?: string } {
+export function validateProviderData(body: Record<string, unknown>): ValidationResult<ProviderData> {
     // Validate required fields
     const requiredFieldsResult = validateRequiredFields(body, ['name', 'type']);
     if (!requiredFieldsResult.isValid) {
@@ -103,21 +158,30 @@ export function validateProviderData(body: Record<string, any>): { isValid: bool
     }
 
     // Validate type
-    const typeResult = validateEnumValue(body.type, ServiceProviderType, 'type');
+    const typeResult = validateEnumValue(body.type as string, ServiceProviderType, 'type');
     if (!typeResult.isValid) {
         return typeResult;
     }
 
     // Validate status if provided
-    const statusResult = validateEnumValue(body.status, WorkStatus, 'status');
-    if (!statusResult.isValid) {
-        return statusResult;
+    if (body.status) {
+        const statusResult = validateEnumValue(body.status as string, WorkStatus, 'status');
+        if (!statusResult.isValid) {
+            return statusResult;
+        }
     }
 
-    return { isValid: true };
+    return {
+        isValid: true,
+        data: {
+            name: body.name as string,
+            type: body.type as ServiceProviderType,
+            status: body.status as WorkStatus | undefined
+        }
+    };
 }
 
-export function validateContractData(body: Record<string, any>): { isValid: boolean; error?: string; data?: any } {
+export function validateContractData(body: Record<string, unknown>): ValidationResult<ContractData> {
     // Validate required fields
     const requiredFieldsResult = validateRequiredFields(body, ['clientId', 'startDate', 'endDate']);
     if (!requiredFieldsResult.isValid) {
@@ -125,19 +189,19 @@ export function validateContractData(body: Record<string, any>): { isValid: bool
     }
 
     // Validate dates
-    const startDateResult = validateDate(body.startDate, 'start date');
+    const startDateResult = validateDate(body.startDate as string, 'start date');
     if (!startDateResult.isValid) {
-        return startDateResult;
+        return { isValid: false, error: startDateResult.error };
     }
 
-    const endDateResult = validateDate(body.endDate, 'end date');
+    const endDateResult = validateDate(body.endDate as string, 'end date');
     if (!endDateResult.isValid) {
-        return endDateResult;
+        return { isValid: false, error: endDateResult.error };
     }
 
-    const renewalDateResult = validateDate(body.renewalDate, 'renewal date');
+    const renewalDateResult = validateDate(body.renewalDate as string, 'renewal date');
     if (!renewalDateResult.isValid) {
-        return renewalDateResult;
+        return { isValid: false, error: renewalDateResult.error };
     }
 
     // Validate date ranges
@@ -151,72 +215,78 @@ export function validateContractData(body: Record<string, any>): { isValid: bool
     }
 
     // Validate payment status if provided
-    const paymentStatusResult = validateEnumValue(body.paymentStatus, PaymentStatus, 'payment status');
-    if (!paymentStatusResult.isValid) {
-        return paymentStatusResult;
+    if (body.paymentStatus) {
+        const paymentStatusResult = validateEnumValue(body.paymentStatus as string, PaymentStatus, 'payment status');
+        if (!paymentStatusResult.isValid) {
+            return paymentStatusResult;
+        }
     }
 
     // Validate contract status if provided
-    const contractStatusResult = validateEnumValue(body.status, ContractStatus, 'contract status');
-    if (!contractStatusResult.isValid) {
-        return contractStatusResult;
+    if (body.status) {
+        const contractStatusResult = validateEnumValue(body.status as string, ContractStatus, 'contract status');
+        if (!contractStatusResult.isValid) {
+            return contractStatusResult;
+        }
     }
 
     return {
         isValid: true,
         data: {
-            clientId: body.clientId,
+            clientId: body.clientId as string,
             startDate: startDateResult.date!,
             endDate: endDateResult.date!,
             renewalDate: renewalDateResult.date,
-            billingRate: body.billingRate ? parseFloat(body.billingRate) : 0,
-            isRenewable: body.isRenewable ?? true,
-            isAutoRenew: body.isAutoRenew ?? false,
-            paymentStatus: body.paymentStatus || PaymentStatus.PENDING,
-            paymentFrequency: body.paymentFrequency,
-            paymentTerms: body.paymentTerms,
-            currency: body.currency || 'UGX',
-            status: body.status || ContractStatus.ACTIVE,
-            notes: body.notes,
+            billingRate: body.billingRate ? parseFloat(body.billingRate as string) : 0,
+            isRenewable: body.isRenewable as boolean ?? true,
+            isAutoRenew: body.isAutoRenew as boolean ?? false,
+            paymentStatus: (body.paymentStatus as PaymentStatus) || PaymentStatus.PENDING,
+            paymentFrequency: body.paymentFrequency as string | null,
+            paymentTerms: body.paymentTerms as string | null,
+            currency: (body.currency as string) || 'UGX',
+            status: (body.status as ContractStatus) || ContractStatus.ACTIVE,
+            notes: body.notes as string | null,
         }
     };
 }
 
-export function validateSessionData(body: Record<string, any>): { isValid: boolean; error?: string; data?: any } {
+export function validateSessionData(body: Record<string, unknown>): ValidationResult<SessionData> {
     // Validate status if provided
-    const statusResult = validateEnumValue(body.status, SessionStatus, 'status');
-    if (!statusResult.isValid) {
-        return statusResult;
+    if (body.status) {
+        const statusResult = validateEnumValue(body.status as string, SessionStatus, 'status');
+        if (!statusResult.isValid) {
+            return statusResult;
+        }
     }
 
     // Validate dates
-    const scheduledAtResult = validateDate(body.scheduledAt, 'scheduledAt');
+    const scheduledAtResult = validateDate(body.scheduledAt as string, 'scheduledAt');
     if (!scheduledAtResult.isValid) {
-        return scheduledAtResult;
+        return { isValid: false, error: scheduledAtResult.error };
     }
 
-    const completedAtResult = validateDate(body.completedAt, 'completedAt');
+    const completedAtResult = validateDate(body.completedAt as string, 'completedAt');
     if (!completedAtResult.isValid) {
-        return completedAtResult;
+        return { isValid: false, error: completedAtResult.error };
     }
 
     return {
         isValid: true,
         data: {
-            serviceId: body.serviceId,
-            providerId: body.providerId,
-            beneficiaryId: body.beneficiaryId,
+            serviceId: body.serviceId as string,
+            providerId: body.providerId as string,
+            beneficiaryId: body.beneficiaryId as string,
             scheduledAt: scheduledAtResult.date,
             completedAt: completedAtResult.date,
-            status: body.status,
-            notes: body.notes,
-            feedback: body.feedback,
-            duration: body.duration,
-            location: body.location,
-            cancellationReason: body.cancellationReason,
-            rescheduleCount: body.rescheduleCount,
-            isGroupSession: body.isGroupSession,
-            metadata: body.metadata,
+            status: body.status as SessionStatus | undefined,
+            notes: body.notes as string | null,
+            feedback: body.feedback as string | null,
+            duration: body.duration as number | null,
+            location: body.location as string | null,
+            cancellationReason: body.cancellationReason as string | null,
+            rescheduleCount: body.rescheduleCount as number | null,
+            isGroupSession: body.isGroupSession as boolean | null,
+            metadata: body.metadata as Record<string, unknown> | null,
         }
     };
 }

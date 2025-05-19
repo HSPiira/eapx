@@ -13,7 +13,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ session }) => {
         if (!(await isAdmin(session))) {
             return NextResponse.json(
                 { error: 'Forbidden - Admin access required' },
@@ -45,7 +45,7 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ session }) => {
         if (!(await isAdmin(session))) {
             return NextResponse.json(
                 { error: 'Forbidden - Admin access required' },
@@ -121,7 +121,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ session }) => {
         if (!(await isAdmin(session))) {
             return NextResponse.json(
                 { error: 'Forbidden - Admin access required' },

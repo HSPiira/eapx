@@ -8,7 +8,7 @@ import { isAdmin } from '@/lib/auth-utils';
 import { industrySelectFields } from '@/lib/select-fields';
 
 export async function GET(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ session }) => {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ session }) => {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/industries
 export async function PUT(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ session }) => {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
@@ -199,7 +199,7 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/industries
 export async function DELETE(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async ({ session }) => {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(

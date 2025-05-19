@@ -21,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { CenteredErrorDisplay } from '@/components/shared/CenteredErrorDisplay';
 
 interface Industry {
     id: string;
@@ -44,9 +45,12 @@ const fetchIndustries = async (params: { page: number; limit: number; search: st
     });
 
     const response = await fetch(`/api/industries?${queryParams}`);
+
     if (!response.ok) {
-        throw new Error('Failed to fetch industries');
+        const errorBody = await response.json();
+        throw new Error(errorBody.details || errorBody.error || 'Failed to fetch industries');
     }
+
     return response.json();
 };
 
@@ -111,7 +115,7 @@ const IndustriesPage = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center min-h-screen">
                 <LoadingSpinner className="w-8 h-8" />
             </div>
         );
@@ -119,15 +123,17 @@ const IndustriesPage = () => {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center h-64">
-                <p className="text-red-500 mb-4">Failed to load industries</p>
-                <Button onClick={handleReload}>Try Again</Button>
+            <div className="flex flex-grow items-center justify-center w-full h-full">
+                <CenteredErrorDisplay
+                    message={error.message}
+                    onRetry={handleReload}
+                />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 p-4">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-semibold mb-1 text-gray-900 dark:text-white">Industries</h1>

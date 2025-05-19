@@ -12,7 +12,11 @@ export async function GET(request: NextRequest) {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Forbidden - Admin access required' },
+                {
+                    error: 'Forbidden - Admin access required',
+                    details: 'Your account does not have the required admin role to access this resource.',
+                    code: 'MISSING_ADMIN_ROLE'
+                },
                 { status: 403 }
             );
         }
@@ -79,7 +83,11 @@ export async function POST(request: NextRequest) {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Forbidden - Admin access required' },
+                {
+                    error: 'Forbidden - Admin access required',
+                    details: 'Your account does not have the required admin role to access this resource.',
+                    code: 'MISSING_ADMIN_ROLE'
+                },
                 { status: 403 }
             );
         }
@@ -140,7 +148,11 @@ export async function PUT(request: NextRequest) {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Forbidden - Admin access required' },
+                {
+                    error: 'Forbidden - Admin access required',
+                    details: 'Your account does not have the required admin role to access this resource.',
+                    code: 'MISSING_ADMIN_ROLE'
+                },
                 { status: 403 }
             );
         }
@@ -203,7 +215,11 @@ export async function DELETE(request: NextRequest) {
         // Authorization - Check if user is admin
         if (!(await isAdmin(session))) {
             return NextResponse.json(
-                { error: 'Forbidden - Admin access required' },
+                {
+                    error: 'Forbidden - Admin access required',
+                    details: 'Your account does not have the required admin role to access this resource.',
+                    code: 'MISSING_ADMIN_ROLE'
+                },
                 { status: 403 }
             );
         }

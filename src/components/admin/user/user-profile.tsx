@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import Image from "next/image";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Settings, User, LogOut, Github, Users, Star, FolderGit2, Package, GitFork, Briefcase, Heart, PlusCircle, Upload, FlaskConical, BookOpen, LifeBuoy } from 'lucide-react';
+import { Settings, User, LogOut } from 'lucide-react';
 import Link from 'next/link';
 
 type Profile = {
@@ -53,7 +53,7 @@ const UserProfile: React.FC = () => {
                             {displayName?.charAt(0).toUpperCase() || '?'}
                         </div>
                     )}
-                    <span className="font-medium text-gray-900 dark:text-white text-sm truncate md:hidden lg:flex">
+                    <span className="font-medium text-gray-900 dark:text-white text-sm truncate hidden md:hidden lg:flex">
                         {displayName || 'Unknown'}
                     </span>
                 </div>
@@ -69,7 +69,7 @@ const UserProfile: React.FC = () => {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center">
+                    <Link href="/settings/profile" className="flex items-center">
                         <User className="mr-2 h-4 w-4" />
                         <span>Your profile</span>
                     </Link>

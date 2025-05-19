@@ -2,8 +2,8 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Settings } from "lucide-react";
+import UserProfile from '@/components/admin/user/user-profile';
 
 interface HeaderProps {
     logo?: React.ReactNode;
@@ -32,19 +32,8 @@ export function Header(props: HeaderProps) {
                     <Settings className="w-5 h-5 text-gray-700 dark:text-gray-200" />
                 </button>
 
-                {props.user && (
-                    <Image
-                        src={props.user.avatar || '/placeholder-avatar.png'}
-                        alt={props.user.name || 'User avatar'}
-                        width={32}
-                        height={32}
-                        className="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-700 object-cover"
-                        onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = '/placeholder-avatar.png';
-                        }}
-                    />
-                )}
+                <UserProfile />
+
             </div>
         </header>
     );

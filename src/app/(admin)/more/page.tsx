@@ -1,30 +1,16 @@
 'use client';
 
 import React from 'react';
-import { adminNavItems } from '@/config';
+import {adminNavItems} from '@/config';
 import MoreNavItem from '@/components/admin/more-nav-item';
-import { usePathname } from 'next/navigation';
+import {usePathname} from 'next/navigation';
 
 export default function MorePage() {
-    const pathname = usePathname();
-
-    // Re-calculate extra items based on the same logic as ClientNav
+    usePathname();
+// Re-calculate extra items based on the same logic as ClientNav
     const maxVisible = 4;
-    const allNavItems = adminNavItems; // Use the shared config
-    const extraNavItems = allNavItems.slice(maxVisible - 1);
-
-    const isItemActive = (itemPath: string) => {
-        // Special handling for the root sessions path, which should match /sessions/*
-        if (itemPath === '/sessions') {
-            return pathname.startsWith('/sessions/');
-        }
-        // For other items, check for exact match for dashboard, or startsWith for others
-        return itemPath === '/dashboard'
-            ? pathname === itemPath
-            : pathname.startsWith(itemPath);
-    };
-
-
+     // Use the shared config
+    const extraNavItems = adminNavItems.slice(maxVisible - 1);
     return (
         <div className="container mx-auto p-6 space-y-6">
             <div className="flex flex-col gap-0 border-t border-gray-200 dark:border-gray-800">

@@ -51,12 +51,15 @@ async function getStaffMember(id: string) {
     };
 }
 
+type Params = Promise<{ id: string }>;
+
 export default async function StaffDetailsPage({
     params,
 }: {
-    params: { id: string };
+    params: Params;
 }) {
-    const staff = await getStaffMember(params.id);
+    const { id } = await params;
+    const staff = await getStaffMember(id);
 
     if (!staff) {
         notFound();
@@ -69,7 +72,7 @@ export default async function StaffDetailsPage({
                     <h1 className="text-3xl font-bold">{staff.fullName}</h1>
                     <p className="text-muted-foreground">{staff.email}</p>
                 </div>
-                <Link href={`/staff/${params.id}/edit`}>
+                <Link href={`/staff/${id}/edit`}>
                     <Button>
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit Staff

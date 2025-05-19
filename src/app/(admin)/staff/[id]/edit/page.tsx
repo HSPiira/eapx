@@ -7,12 +7,15 @@ async function getStaffMember(id: string) {
     return null;
 }
 
+type Params = Promise<{ id: string }>;
+
 export default async function EditStaffPage({
     params,
 }: {
-    params: { id: string };
+    params: Params;
 }) {
-    const staff = await getStaffMember(params.id);
+    const { id } = await params;
+    const staff = await getStaffMember(id);
 
     if (!staff) {
         notFound();

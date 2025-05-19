@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, CheckCircle2, CircleOff } from "lucide-react";
 import Link from "next/link";
 import { StaffRole, WorkStatus } from "@prisma/client";
 
@@ -63,10 +63,10 @@ export const columns: ColumnDef<Staff>[] = [
         header: "Status",
         cell: ({ row }) => {
             const status = row.getValue("status") as WorkStatus;
-            return (
-                <Badge variant={status === WorkStatus.ACTIVE ? "default" : "secondary"}>
-                    {status}
-                </Badge>
+            return status === WorkStatus.ACTIVE ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+            ) : (
+                <CircleOff className="h-4 w-4 text-muted-foreground" />
             );
         },
     },

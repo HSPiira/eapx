@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,35 +10,53 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from '@/components/ui';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Command,
+    CommandInput,
+    CommandList,
+    CommandEmpty,
+    CommandGroup,
+    CommandItem,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { cn } from '@/lib/utils';
 
 const serviceSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
     categoryId: z.string().min(1, "Category is required"),
-    status: z.enum(['ACTIVE', 'INACTIVE', 'PENDING', 'ARCHIVED', 'DELETED']),
-    duration: z.number().optional(),
-    capacity: z.number().optional(),
+    duration: z.number().optional().nullable(),
+    capacity: z.number().optional().nullable(),
     prerequisites: z.string().optional(),
     isPublic: z.boolean(),
-    price: z.number().optional(),
-    serviceProviderId: z.string().optional(),
+    price: z.number().optional().nullable(),
+    serviceProviderId: z.string().optional().nullable(),
 });
 
 export type ServiceFormData = z.infer<typeof serviceSchema>;
+
+interface CategoryOption {
+    id: string;
+    name: string;
+}
+
+interface ProviderOption {
+    id: string;
+    name: string;
+    type: string;
+}
 
 interface ServiceFormProps {
     onSubmit: (data: ServiceFormData) => void;
     isSubmitting?: boolean;
     onCancel?: () => void;
-    categories: Array<{ id: string; name: string }>;
-    providers?: Array<{ id: string; name: string; type: string }>;
+    categories: CategoryOption[];
+    providers?: ProviderOption[];
 }
 
 export function ServiceForm({
@@ -53,10 +71,17 @@ export function ServiceForm({
         defaultValues: {
             name: '',
             description: '',
-            status: 'ACTIVE',
             isPublic: true,
+            categoryId: '',
+            duration: undefined,
+            capacity: undefined,
+            price: undefined,
+            serviceProviderId: undefined,
         },
     });
+
+    const [categoryOpen, setCategoryOpen] = useState(false);
+    const [providerOpen, setProviderOpen] = useState(false);
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -85,44 +110,58 @@ export function ServiceForm({
 
             <div className="space-y-2">
                 <Label htmlFor="categoryId">Category</Label>
-                <Select
-                    onValueChange={(value) => form.setValue("categoryId", value)}
-                    defaultValue={form.getValues("categoryId")}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                                {category.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={categoryOpen}
+                            className="w-full justify-between"
+                        >
+                            {form.watch("categoryId")
+                                ? categories.find(
+                                    (category) => category.id === form.watch("categoryId")
+                                )?.name
+                                : "Select category"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                        <Command>
+                            <CommandInput placeholder="Search category..." />
+                            <CommandList>
+                                <CommandEmpty>No category found.</CommandEmpty>
+                                <CommandGroup>
+                                    {categories.map((category) => (
+                                        <CommandItem
+                                            key={category.id}
+                                            value={category.name}
+                                            onSelect={() => {
+                                                form.setValue("categoryId", category.id);
+                                                setCategoryOpen(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    form.watch("categoryId") === category.id
+                                                        ? "opacity-100"
+                                                        : "opacity-0"
+                                                )}
+                                            />
+                                            {category.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
                 {form.formState.errors.categoryId && (
                     <p className="text-sm text-red-500">
                         {form.formState.errors.categoryId.message}
                     </p>
                 )}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                    onValueChange={(value) => form.setValue("status", value as any)}
-                    defaultValue={form.getValues("status")}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="ACTIVE">Active</SelectItem>
-                        <SelectItem value="INACTIVE">Inactive</SelectItem>
-                        <SelectItem value="PENDING">Pending</SelectItem>
-                        <SelectItem value="ARCHIVED">Archived</SelectItem>
-                    </SelectContent>
-                </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -170,21 +209,53 @@ export function ServiceForm({
             {providers.length > 0 && (
                 <div className="space-y-2">
                     <Label htmlFor="serviceProviderId">Service Provider</Label>
-                    <Select
-                        onValueChange={(value) => form.setValue("serviceProviderId", value)}
-                        defaultValue={form.getValues("serviceProviderId")}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select a provider" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {providers.map((provider) => (
-                                <SelectItem key={provider.id} value={provider.id}>
-                                    {provider.name} ({provider.type})
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Popover open={providerOpen} onOpenChange={setProviderOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={providerOpen}
+                                className="w-full justify-between"
+                            >
+                                {form.watch("serviceProviderId")
+                                    ? providers.find(
+                                        (provider) => provider.id === form.watch("serviceProviderId")
+                                    )?.name
+                                    : "Select provider"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                            <Command>
+                                <CommandInput placeholder="Search provider..." />
+                                <CommandList>
+                                    <CommandEmpty>No provider found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {providers.map((provider) => (
+                                            <CommandItem
+                                                key={provider.id}
+                                                value={provider.name}
+                                                onSelect={() => {
+                                                    form.setValue("serviceProviderId", provider.id);
+                                                    setProviderOpen(false);
+                                                }}
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        form.watch("serviceProviderId") === provider.id
+                                                            ? "opacity-100"
+                                                            : "opacity-0"
+                                                    )}
+                                                />
+                                                {provider.name} ({provider.type})
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
                 </div>
             )}
 

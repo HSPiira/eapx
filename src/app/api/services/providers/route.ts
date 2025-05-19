@@ -4,45 +4,50 @@ import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { getPaginationParams } from '@/lib/api-utils';
 import { WorkStatus, ServiceProviderType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: Request) {
     return withApiMiddleware(request, async (request: Request) => {
         const { page, limit, offset, search, status } = getPaginationParams(request);
         const { searchParams } = new URL(request.url);
-        const type = searchParams.get('type') as ServiceProviderType | null;
+        const type = searchParams.get('type');
+
+        // Validate status and type parameters
+        if (status && status !== 'all' && !Object.values(WorkStatus).includes(status as WorkStatus)) {
+            return NextResponse.json(
+                { error: `Invalid status value. Must be one of: ${Object.values(WorkStatus).join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        if (type && type !== 'all' && !Object.values(ServiceProviderType).includes(type as ServiceProviderType)) {
+            return NextResponse.json(
+                { error: `Invalid type value. Must be one of: ${Object.values(ServiceProviderType).join(', ')}` },
+                { status: 400 }
+            );
+        }
 
         // Build where clause
-        const where: any = {
+        const where: Prisma.ServiceProviderWhereInput = {
             deletedAt: null,
-        };
-
-        if (search) {
-            where.OR = [
+            OR: search ? [
                 { name: { contains: search, mode: 'insensitive' } },
                 { contactEmail: { contains: search, mode: 'insensitive' } },
-                { contactPhone: { contains: search, mode: 'insensitive' } },
-            ];
-        }
+                { contactPhone: { contains: search, mode: 'insensitive' } }
+            ] as Prisma.ServiceProviderWhereInput[] : undefined,
+            type: type && type !== 'all' ? type as ServiceProviderType : undefined,
+            status: status && status !== 'all' ? status as WorkStatus : undefined
+        };
 
-        if (status) {
-            where.status = status as WorkStatus;
-        }
-
-        if (type) {
-            where.type = type;
-        }
-
-        // Get total count for pagination
-        const totalCount = await prisma.serviceProvider.count({ where });
-
-        // Generate cache key
+        // Generate cache key and check cache **before** touching the DB  
         const cacheKey = `service-providers:${page}:${limit}:${search}:${status}:${type}`;
-
-        // Check cache first
         const cached = await cache.get(cacheKey);
         if (cached) {
             return NextResponse.json(cached);
         }
+
+        // Cache miss – now hit the DB  
+        const totalCount = await prisma.serviceProvider.count({ where });
 
         // Fetch providers with pagination
         const providers = await prisma.serviceProvider.findMany({
@@ -99,7 +104,7 @@ export async function POST(request: Request) {
         let body;
         try {
             body = await request.json();
-        } catch (error) {
+        } catch {
             return NextResponse.json(
                 { error: 'Invalid JSON in request body' },
                 { status: 400 }
@@ -127,7 +132,7 @@ export async function POST(request: Request) {
                 availability: body.availability,
                 rating: body.rating,
                 isVerified: body.isVerified || false,
-                status: body.status || 'ACTIVE',
+                status: (body.status && Object.values(WorkStatus).includes(body.status)) ? body.status : WorkStatus.ACTIVE,
                 metadata: body.metadata,
             },
             select: {

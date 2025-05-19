@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withApiMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: Request) {
     return withApiMiddleware(request, async (request) => {
@@ -22,37 +23,20 @@ export async function GET(request: Request) {
         }
 
         // Build where clause
-        const where: any = {
+        const where: Prisma.SessionFeedbackWhereInput = {
             deletedAt: null,
-        };
-
-        if (search) {
-            where.OR = [
+            OR: search ? [
                 { comment: { contains: search, mode: 'insensitive' } },
                 { session: { service: { name: { contains: search, mode: 'insensitive' } } } },
-                { session: { provider: { name: { contains: search, mode: 'insensitive' } } } },
-            ];
-        }
-
-        if (rating) {
-            where.rating = parseInt(rating);
-        }
-
-        if (sessionId) {
-            where.sessionId = sessionId;
-        }
-
-        if (serviceId) {
-            where.session = {
-                serviceId: serviceId,
-            };
-        }
-
-        if (providerId) {
-            where.session = {
-                providerId: providerId,
-            };
-        }
+                { session: { provider: { name: { contains: search, mode: 'insensitive' } } } }
+            ] as Prisma.SessionFeedbackWhereInput[] : undefined,
+            rating: rating ? parseInt(rating) : undefined,
+            sessionId: sessionId || undefined,
+            session: {
+                serviceId: serviceId || undefined,
+                providerId: providerId || undefined
+            }
+        };
 
         // Get total count
         const total = await prisma.sessionFeedback.count({ where });
@@ -129,7 +113,7 @@ export async function POST(request: Request) {
 
         try {
             body = await request.json();
-        } catch (error) {
+        } catch {
             return NextResponse.json(
                 { error: 'Invalid JSON in request body' },
                 { status: 400 }

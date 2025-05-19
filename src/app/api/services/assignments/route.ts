@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withApiMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
-import { AssignmentStatus, Frequency } from '@prisma/client';
+import { AssignmentStatus, Frequency, Prisma } from '@prisma/client';
 import { getPaginationParams } from '@/lib/api-utils';
 
 export async function GET(request: Request) {
@@ -21,33 +21,18 @@ export async function GET(request: Request) {
         }
 
         // Build where clause
-        const where: any = {
+        const where: Prisma.ServiceAssignmentWhereInput = {
             deletedAt: null,
-        };
-
-        if (search) {
-            where.OR = [
+            OR: search ? [
                 { service: { name: { contains: search, mode: 'insensitive' } } },
                 { contract: { name: { contains: search, mode: 'insensitive' } } },
-                { client: { name: { contains: search, mode: 'insensitive' } } },
-            ];
-        }
-
-        if (status) {
-            where.status = status as AssignmentStatus;
-        }
-
-        if (serviceId) {
-            where.serviceId = serviceId;
-        }
-
-        if (contractId) {
-            where.contractId = contractId;
-        }
-
-        if (clientId) {
-            where.clientId = clientId;
-        }
+                { client: { name: { contains: search, mode: 'insensitive' } } }
+            ] as Prisma.ServiceAssignmentWhereInput[] : undefined,
+            status: status && status !== 'all' ? status as AssignmentStatus : undefined,
+            serviceId: serviceId || undefined,
+            contractId: contractId || undefined,
+            clientId: clientId || undefined,
+        };
 
         // Get total count
         const total = await prisma.serviceAssignment.count({ where });
@@ -117,7 +102,7 @@ export async function POST(request: Request) {
 
         try {
             body = await request.json();
-        } catch (error) {
+        } catch {
             return NextResponse.json(
                 { error: 'Invalid JSON in request body' },
                 { status: 400 }

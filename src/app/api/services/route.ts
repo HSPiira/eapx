@@ -4,32 +4,30 @@ import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { getPaginationParams } from '@/lib/api-utils';
 import { BaseStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: Request) {
     return withApiMiddleware(request, async (request: Request) => {
         const { page, limit, offset, search, status } = getPaginationParams(request);
+        const { searchParams } = new URL(request.url);
+        const categoryId = searchParams.get('categoryId');
 
         // Build where clause
-        const where: any = {
+        const where: Prisma.ServiceWhereInput = {
             deletedAt: null,
-        };
-
-        if (search) {
-            where.OR = [
+            OR: search ? [
                 { name: { contains: search, mode: 'insensitive' } },
-                { description: { contains: search, mode: 'insensitive' } },
-            ];
-        }
-
-        if (status) {
-            where.status = status as BaseStatus;
-        }
+                { description: { contains: search, mode: 'insensitive' } }
+            ] as Prisma.ServiceWhereInput[] : undefined,
+            categoryId: categoryId || undefined,
+            status: status && status !== 'all' ? status as BaseStatus : undefined
+        };
 
         // Get total count for pagination
         const totalCount = await prisma.service.count({ where });
 
         // Generate cache key
-        const cacheKey = `services:${page}:${limit}:${search}:${status}`;
+        const cacheKey = `services:${page}:${limit}:${search}:${status}:${categoryId}`;
 
         // Check cache first
         const cached = await cache.get(cacheKey);
@@ -97,7 +95,7 @@ export async function POST(request: Request) {
         let body;
         try {
             body = await request.json();
-        } catch (error) {
+        } catch {
             return NextResponse.json(
                 { error: 'Invalid JSON in request body' },
                 { status: 400 }

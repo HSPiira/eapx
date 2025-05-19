@@ -9,7 +9,13 @@ export async function GET(request: Request) {
         const { page, limit, offset, search } = getPaginationParams(request);
 
         // Build where clause
-        const where: any = {
+        const where: {
+            deletedAt: null;
+            OR?: Array<{
+                name?: { contains: string; mode: 'insensitive' };
+                description?: { contains: string; mode: 'insensitive' };
+            }>;
+        } = {
             deletedAt: null,
         };
 
@@ -77,7 +83,7 @@ export async function POST(request: Request) {
         let body;
         try {
             body = await request.json();
-        } catch (error) {
+        } catch {
             return NextResponse.json(
                 { error: 'Invalid JSON in request body' },
                 { status: 400 }

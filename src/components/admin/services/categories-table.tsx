@@ -19,7 +19,7 @@ interface Category {
     id: string;
     name: string;
     description: string | null;
-    metadata: any;
+    metadata: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
     _count: {

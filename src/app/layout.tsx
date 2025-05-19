@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/providers/auth-provider";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { Toaster } from "@/components/ui/toaster"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,6 +50,7 @@ export default function RootLayout({
             </ThemeProvider>
           </ReactQueryProvider>
         </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

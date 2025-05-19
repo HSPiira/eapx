@@ -2,6 +2,7 @@ import { IconKey } from './icon-map';
 
 export const adminNavItems: { icon: IconKey; label: string; to: string; }[] = [
     { icon: 'Home', label: 'Home', to: '/dashboard' },
+    { icon: 'Calendar', label: 'Calendar', to: '/calendar' },
     { icon: 'Calendar', label: 'Sessions', to: '/sessions' },
     { icon: 'Users', label: 'Clients', to: '/clients' },
     { icon: 'Briefcase', label: 'Services', to: '/services' },

@@ -72,6 +72,10 @@ export default function ClientDetailsLayout({ children }: { children: React.Reac
                                 Verified
                             </Badge>
                         )}
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-base text-foreground">
+                            {tabs.find(tab => tab.value === currentTab)?.label || 'Overview'}
+                        </span>
                     </div>
                 </div>
             )}

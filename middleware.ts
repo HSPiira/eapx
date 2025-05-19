@@ -3,40 +3,12 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { withSecurityHeaders } from "@/middleware/security"
 import { rateLimit } from "@/lib/rate-limit"
+import { isPublicPath } from "@/config/auth"
 
 // Rate limit configuration for auth routes
 const authRateLimit = {
     maxRequests: 5,       // 5 requests
     windowMs: 60 * 1000,  // per minute
-}
-
-// List of paths that should be considered public (no auth required)
-const publicPaths = [
-    "/",
-    "/auth/login",
-    "/auth/error",
-    "/404",
-    "/not-found",
-    "/favicon.ico",
-    "/logo.svg",
-    "/logo.png",
-    "/globe.svg",
-    "/window.svg",
-    "/file.svg",
-    "/microsoft.svg",
-    "/dark-logo.png"
-]
-
-// Helper to determine if a path is public
-function isPublicPath(pathname: string): boolean {
-    return publicPaths.some(path =>
-        pathname === path || pathname.startsWith(path + "/")
-    )
-}
-
-// Helper to determine if a path is a static asset
-function isStaticAsset(pathname: string): boolean {
-    return !!pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/);
 }
 
 export default async function middleware(request: NextRequest) {
@@ -61,7 +33,7 @@ export default async function middleware(request: NextRequest) {
     }
 
     // 2. Allow all public or static asset requests through
-    if (isPublicPath(pathname) || isStaticAsset(pathname)) {
+    if (isPublicPath(pathname)) {
         return withSecurityHeaders(request, NextResponse.next())
     }
 

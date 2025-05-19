@@ -22,6 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Search } from 'lucide-react';
+import { toast } from "sonner"
 
 interface Provider {
     id: string;
@@ -41,57 +42,129 @@ interface Provider {
     };
 }
 
-export default function ProvidersPage() {
-    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [search, setSearch] = useState('');
-    const [type, setType] = useState<string>('all');
-    const [status, setStatus] = useState<string>('all');
-    const queryClient = useQueryClient();
+async function fetchProviders() {
+    const res = await fetch('/api/services/providers');
+    if (!res.ok) {
+        throw new Error('Failed to fetch providers');
+    }
+    return res.json();
+}
 
-    const { data: providers, isLoading } = useQuery<Provider[]>({
-        queryKey: ['providers', search, type, status],
-        queryFn: async () => {
-            const params = new URLSearchParams();
-            if (search) params.append('search', search);
-            if (type && type !== 'all') params.append('type', type);
-            if (status && status !== 'all') params.append('status', status);
-
-            const response = await fetch(`/api/services/providers?${params.toString()}`);
-            const data = await response.json();
-            return data.data;
+async function createProvider(data: ProviderFormData) {
+    const response = await fetch('/api/services/providers', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
         },
+        body: JSON.stringify(data),
     });
 
-    const createProvider = useMutation({
-        mutationFn: async (data: ProviderFormData) => {
-            const response = await fetch('/api/services/providers', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-                throw new Error('Failed to create provider');
-            }
-            return response.json();
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create provider');
+    }
+
+    return response.json();
+}
+
+async function updateProvider({ id, ...data }: ProviderFormData & { id: string }) {
+    const response = await fetch(`/api/services/providers/${id}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
         },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update provider');
+    }
+
+    return response.json();
+}
+
+async function deleteProvider(id: string) {
+    const response = await fetch(`/api/services/providers/${id}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete provider');
+    }
+
+    return response.json();
+}
+
+export default function ProvidersPage() {
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
+    const queryClient = useQueryClient();
+
+    const { data: providers, isLoading } = useQuery({
+        queryKey: ['providers'],
+        queryFn: fetchProviders,
+    });
+
+    const createProviderMutation = useMutation({
+        mutationFn: createProvider,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['providers'] });
             setIsCreateDialogOpen(false);
+            toast.success("Provider created successfully!")
         },
-    });
+        onError: (error) => {
+            console.error('Error creating provider:', error);
+            toast.error("Failed to create provider.")
+        }
+    })
 
-    const handleCreateProvider = useCallback((data: ProviderFormData) => {
-        createProvider.mutate(data);
-    }, [createProvider]);
+    const updateProviderMutation = useMutation({
+        mutationFn: updateProvider,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['providers'] });
+            setIsEditDialogOpen(false);
+            setEditingProvider(null);
+            toast.success("Provider updated successfully!")
+        },
+        onError: (error) => {
+            console.error('Error updating provider:', error);
+            toast.error("Failed to update provider.")
+        }
+    })
+
+    const deleteProviderMutation = useMutation({
+        mutationFn: deleteProvider,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['providers'] });
+            toast.success("Provider deleted successfully!")
+        },
+        onError: (error) => {
+            console.error('Error deleting provider:', error);
+            toast.error("Failed to delete provider.")
+        }
+    })
+
+    const handleCreateProvider = useCallback(async (data: ProviderFormData) => {
+        createProviderMutation.mutate(data);
+    }, [createProviderMutation]);
+
+    const handleEditProvider = useCallback(async (data: ProviderFormData) => {
+        if (!editingProvider) return;
+        updateProviderMutation.mutate({ id: editingProvider.id, ...data });
+    }, [updateProviderMutation, editingProvider]);
+
+    const handleDeleteProvider = useCallback(async (id: string) => {
+        if (window.confirm('Are you sure you want to delete this provider?')) {
+            deleteProviderMutation.mutate(id);
+        }
+    }, [deleteProviderMutation]);
+
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <LoadingSpinner />
-            </div>
-        );
+        return <LoadingSpinner />;
     }
 
     return (
@@ -102,7 +175,10 @@ export default function ProvidersPage() {
                     <DialogTrigger asChild>
                         <Button onClick={() => setIsCreateDialogOpen(true)}>Add Provider</Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent
+                        onPointerDownOutside={() => { }}
+                        onEscapeKeyDown={() => { }}
+                    >
                         <DialogHeader>
                             <DialogTitle>Add New Provider</DialogTitle>
                             <DialogDescription>
@@ -111,53 +187,47 @@ export default function ProvidersPage() {
                         </DialogHeader>
                         <ProviderForm
                             onSubmit={handleCreateProvider}
-                            isSubmitting={createProvider.isPending}
+                            isSubmitting={createProviderMutation.isPending}
                             onCancel={() => setIsCreateDialogOpen(false)}
                         />
                     </DialogContent>
                 </Dialog>
+
+                {/* Edit Dialog */}
+                {editingProvider && (
+                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                        <DialogContent
+                            onPointerDownOutside={() => { }}
+                            onEscapeKeyDown={() => { }}
+                        >
+                            <DialogHeader>
+                                <DialogTitle>Edit Provider</DialogTitle>
+                                <DialogDescription>
+                                    Update the service provider's information.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <ProviderForm
+                                onSubmit={handleEditProvider}
+                                isSubmitting={updateProviderMutation.isPending}
+                                onCancel={() => {
+                                    setIsEditDialogOpen(false);
+                                    setEditingProvider(null);
+                                }}
+                                initialData={editingProvider}
+                            />
+                        </DialogContent>
+                    </Dialog>
+                )}
             </div>
 
-            <div className="flex gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search providers..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-8"
-                    />
-                </div>
-                <Select value={type} onValueChange={setType}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Provider Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="COUNSELOR">Counselor</SelectItem>
-                        <SelectItem value="CLINIC">Clinic</SelectItem>
-                        <SelectItem value="HOTLINE">Hotline</SelectItem>
-                        <SelectItem value="COACH">Coach</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                    </SelectContent>
-                </Select>
-                <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="ACTIVE">Active</SelectItem>
-                        <SelectItem value="INACTIVE">Inactive</SelectItem>
-                        <SelectItem value="ON_LEAVE">On Leave</SelectItem>
-                        <SelectItem value="TERMINATED">Terminated</SelectItem>
-                        <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                        <SelectItem value="RESIGNED">Resigned</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-
-            {providers && <ProviderTable providers={providers} />}
+            <ProviderTable
+                providers={providers?.data || []}
+                onEdit={(provider) => {
+                    setEditingProvider(provider);
+                    setIsEditDialogOpen(true);
+                }}
+                onDelete={handleDeleteProvider}
+            />
         </div>
     );
 } 

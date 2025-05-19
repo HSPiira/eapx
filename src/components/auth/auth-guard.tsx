@@ -3,29 +3,25 @@
 import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-
-// List of paths that should be considered public (no auth required)
-const publicPaths = [
-    '/',
-    '/auth/login',
-    '/auth/error',
-    '/404',
-    '/not-found',
-];
+import { isPublicPath } from '@/config/auth';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    const { status } = useSession();
+    const { data: session, status } = useSession();
     const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
         // Check if the current path is public
-        const isPublicPath = publicPaths.some(path =>
-            pathname === path || pathname.startsWith(path + '/')
-        );
+        const isPathPublic = isPublicPath(pathname);
+
+        // If authenticated and trying to access public pages, redirect to dashboard
+        if (status === 'authenticated' && isPathPublic) {
+            router.push('/dashboard');
+            return;
+        }
 
         // If the path is not public and there's no session, redirect to login
-        if (!isPublicPath && status === 'unauthenticated') {
+        if (!isPathPublic && status === 'unauthenticated') {
             const callbackUrl = encodeURIComponent(pathname);
             router.push(`/auth/login?callbackUrl=${callbackUrl}`);
         }
@@ -36,8 +32,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return null;
     }
 
+    // If authenticated and on a public path, show nothing (will redirect)
+    if (status === 'authenticated' && isPublicPath(pathname)) {
+        return null;
+    }
+
     // Allow access to public paths without authentication
-    if (publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'))) {
+    if (isPublicPath(pathname)) {
         return <>{children}</>;
     }
 

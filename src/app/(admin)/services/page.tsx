@@ -81,7 +81,8 @@ async function createService(data: ServiceFormData): Promise<Service> {
     });
 
     if (!response.ok) {
-        throw new Error('Failed to create service');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create service');
     }
 
     return response.json();
@@ -107,7 +108,12 @@ export default function ServicesPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['services'] });
             setOpen(false);
+            toast.success("Service created successfully!")
         },
+        onError: (error) => {
+            console.error('Error creating service:', error);
+            toast.error("Failed to create service.")
+        }
     });
 
     const handleTryAgain = useCallback(async () => {
@@ -118,19 +124,9 @@ export default function ServicesPage() {
         }
     }, [refetch]);
 
-    const handleSubmit = async (data: ServiceFormData) => {
-        try {
-            await createServiceMutation.mutateAsync(data);
-            toast.success("Service created", {
-                description: "The service has been created successfully.",
-            });
-        } catch (error) {
-            console.error('Failed to create service:', error);
-            toast.error("Failed to create service", {
-                description: "An error occurred while creating the service. Please try again.",
-            });
-        }
-    };
+    const handleSubmit = useCallback(async (data: ServiceFormData) => {
+        createServiceMutation.mutate(data);
+    }, [createServiceMutation]);
 
     if (isQueryLoading) {
         return (
@@ -156,7 +152,7 @@ export default function ServicesPage() {
                     <DialogTrigger asChild>
                         <Button>Add New Service</Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
                         <DialogHeader>
                             <DialogTitle>Add New Service</DialogTitle>
                             <DialogDescription>

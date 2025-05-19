@@ -12,8 +12,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui';
-import { X } from 'lucide-react';
+import { X, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface Provider {
     id: string;
@@ -35,9 +43,11 @@ interface Provider {
 
 interface ProviderTableProps {
     providers: Provider[];
+    onEdit: (provider: Provider) => void;
+    onDelete: (id: string) => void; // Assuming onDelete takes ID for now
 }
 
-export function ProviderTable({ providers }: ProviderTableProps) {
+export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProps) {
     const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
 
     const handleRowClick = (provider: Provider) => {
@@ -55,6 +65,7 @@ export function ProviderTable({ providers }: ProviderTableProps) {
                             <TableHead>Status</TableHead>
                             <TableHead>Rating</TableHead>
                             <TableHead>Services</TableHead>
+                            <TableHead><span className="sr-only">Actions</span></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -85,6 +96,25 @@ export function ProviderTable({ providers }: ProviderTableProps) {
                                     {provider.rating ? provider.rating.toFixed(1) : '-'}
                                 </TableCell>
                                 <TableCell>{provider._count?.services || 0}</TableCell>
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                <span className="sr-only">Open menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(provider.id)}>
+                                                Copy Provider ID
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => onEdit(provider)}>Edit</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => onDelete(provider.id)}>Delete</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

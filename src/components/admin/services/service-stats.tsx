@@ -1,8 +1,15 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { resolveIcon } from '@/config/icon-map';
+import { resolveIcon, IconKey } from '@/config/icon-map';
 
-const stats = [
+interface Stat {
+    title: string;
+    value: string;
+    icon: IconKey;
+    description: string;
+}
+
+const stats: Stat[] = [
     {
         title: "Active Services",
         value: "12",
@@ -26,10 +33,10 @@ const stats = [
 export function ServiceStats() {
     return (
         <div className="grid gap-4 md:grid-cols-3">
-            {stats.map((stat, index) => {
-                const Icon = resolveIcon(stat.icon as keyof typeof resolveIcon);
+            {stats.map((stat) => {
+                const Icon = resolveIcon(stat.icon);
                 return (
-                    <Card key={index}>
+                    <Card key={stat.title}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
                                 {stat.title}

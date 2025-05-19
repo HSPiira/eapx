@@ -57,6 +57,9 @@ interface ServiceFormProps {
     onCancel?: () => void;
     categories: CategoryOption[];
     providers?: ProviderOption[];
+    initialData?: Partial<ServiceFormData>;
+    submitLabel?: string;
+    submittingLabel?: string;
 }
 
 export function ServiceForm({
@@ -64,7 +67,10 @@ export function ServiceForm({
     isSubmitting,
     onCancel,
     categories,
-    providers = []
+    providers = [],
+    initialData,
+    submitLabel = 'Create Service',
+    submittingLabel = 'Creating...'
 }: ServiceFormProps) {
     const form = useForm<ServiceFormData>({
         resolver: zodResolver(serviceSchema),
@@ -73,10 +79,12 @@ export function ServiceForm({
             description: '',
             isPublic: true,
             categoryId: '',
-            duration: undefined,
-            capacity: undefined,
-            price: undefined,
-            serviceProviderId: undefined,
+            duration: null,
+            capacity: null,
+            prerequisites: '',
+            price: null,
+            serviceProviderId: null,
+            ...initialData
         },
     });
 
@@ -117,12 +125,15 @@ export function ServiceForm({
                             role="combobox"
                             aria-expanded={categoryOpen}
                             className="w-full justify-between"
+                            disabled={categories.length === 0}
                         >
                             {form.watch("categoryId")
                                 ? categories.find(
                                     (category) => category.id === form.watch("categoryId")
                                 )?.name
-                                : "Select category"}
+                                : categories.length === 0
+                                    ? "No categories available"
+                                    : "Select category"}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
@@ -132,26 +143,32 @@ export function ServiceForm({
                             <CommandList>
                                 <CommandEmpty>No category found.</CommandEmpty>
                                 <CommandGroup>
-                                    {categories.map((category) => (
-                                        <CommandItem
-                                            key={category.id}
-                                            value={category.name}
-                                            onSelect={() => {
-                                                form.setValue("categoryId", category.id);
-                                                setCategoryOpen(false);
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    form.watch("categoryId") === category.id
-                                                        ? "opacity-100"
-                                                        : "opacity-0"
-                                                )}
-                                            />
-                                            {category.name}
-                                        </CommandItem>
-                                    ))}
+                                    {categories.length === 0 ? (
+                                        <div className="p-2 text-center text-sm text-muted-foreground">
+                                            No categories available
+                                        </div>
+                                    ) : (
+                                        categories.map((category) => (
+                                            <CommandItem
+                                                key={category.id}
+                                                value={category.name}
+                                                onSelect={() => {
+                                                    form.setValue("categoryId", category.id);
+                                                    setCategoryOpen(false);
+                                                }}
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        form.watch("categoryId") === category.id
+                                                            ? "opacity-100"
+                                                            : "opacity-0"
+                                                    )}
+                                                />
+                                                {category.name}
+                                            </CommandItem>
+                                        ))
+                                    )}
                                 </CommandGroup>
                             </CommandList>
                         </Command>

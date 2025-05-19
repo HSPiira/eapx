@@ -48,13 +48,43 @@ export function CategoriesTable({ categories, onEdit, onDelete }: CategoriesTabl
 
     const sortedCategories = React.useMemo(() => {
         return [...filteredCategories].sort((a, b) => {
-            const aValue = a[sortField];
-            const bValue = b[sortField];
+            let aValue, bValue;
 
+            // Handle nested properties
+            if (sortField === '_count') {
+                aValue = a._count.services;
+                bValue = b._count.services;
+            } else {
+                aValue = a[sortField];
+                bValue = b[sortField];
+            }
+
+            // Handle null/undefined values
+            if (aValue == null && bValue == null) return 0;
+            if (aValue == null) return sortDirection === 'asc' ? -1 : 1;
+            if (bValue == null) return sortDirection === 'asc' ? 1 : -1;
+
+            // Handle string comparison
             if (typeof aValue === 'string' && typeof bValue === 'string') {
                 return sortDirection === 'asc'
                     ? aValue.localeCompare(bValue)
                     : bValue.localeCompare(aValue);
+            }
+
+            // Handle number comparison
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+                return sortDirection === 'asc'
+                    ? aValue - bValue
+                    : bValue - aValue;
+            }
+
+            // Handle date comparison
+            if (sortField === 'createdAt' || sortField === 'updatedAt') {
+                const aDate = new Date(aValue as string).getTime();
+                const bDate = new Date(bValue as string).getTime();
+                return sortDirection === 'asc'
+                    ? aDate - bDate
+                    : bDate - aDate;
             }
 
             return 0;
@@ -127,8 +157,17 @@ export function CategoriesTable({ categories, onEdit, onDelete }: CategoriesTabl
                             {sortedCategories.map((category) => (
                                 <TableRow
                                     key={category.id}
-                                    className="cursor-pointer hover:bg-muted/50"
+                                    className="cursor-pointer hover:bg-muted/50 focus:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary"
                                     onClick={() => setSelectedCategory(category)}
+                                    tabIndex={0}
+                                    role="button"
+                                    aria-label={`View details for ${category.name}`}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            setSelectedCategory(category);
+                                        }
+                                    }}
                                 >
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
@@ -140,7 +179,10 @@ export function CategoriesTable({ categories, onEdit, onDelete }: CategoriesTabl
                                             {category.name}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="max-w-md truncate">
+                                    <TableCell
+                                        className="max-w-md truncate"
+                                        title={category.description || 'No description'}
+                                    >
                                         {category.description || 'No description'}
                                     </TableCell>
                                     <TableCell>
@@ -263,7 +305,12 @@ export function CategoriesTable({ categories, onEdit, onDelete }: CategoriesTabl
                                     <Button
                                         variant="destructive"
                                         className="flex-1"
-                                        onClick={() => onDelete(selectedCategory)}
+                                        onClick={() => {
+                                            if (window.confirm(`Are you sure you want to delete ${selectedCategory.name}?`)) {
+                                                onDelete(selectedCategory);
+                                                setSelectedCategory(null); // Close the panel after deletion
+                                            }
+                                        }}
                                     >
                                         Delete Category
                                     </Button>

@@ -51,7 +51,9 @@ interface Category {
 }
 
 async function fetchServices(): Promise<ServicesResponse> {
-    const response = await fetch('/api/services');
+    const response = await fetch('/api/services', {
+        cache: 'no-store'
+    });
     if (!response.ok) {
         throw new Error('Failed to fetch services');
     }
@@ -59,7 +61,9 @@ async function fetchServices(): Promise<ServicesResponse> {
 }
 
 async function fetchCategories(): Promise<{ data: Category[] }> {
-    const response = await fetch('/api/services/categories');
+    const response = await fetch('/api/services/categories', {
+        cache: 'no-store'
+    });
     if (!response.ok) {
         throw new Error('Failed to fetch categories');
     }
@@ -73,6 +77,7 @@ async function createService(data: ServiceFormData): Promise<Service> {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
+        cache: 'no-store'
     });
 
     if (!response.ok) {

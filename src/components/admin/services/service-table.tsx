@@ -14,26 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface Service {
-    id: string;
-    name: string;
-    description: string | null;
-    status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'ARCHIVED' | 'DELETED';
-    duration: number | null;
-    capacity: number | null;
-    isPublic: boolean;
-    price: number | null;
-    category: {
-        id: string;
-        name: string;
-    };
-    ServiceProvider?: {
-        id: string;
-        name: string;
-        type: string;
-    } | null;
-}
+import { Service } from '@/types/services';
 
 interface ServiceTableProps {
     services: Service[];
@@ -60,26 +41,34 @@ export function ServiceTable({ services }: ServiceTableProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {services.map((service) => (
-                            <TableRow
-                                key={service.id}
-                                className={cn(
-                                    "cursor-pointer hover:bg-muted/50",
-                                    selectedService?.id === service.id && "bg-muted"
-                                )}
-                                onClick={() => handleRowClick(service)}
-                            >
-                                <TableCell className="font-medium">{service.name}</TableCell>
-                                <TableCell>{service.category.name}</TableCell>
-                                <TableCell>
-                                    <Badge variant={service.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                                        {service.status.toLowerCase()}
-                                    </Badge>
+                        {services.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                                    No services found
                                 </TableCell>
-                                <TableCell>{service.duration ? `${service.duration} min` : '-'}</TableCell>
-                                <TableCell>{service.price ? `$${service.price.toFixed(2)}` : '-'}</TableCell>
                             </TableRow>
-                        ))}
+                        ) : (
+                            services.map((service) => (
+                                <TableRow
+                                    key={service.id}
+                                    className={cn(
+                                        "cursor-pointer hover:bg-muted/50",
+                                        selectedService?.id === service.id && "bg-muted"
+                                    )}
+                                    onClick={() => handleRowClick(service)}
+                                >
+                                    <TableCell className="font-medium">{service.name}</TableCell>
+                                    <TableCell>{service.category.name}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={service.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                                            {service.status.toLowerCase()}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>{service.duration ? `${service.duration} min` : '-'}</TableCell>
+                                    <TableCell>{service.price ? `$${service.price.toFixed(2)}` : '-'}</TableCell>
+                                </TableRow>
+                            ))
+                        )}
                     </TableBody>
                 </Table>
             </div>

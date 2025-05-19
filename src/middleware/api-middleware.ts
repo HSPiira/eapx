@@ -1,36 +1,38 @@
-import { NextResponse } from 'next/server';
 import { auth } from '@/middleware/auth';
 import { rateLimiter } from '@/lib/rate-limiter';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function withApiMiddleware(
-    request: Request,
-    handler: (request: Request) => Promise<NextResponse>
+export async function withRouteMiddleware(
+    req: NextRequest,
+    handler: (session: any) => Promise<NextResponse>
 ): Promise<NextResponse> {
     try {
+        // Get IP address
+        const forwarded = req.headers.get('x-forwarded-for');
+        const ip = forwarded?.split(',')[0]?.trim() || 'unknown';
+
         // Rate limiting
-        const ip = request.headers.get('x-forwarded-for') || 'unknown';
-        if (!(await rateLimiter.isAllowed(ip))) {
-            return NextResponse.json(
-                { error: 'Too many requests' },
-                { status: 429 }
-            );
+        const allowed = await rateLimiter.isAllowed(ip);
+        if (!allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
         }
 
-        // Authentication
+        // Auth
         const session = await auth();
         if (!session) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        return await handler(request);
+        // Run the actual route handler with session
+        return await handler(session);
     } catch (error) {
-        console.error('API Error:', error);
+        console.error('Route Error:', error);
         return NextResponse.json(
-            { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
+            {
+                error: 'Internal Server Error',
+                details: error instanceof Error ? error.message : 'Unknown error',
+            },
             { status: 500 }
         );
     }
-} 
+}

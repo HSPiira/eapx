@@ -79,7 +79,13 @@ const UserProfile: React.FC = () => {
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem onClick={() => signOut()} className="flex items-center text-red-500 dark:text-red-400">
+                <DropdownMenuItem
+                    onClick={() => signOut({
+                        callbackUrl: '/auth/login',
+                        redirect: true
+                    })}
+                    className="flex items-center text-red-500 dark:text-red-400"
+                >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
                 </DropdownMenuItem>

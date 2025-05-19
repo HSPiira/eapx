@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import React from "react";
-import {SettingsProvider} from "@/context/settings-context";
-import {ThemeProvider} from "next-themes";
-import {AuthProvider} from "@/providers/auth-provider";
-import {ReactQueryProvider} from "@/providers/react-query-provider";
+import { SettingsProvider } from "@/context/settings-context";
+import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/providers/auth-provider";
+import { ReactQueryProvider } from "@/providers/react-query-provider";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,21 +33,22 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-      <AuthProvider>
+        <AuthProvider>
           <ReactQueryProvider>
-              <ThemeProvider
-                  attribute="class"
-                  defaultTheme="system"
-                  enableSystem
-                  disableTransitionOnChange
-              >
-                  <SettingsProvider>
-                      {children}
-                      {/*<Toaster />*/}
-                  </SettingsProvider>
-              </ThemeProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <SettingsProvider>
+                <AuthGuard>
+                  {children}
+                </AuthGuard>
+              </SettingsProvider>
+            </ThemeProvider>
           </ReactQueryProvider>
-      </AuthProvider>
+        </AuthProvider>
       </body>
     </html>
   );

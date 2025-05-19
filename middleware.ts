@@ -15,13 +15,16 @@ const publicPaths = [
     "/",
     "/auth/login",
     "/auth/error",
+    "/404",
+    "/not-found",
     "/favicon.ico",
     "/logo.svg",
     "/logo.png",
     "/globe.svg",
     "/window.svg",
     "/file.svg",
-    "/microsoft.svg"
+    "/microsoft.svg",
+    "/dark-logo.png"
 ]
 
 // Helper to determine if a path is public
@@ -31,13 +34,9 @@ function isPublicPath(pathname: string): boolean {
     )
 }
 
-// Helper to check if it's a static asset (e.g., public/* or _next/static/*)
+// Helper to determine if a path is a static asset
 function isStaticAsset(pathname: string): boolean {
-    return pathname.startsWith("/_next/static") ||
-        pathname.startsWith("/_next/image") ||
-        pathname.startsWith("/static") ||     // your custom public assets
-        pathname.endsWith(".svg") ||
-        pathname.endsWith(".ico")
+    return !!pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/);
 }
 
 export default async function middleware(request: NextRequest) {
@@ -87,5 +86,14 @@ export default async function middleware(request: NextRequest) {
 
 // Apply middleware to all routes except those we explicitly exclude
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - api (API routes)
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         */
+        "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    ],
 }

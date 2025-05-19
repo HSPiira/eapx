@@ -212,13 +212,27 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
         authorized({ auth, request }) {
             try {
                 const isLoggedIn = !!auth?.user
-                const isOnDashboard = request.nextUrl.pathname.startsWith('/admin')
+                const { pathname } = request.nextUrl
 
-                if (isOnDashboard) {
-                    return isLoggedIn
+                // Allow access to public paths
+                if (pathname === '/' ||
+                    pathname.startsWith('/auth/') ||
+                    pathname === '/404' ||
+                    pathname === '/not-found' ||
+                    pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/)) {
+                    return true
                 }
 
-                // For non-dashboard routes, allow public access
+                // Require authentication for all other routes
+                if (!isLoggedIn) {
+                    return false
+                }
+
+                // Check if user is active
+                if (auth.user?.status !== 'ACTIVE') {
+                    return false
+                }
+
                 return true
             } catch (error) {
                 console.error('Error in authorized callback:', error)

@@ -3,7 +3,70 @@ import { withApiMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { getPaginationParams } from '@/lib/api-utils';
-import { SessionStatus } from '@prisma/client';
+import { SessionStatus, Prisma } from '@prisma/client';
+
+// Define a constant for session selection fields
+const sessionSelectFields = {
+    id: true,
+    serviceId: true,
+    providerId: true,
+    staffId: true,
+    beneficiaryId: true,
+    scheduledAt: true,
+    completedAt: true,
+    status: true,
+    notes: true,
+    feedback: true,
+    duration: true,
+    location: true,
+    cancellationReason: true,
+    rescheduleCount: true,
+    isGroupSession: true,
+    metadata: true,
+    createdAt: true,
+    updatedAt: true,
+    service: {
+        select: {
+            id: true,
+            name: true,
+            description: true,
+        },
+    },
+    provider: {
+        select: {
+            id: true,
+            name: true,
+            type: true,
+        },
+    },
+    staff: {
+        select: {
+            id: true,
+            profile: {
+                select: {
+                    fullName: true,
+                },
+            },
+        },
+    },
+    beneficiary: {
+        select: {
+            id: true,
+            profile: {
+                select: {
+                    fullName: true,
+                },
+            },
+        },
+    },
+    SessionFeedback: {
+        select: {
+            id: true,
+            rating: true,
+            comment: true,
+        },
+    },
+} as const;
 
 export async function GET(request: Request) {
     return withApiMiddleware(request, async (request: Request) => {
@@ -11,34 +74,35 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
+        const serviceId = searchParams.get('serviceId');
+        const providerId = searchParams.get('providerId');
+        const beneficiaryId = searchParams.get('beneficiaryId');
 
         // Build where clause
-        const where: any = {
+        const where: Prisma.ServiceSessionWhereInput = {
             deletedAt: null,
+            OR: search ? [
+                { service: { name: { contains: search, mode: 'insensitive' } } },
+                { provider: { name: { contains: search, mode: 'insensitive' } } },
+                { beneficiary: { profile: { fullName: { contains: search, mode: 'insensitive' } } } }
+            ] : undefined,
+            status: status && status !== 'all' ? status as SessionStatus : undefined,
+            serviceId: serviceId || undefined,
+            providerId: providerId || undefined,
+            beneficiaryId: beneficiaryId || undefined,
         };
-
-        if (search) {
-            where.OR = [
-                { notes: { contains: search, mode: 'insensitive' } },
-                { feedback: { contains: search, mode: 'insensitive' } },
-            ];
-        }
-
-        if (status) {
-            where.status = status as SessionStatus;
-        }
 
         if (startDate) {
             where.scheduledAt = {
-                ...where.scheduledAt,
                 gte: new Date(startDate),
+                ...(where.scheduledAt as Prisma.DateTimeFilter | undefined || {}),
             };
         }
 
         if (endDate) {
             where.scheduledAt = {
-                ...where.scheduledAt,
                 lte: new Date(endDate),
+                ...(where.scheduledAt as Prisma.DateTimeFilter | undefined || {}),
             };
         }
 
@@ -57,67 +121,7 @@ export async function GET(request: Request) {
         // Fetch sessions with pagination
         const sessions = await prisma.serviceSession.findMany({
             where,
-            select: {
-                id: true,
-                serviceId: true,
-                providerId: true,
-                staffId: true,
-                beneficiaryId: true,
-                scheduledAt: true,
-                completedAt: true,
-                status: true,
-                notes: true,
-                feedback: true,
-                duration: true,
-                location: true,
-                cancellationReason: true,
-                rescheduleCount: true,
-                isGroupSession: true,
-                metadata: true,
-                createdAt: true,
-                updatedAt: true,
-                service: {
-                    select: {
-                        id: true,
-                        name: true,
-                        description: true,
-                    },
-                },
-                provider: {
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
-                staff: {
-                    select: {
-                        id: true,
-                        profile: {
-                            select: {
-                                fullName: true,
-                            },
-                        },
-                    },
-                },
-                beneficiary: {
-                    select: {
-                        id: true,
-                        profile: {
-                            select: {
-                                fullName: true,
-                            },
-                        },
-                    },
-                },
-                SessionFeedback: {
-                    select: {
-                        id: true,
-                        rating: true,
-                        comment: true,
-                    },
-                },
-            },
+            select: sessionSelectFields,
             skip: offset,
             take: limit,
             orderBy: {
@@ -177,60 +181,7 @@ export async function POST(request: Request) {
                 isGroupSession: body.isGroupSession || false,
                 metadata: body.metadata,
             },
-            select: {
-                id: true,
-                serviceId: true,
-                providerId: true,
-                staffId: true,
-                beneficiaryId: true,
-                scheduledAt: true,
-                completedAt: true,
-                status: true,
-                notes: true,
-                feedback: true,
-                duration: true,
-                location: true,
-                cancellationReason: true,
-                rescheduleCount: true,
-                isGroupSession: true,
-                metadata: true,
-                createdAt: true,
-                updatedAt: true,
-                service: {
-                    select: {
-                        id: true,
-                        name: true,
-                        description: true,
-                    },
-                },
-                provider: {
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
-                staff: {
-                    select: {
-                        id: true,
-                        profile: {
-                            select: {
-                                fullName: true,
-                            },
-                        },
-                    },
-                },
-                beneficiary: {
-                    select: {
-                        id: true,
-                        profile: {
-                            select: {
-                                fullName: true,
-                            },
-                        },
-                    },
-                },
-            },
+            select: sessionSelectFields,
         });
 
         // Invalidate cache

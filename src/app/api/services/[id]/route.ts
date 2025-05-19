@@ -3,12 +3,42 @@ import { withApiMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 
+// Define a constant for service selection fields
+const serviceSelectFields = {
+    id: true,
+    name: true,
+    description: true,
+    categoryId: true,
+    status: true,
+    duration: true,
+    capacity: true,
+    prerequisites: true,
+    isPublic: true,
+    price: true,
+    metadata: true,
+    createdAt: true,
+    updatedAt: true,
+    category: {
+        select: {
+            id: true,
+            name: true,
+        },
+    },
+    ServiceProvider: {
+        select: {
+            id: true,
+            name: true,
+            type: true,
+        },
+    },
+};
+
 export async function GET(
     _request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     return withApiMiddleware(_request, async () => {
-        const { id } = params;
+        const { id } = await params;
 
         // Check cache first
         const cacheKey = `service:${id}`;
@@ -19,34 +49,7 @@ export async function GET(
 
         const service = await prisma.service.findUnique({
             where: { id },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                categoryId: true,
-                status: true,
-                duration: true,
-                capacity: true,
-                prerequisites: true,
-                isPublic: true,
-                price: true,
-                metadata: true,
-                createdAt: true,
-                updatedAt: true,
-                category: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-                ServiceProvider: {
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
-            },
+            select: serviceSelectFields,
         });
 
         if (!service) {
@@ -104,34 +107,7 @@ export async function PUT(
                 metadata: body.metadata,
                 serviceProviderId: body.serviceProviderId,
             },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                categoryId: true,
-                status: true,
-                duration: true,
-                capacity: true,
-                prerequisites: true,
-                isPublic: true,
-                price: true,
-                metadata: true,
-                createdAt: true,
-                updatedAt: true,
-                category: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-                ServiceProvider: {
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
-            },
+            select: serviceSelectFields,
         });
 
         // Invalidate caches
@@ -149,22 +125,30 @@ export async function DELETE(
     return withApiMiddleware(_request, async () => {
         const { id } = params;
 
-        // Soft delete the service
-        const deletedService = await prisma.service.update({
-            where: { id },
-            data: {
-                deletedAt: new Date(),
-            },
-            select: {
-                id: true,
-                name: true,
-            },
-        });
+        try {
+            // Soft delete the service  
+            const deletedService = await prisma.service.update({
+                where: { id },
+                data: {
+                    deletedAt: new Date(),
+                },
+                select: {
+                    id: true,
+                    name: true,
+                },
+            });
 
-        // Invalidate caches
-        await cache.delete(`service:${id}`);
-        await cache.invalidateByTags(['services']);
+            // Invalidate caches  
+            await cache.delete(`service:${id}`);
+            await cache.invalidateByTags(['services']);
 
-        return NextResponse.json(deletedService);
+            return NextResponse.json(deletedService);
+        } catch (error) {
+            console.error('Error deleting service:', error);
+            return NextResponse.json(
+                { error: 'Failed to delete service' },
+                { status: 500 }
+            );
+        }
     });
-} 
+}  

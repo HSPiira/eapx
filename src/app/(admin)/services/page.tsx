@@ -13,6 +13,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { ServiceForm, type ServiceFormData } from '@/components/admin/services/service-form';
+import { toast } from "sonner"
 
 interface Service {
     id: string;
@@ -115,8 +116,14 @@ export default function ServicesPage() {
     const handleSubmit = async (data: ServiceFormData) => {
         try {
             await createServiceMutation.mutateAsync(data);
+            toast.success("Service created", {
+                description: "The service has been created successfully.",
+            });
         } catch (error) {
             console.error('Failed to create service:', error);
+            toast.error("Failed to create service", {
+                description: "An error occurred while creating the service. Please try again.",
+            });
         }
     };
 

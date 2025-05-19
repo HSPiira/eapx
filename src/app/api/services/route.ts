@@ -6,11 +6,51 @@ import { getPaginationParams } from '@/lib/api-utils';
 import { BaseStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
+// Define a constant for service selection fields
+const serviceSelectFields = {
+    id: true,
+    name: true,
+    description: true,
+    categoryId: true,
+    status: true,
+    duration: true,
+    capacity: true,
+    prerequisites: true,
+    isPublic: true,
+    price: true,
+    metadata: true,
+    createdAt: true,
+    updatedAt: true,
+    category: {
+        select: {
+            id: true,
+            name: true,
+        },
+    },
+    ServiceProvider: {
+        select: {
+            id: true,
+            name: true,
+            type: true,
+        },
+    },
+} as const;
+
 export async function GET(request: Request) {
     return withApiMiddleware(request, async (request: Request) => {
         const { page, limit, offset, search, status } = getPaginationParams(request);
         const { searchParams } = new URL(request.url);
         const categoryId = searchParams.get('categoryId');
+
+        // Validate status parameter
+        if (status && status !== 'all') {
+            if (!Object.values(BaseStatus).includes(status as BaseStatus)) {
+                return NextResponse.json(
+                    { error: `Invalid status value. Must be one of: ${Object.values(BaseStatus).join(', ')}` },
+                    { status: 400 }
+                );
+            }
+        }
 
         // Build where clause
         const where: Prisma.ServiceWhereInput = {
@@ -23,49 +63,22 @@ export async function GET(request: Request) {
             status: status && status !== 'all' ? status as BaseStatus : undefined
         };
 
-        // Get total count for pagination
-        const totalCount = await prisma.service.count({ where });
+        // Generate cache key _before_ potentially expensive DB calls  
+        const cacheKey = `services:${page}:${limit}:${search}:${status}`;
 
-        // Generate cache key
-        const cacheKey = `services:${page}:${limit}:${search}:${status}:${categoryId}`;
-
-        // Check cache first
+        // Check cache first  
         const cached = await cache.get(cacheKey);
         if (cached) {
             return NextResponse.json(cached);
         }
 
+        // Get total count for pagination  
+        const totalCount = await prisma.service.count({ where });
+
         // Fetch services with pagination
         const services = await prisma.service.findMany({
             where,
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                categoryId: true,
-                status: true,
-                duration: true,
-                capacity: true,
-                prerequisites: true,
-                isPublic: true,
-                price: true,
-                metadata: true,
-                createdAt: true,
-                updatedAt: true,
-                category: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-                ServiceProvider: {
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
-            },
+            select: serviceSelectFields,
             skip: offset,
             take: limit,
             orderBy: {
@@ -125,34 +138,7 @@ export async function POST(request: Request) {
                 metadata: body.metadata,
                 serviceProviderId: body.serviceProviderId,
             },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                categoryId: true,
-                status: true,
-                duration: true,
-                capacity: true,
-                prerequisites: true,
-                isPublic: true,
-                price: true,
-                metadata: true,
-                createdAt: true,
-                updatedAt: true,
-                category: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-                ServiceProvider: {
-                    select: {
-                        id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
-            },
+            select: serviceSelectFields,
         });
 
         // Invalidate cache

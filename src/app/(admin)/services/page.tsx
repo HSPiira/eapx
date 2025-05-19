@@ -164,7 +164,7 @@ export default function ServicesPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <ServiceForm
-                            onSubmit={handleSubmit}
+                            onSubmitAction={handleSubmit}
                             isSubmitting={createServiceMutation.isPending}
                             onCancel={() => setOpen(false)}
                             categories={categoriesData?.data || []}

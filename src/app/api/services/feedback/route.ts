@@ -7,7 +7,7 @@ import { Prisma } from '@prisma/client';
 import { feedbackSelectFields } from '@/lib/select-fields';
 
 export async function GET(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search } = getPaginationParams(searchParams);
         const sessionId = searchParams.get('sessionId') || undefined;
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         let body;
         try {
             body = await request.json();

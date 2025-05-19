@@ -10,7 +10,7 @@ export async function GET(
 ) {
     const { id } = params;
 
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         // Check cache first
         const cacheKey = `service:${id}`;
         const cached = await cache.get(cacheKey);
@@ -38,7 +38,7 @@ export async function PUT(
 ) {
     const { id } = params;
 
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         let body;
         try {
             body = await request.json();
@@ -86,7 +86,7 @@ export async function DELETE(
 ) {
     const { id } = params;
 
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         try {
             const deletedService = await prisma.service.update({
                 where: { id },

@@ -30,11 +30,11 @@ const serviceSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
     categoryId: z.string().min(1, "Category is required"),
-    duration: z.number().optional().nullable(),
-    capacity: z.number().optional().nullable(),
+    duration: z.number().min(1, "Duration must be at least 1 minute").optional().nullable(),
+    capacity: z.number().min(1, "Capacity must be at least 1").optional().nullable(),
     prerequisites: z.string().optional(),
     isPublic: z.boolean(),
-    price: z.number().optional().nullable(),
+    price: z.number().min(0, "Price cannot be negative").optional().nullable(),
     serviceProviderId: z.string().optional().nullable(),
 });
 
@@ -52,7 +52,7 @@ interface ProviderOption {
 }
 
 interface ServiceFormProps {
-    onSubmit: (data: ServiceFormData) => void;
+    onSubmitAction: (data: ServiceFormData) => void;
     isSubmitting?: boolean;
     onCancel?: () => void;
     categories: CategoryOption[];
@@ -63,7 +63,7 @@ interface ServiceFormProps {
 }
 
 export function ServiceForm({
-    onSubmit,
+    onSubmitAction,
     isSubmitting,
     onCancel,
     categories,
@@ -91,8 +91,15 @@ export function ServiceForm({
     const [categoryOpen, setCategoryOpen] = useState(false);
     const [providerOpen, setProviderOpen] = useState(false);
 
+    const selectedCategory = categories.find(
+        (category) => category.id === form.watch("categoryId")
+    );
+    const selectedProvider = providers.find(
+        (provider) => provider.id === form.watch("serviceProviderId")
+    );
+
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmitAction)} className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input
@@ -114,6 +121,11 @@ export function ServiceForm({
                     {...form.register("description")}
                     placeholder="Enter service description"
                 />
+                {form.formState.errors.description && (
+                    <p className="text-sm text-red-500">
+                        {form.formState.errors.description.message}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -127,13 +139,7 @@ export function ServiceForm({
                             className="w-full justify-between"
                             disabled={categories.length === 0}
                         >
-                            {form.watch("categoryId")
-                                ? categories.find(
-                                    (category) => category.id === form.watch("categoryId")
-                                )?.name
-                                : categories.length === 0
-                                    ? "No categories available"
-                                    : "Select category"}
+                            {selectedCategory?.name || (categories.length === 0 ? "No categories available" : "Select category")}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                     </PopoverTrigger>
@@ -187,9 +193,15 @@ export function ServiceForm({
                     <Input
                         id="duration"
                         type="number"
+                        min="1"
                         {...form.register("duration", { valueAsNumber: true })}
                         placeholder="Enter duration"
                     />
+                    {form.formState.errors.duration && (
+                        <p className="text-sm text-red-500">
+                            {form.formState.errors.duration.message}
+                        </p>
+                    )}
                 </div>
 
                 <div className="space-y-2">
@@ -197,9 +209,15 @@ export function ServiceForm({
                     <Input
                         id="capacity"
                         type="number"
+                        min="1"
                         {...form.register("capacity", { valueAsNumber: true })}
                         placeholder="Enter capacity"
                     />
+                    {form.formState.errors.capacity && (
+                        <p className="text-sm text-red-500">
+                            {form.formState.errors.capacity.message}
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -210,6 +228,11 @@ export function ServiceForm({
                     {...form.register("prerequisites")}
                     placeholder="Enter prerequisites"
                 />
+                {form.formState.errors.prerequisites && (
+                    <p className="text-sm text-red-500">
+                        {form.formState.errors.prerequisites.message}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -217,10 +240,16 @@ export function ServiceForm({
                 <Input
                     id="price"
                     type="number"
+                    min="0"
                     step="0.01"
                     {...form.register("price", { valueAsNumber: true })}
                     placeholder="Enter price"
                 />
+                {form.formState.errors.price && (
+                    <p className="text-sm text-red-500">
+                        {form.formState.errors.price.message}
+                    </p>
+                )}
             </div>
 
             {providers.length > 0 && (
@@ -234,11 +263,7 @@ export function ServiceForm({
                                 aria-expanded={providerOpen}
                                 className="w-full justify-between"
                             >
-                                {form.watch("serviceProviderId")
-                                    ? providers.find(
-                                        (provider) => provider.id === form.watch("serviceProviderId")
-                                    )?.name
-                                    : "Select provider"}
+                                {selectedProvider ? `${selectedProvider.name} (${selectedProvider.type})` : "Select provider"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
@@ -273,6 +298,11 @@ export function ServiceForm({
                             </Command>
                         </PopoverContent>
                     </Popover>
+                    {form.formState.errors.serviceProviderId && (
+                        <p className="text-sm text-red-500">
+                            {form.formState.errors.serviceProviderId.message}
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -302,10 +332,10 @@ export function ServiceForm({
                     {isSubmitting ? (
                         <>
                             <LoadingSpinner className="mr-2" />
-                            Creating...
+                            {submittingLabel}
                         </>
                     ) : (
-                        'Create Service'
+                        submitLabel
                     )}
                 </Button>
             </div>

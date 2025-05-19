@@ -2,7 +2,6 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/middleware/auth';
 import { isAdmin } from '@/lib/auth-utils';
 import { industrySelectFields } from '@/lib/select-fields';
 

@@ -1,13 +1,13 @@
 import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
-import { getPaginationParams } from '@/lib/api-utils';
+import { getPaginationParams, validateDate, validateRequiredFields, validateEnumValue } from '@/lib/api-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { AssignmentStatus, Frequency, Prisma } from '@prisma/client';
 import { assignmentSelectFields } from '@/lib/select-fields';
 
 export async function GET(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search, status } = getPaginationParams(searchParams);
         const serviceId = searchParams.get('serviceId') || undefined;
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         let body;
         try {
             body = await request.json();
@@ -73,18 +73,33 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
         }
 
-        if (!body.serviceId || !body.contractId || !body.startDate) {
-            return NextResponse.json({ error: 'Service, contract, and start date are required' }, { status: 400 });
+        // Validate required fields
+        const requiredFieldsResult = validateRequiredFields(body, ['serviceId', 'contractId', 'startDate']);
+        if (!requiredFieldsResult.isValid) {
+            return NextResponse.json({ error: requiredFieldsResult.error }, { status: 400 });
         }
 
-        const startDate = new Date(body.startDate);
-        if (isNaN(startDate.getTime())) {
-            return NextResponse.json({ error: 'Invalid startDate' }, { status: 400 });
+        // Validate status if provided
+        const statusResult = validateEnumValue(body.status, AssignmentStatus, 'status');
+        if (!statusResult.isValid) {
+            return NextResponse.json({ error: statusResult.error }, { status: 400 });
         }
 
-        const endDate = body.endDate ? new Date(body.endDate) : undefined;
-        if (endDate && isNaN(endDate.getTime())) {
-            return NextResponse.json({ error: 'Invalid endDate' }, { status: 400 });
+        // Validate frequency if provided
+        const frequencyResult = validateEnumValue(body.frequency, Frequency, 'frequency');
+        if (!frequencyResult.isValid) {
+            return NextResponse.json({ error: frequencyResult.error }, { status: 400 });
+        }
+
+        // Validate dates
+        const startDateResult = validateDate(body.startDate, 'start date');
+        if (!startDateResult.isValid) {
+            return NextResponse.json({ error: startDateResult.error }, { status: 400 });
+        }
+
+        const endDateResult = validateDate(body.endDate, 'end date');
+        if (!endDateResult.isValid) {
+            return NextResponse.json({ error: endDateResult.error }, { status: 400 });
         }
 
         try {
@@ -94,15 +109,15 @@ export async function POST(request: NextRequest) {
                     contractId: body.contractId,
                     clientId: body.clientId,
                     status: (body.status || 'PENDING') as AssignmentStatus,
-                    startDate,
-                    endDate,
-                    frequency: body.frequency,
+                    startDate: startDateResult.date!,
+                    endDate: endDateResult.date,
+                    frequency: body.frequency as Frequency,
                     metadata: body.metadata,
                 },
                 select: assignmentSelectFields,
             });
 
-            await cache.deleteByPrefix('assignments:');
+            await cache.invalidateByTags(['assignments']);
             return NextResponse.json(newAssignment, { status: 201 });
         } catch (error) {
             console.error('Error creating assignment:', error);

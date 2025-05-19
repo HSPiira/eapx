@@ -4,6 +4,8 @@ import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { AssignmentStatus, Frequency } from '@prisma/client';
 import { assignmentSelectFields } from '@/lib/select-fields';
+import { isAdmin } from '@/lib/auth-utils';
+import { validateDate, validateRequiredFields, validateEnumValue } from '@/lib/api-utils';
 
 type Params = Promise<{ id: string }>;
 
@@ -12,6 +14,13 @@ export async function GET(
     { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async (session) => {
+        if (!(await isAdmin(session))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
+            );
+        }
+
         const { id } = await params;
 
         const cacheKey = `assignment:${id}`;
@@ -37,6 +46,13 @@ export async function PUT(
     { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async (session) => {
+        if (!(await isAdmin(session))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
+            );
+        }
+
         const { id } = await params;
 
         let body;
@@ -46,22 +62,33 @@ export async function PUT(
             return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
         }
 
-        if (!body.serviceId || !body.contractId || !body.startDate) {
-            return NextResponse.json({ error: 'Service, contract, and start date are required' }, { status: 400 });
+        // Validate required fields
+        const requiredFieldsResult = validateRequiredFields(body, ['serviceId', 'contractId', 'startDate']);
+        if (!requiredFieldsResult.isValid) {
+            return NextResponse.json({ error: requiredFieldsResult.error }, { status: 400 });
         }
 
-        if (body.frequency && !Object.values(Frequency).includes(body.frequency)) {
-            return NextResponse.json({ error: 'Invalid frequency' }, { status: 400 });
+        // Validate status if provided
+        const statusResult = validateEnumValue(body.status, AssignmentStatus, 'status');
+        if (!statusResult.isValid) {
+            return NextResponse.json({ error: statusResult.error }, { status: 400 });
         }
 
-        const startDate = new Date(body.startDate);
-        if (isNaN(startDate.getTime())) {
-            return NextResponse.json({ error: 'Invalid startDate' }, { status: 400 });
+        // Validate frequency if provided
+        const frequencyResult = validateEnumValue(body.frequency, Frequency, 'frequency');
+        if (!frequencyResult.isValid) {
+            return NextResponse.json({ error: frequencyResult.error }, { status: 400 });
         }
 
-        const endDate = body.endDate ? new Date(body.endDate) : undefined;
-        if (endDate && isNaN(endDate.getTime())) {
-            return NextResponse.json({ error: 'Invalid endDate' }, { status: 400 });
+        // Validate dates
+        const startDateResult = validateDate(body.startDate, 'start date');
+        if (!startDateResult.isValid) {
+            return NextResponse.json({ error: startDateResult.error }, { status: 400 });
+        }
+
+        const endDateResult = validateDate(body.endDate, 'end date');
+        if (!endDateResult.isValid) {
+            return NextResponse.json({ error: endDateResult.error }, { status: 400 });
         }
 
         try {
@@ -72,8 +99,8 @@ export async function PUT(
                     contractId: body.contractId,
                     clientId: body.clientId,
                     status: (body.status || 'PENDING') as AssignmentStatus,
-                    startDate,
-                    endDate,
+                    ...(startDateResult.date && { startDate: startDateResult.date }),
+                    ...(endDateResult.date && { endDate: endDateResult.date }),
                     frequency: body.frequency as Frequency,
                     metadata: body.metadata,
                 },
@@ -81,7 +108,7 @@ export async function PUT(
             });
 
             await cache.delete(`assignment:${id}`);
-            await cache.deleteByPrefix('assignments:');
+            await cache.invalidateByTags(['assignments']);
             return NextResponse.json(updatedAssignment);
         } catch (error) {
             console.error('Error updating assignment:', error);
@@ -95,6 +122,13 @@ export async function DELETE(
     { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async (session) => {
+        if (!(await isAdmin(session))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Admin access required' },
+                { status: 403 }
+            );
+        }
+
         const { id } = await params;
 
         try {
@@ -126,7 +160,7 @@ export async function DELETE(
             });
 
             await cache.delete(`assignment:${id}`);
-            await cache.deleteByPrefix('assignments:');
+            await cache.invalidateByTags(['assignments']);
             return NextResponse.json(deletedAssignment);
         } catch (error) {
             console.error('Error deleting assignment:', error);

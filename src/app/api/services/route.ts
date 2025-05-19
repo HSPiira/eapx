@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { serviceSelectFields } from '@/lib/select-fields/services';
 
 export async function GET(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search, status } = getPaginationParams(searchParams);
         const categoryId = searchParams.get('categoryId') || undefined;
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         let body;
         try {
             body = await request.json();

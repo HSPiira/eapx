@@ -2,8 +2,8 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { WorkStatus, ServiceProviderType } from '@prisma/client';
 import { providerSelectFields } from '@/lib/select-fields';
+import { parseRequestBody, validateProviderData } from '@/lib/api-utils';
 
 type Params = Promise<{ id: string }>;
 
@@ -11,7 +11,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         const cacheKey = `provider:${id}`;
@@ -36,30 +36,17 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+        const { body, error: parseError } = await parseRequestBody(request);
+        if (parseError) {
+            return NextResponse.json({ error: parseError }, { status: 400 });
         }
 
-        if (!body.name || !body.type) {
-            return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
-        }
-
-        if (!Object.values(ServiceProviderType).includes(body.type)) {
-            return NextResponse.json({
-                error: `Invalid type value. Must be one of: ${Object.values(ServiceProviderType).join(', ')}`
-            }, { status: 400 });
-        }
-
-        if (body.status && !Object.values(WorkStatus).includes(body.status)) {
-            return NextResponse.json({
-                error: `Invalid status value. Must be one of: ${Object.values(WorkStatus).join(', ')}`
-            }, { status: 400 });
+        const validationResult = validateProviderData(body);
+        if (!validationResult.isValid) {
+            return NextResponse.json({ error: validationResult.error }, { status: 400 });
         }
 
         try {
@@ -83,7 +70,7 @@ export async function PUT(
             });
 
             await cache.delete(`provider:${id}`);
-            await cache.deleteByPrefix('service-providers:');
+            await cache.invalidateByTags(['service-providers']);
             return NextResponse.json(updatedProvider);
         } catch (error) {
             console.error('Error updating provider:', error);
@@ -96,7 +83,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         try {
@@ -114,7 +101,7 @@ export async function DELETE(
             });
 
             await cache.delete(`provider:${id}`);
-            await cache.deleteByPrefix('service-providers:');
+            await cache.invalidateByTags(['service-providers']);
             return NextResponse.json(deletedProvider);
         } catch (error) {
             console.error('Error deleting provider:', error);

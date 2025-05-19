@@ -2,8 +2,8 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { SessionStatus } from '@prisma/client';
 import { sessionSelectFields } from '@/lib/select-fields';
+import { parseRequestBody, validateSessionData } from '@/lib/api-utils';
 
 type Params = Promise<{ id: string }>;
 
@@ -11,7 +11,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (authSession) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         const cacheKey = `session:${id}`;
@@ -36,55 +36,23 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+        const { body, error: parseError } = await parseRequestBody(request);
+        if (parseError) {
+            return NextResponse.json({ error: parseError }, { status: 400 });
         }
 
-        if (body.status && !Object.values(SessionStatus).includes(body.status)) {
-            return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-        }
-
-        if (body.scheduledAt) {
-            const scheduledAt = new Date(body.scheduledAt);
-            if (isNaN(scheduledAt.getTime())) {
-                return NextResponse.json({ error: 'Invalid scheduledAt' }, { status: 400 });
-            }
-            body.scheduledAt = scheduledAt;
-        }
-
-        if (body.completedAt) {
-            const completedAt = new Date(body.completedAt);
-            if (isNaN(completedAt.getTime())) {
-                return NextResponse.json({ error: 'Invalid completedAt' }, { status: 400 });
-            }
-            body.completedAt = completedAt;
+        const validationResult = validateSessionData(body);
+        if (!validationResult.isValid) {
+            return NextResponse.json({ error: validationResult.error }, { status: 400 });
         }
 
         try {
             const updatedSession = await prisma.serviceSession.update({
                 where: { id },
-                data: {
-                    serviceId: body.serviceId,
-                    providerId: body.providerId,
-                    beneficiaryId: body.beneficiaryId,
-                    scheduledAt: body.scheduledAt,
-                    completedAt: body.completedAt,
-                    status: body.status,
-                    notes: body.notes,
-                    feedback: body.feedback,
-                    duration: body.duration,
-                    location: body.location,
-                    cancellationReason: body.cancellationReason,
-                    rescheduleCount: body.rescheduleCount,
-                    isGroupSession: body.isGroupSession,
-                    metadata: body.metadata,
-                },
+                data: validationResult.data!,
                 select: sessionSelectFields,
             });
 
@@ -102,7 +70,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         try {

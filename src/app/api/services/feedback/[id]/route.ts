@@ -10,7 +10,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         const cacheKey = `feedback:${id}`;
@@ -35,7 +35,7 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         let body;
@@ -78,7 +78,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         try {

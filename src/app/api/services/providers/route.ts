@@ -1,33 +1,27 @@
 import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
-import { getPaginationParams } from '@/lib/api-utils';
+import { getPaginationParams, validateEnumValue, parseRequestBody, validateProviderData } from '@/lib/api-utils';
 import { WorkStatus, ServiceProviderType, Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { providerSelectFields } from '@/lib/select-fields';
 
 export async function GET(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
+    return withRouteMiddleware(request, async () => {
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search } = getPaginationParams(searchParams);
         const statusParam = searchParams.get('status') || '';
         const typeParam = searchParams.get('type') || '';
 
         // Validate status and type parameters
-        if (statusParam && statusParam !== 'all') {
-            if (!Object.values(WorkStatus).includes(statusParam as WorkStatus)) {
-                return NextResponse.json({
-                    error: `Invalid status value. Must be one of: ${Object.values(WorkStatus).join(', ')}`
-                }, { status: 400 });
-            }
+        const statusResult = validateEnumValue(statusParam !== 'all' ? statusParam : undefined, WorkStatus, 'status');
+        if (!statusResult.isValid) {
+            return NextResponse.json({ error: statusResult.error }, { status: 400 });
         }
 
-        if (typeParam && typeParam !== 'all') {
-            if (!Object.values(ServiceProviderType).includes(typeParam as ServiceProviderType)) {
-                return NextResponse.json({
-                    error: `Invalid type value. Must be one of: ${Object.values(ServiceProviderType).join(', ')}`
-                }, { status: 400 });
-            }
+        const typeResult = validateEnumValue(typeParam !== 'all' ? typeParam : undefined, ServiceProviderType, 'type');
+        if (!typeResult.isValid) {
+            return NextResponse.json({ error: typeResult.error }, { status: 400 });
         }
 
         // Build where clause
@@ -74,22 +68,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    return withRouteMiddleware(request, async (session) => {
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    return withRouteMiddleware(request, async () => {
+        const { body, error: parseError } = await parseRequestBody(request);
+        if (parseError) {
+            return NextResponse.json({ error: parseError }, { status: 400 });
         }
 
-        if (!body.name || !body.type) {
-            return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
-        }
-
-        if (!Object.values(ServiceProviderType).includes(body.type)) {
-            return NextResponse.json({
-                error: `Invalid type value. Must be one of: ${Object.values(ServiceProviderType).join(', ')}`
-            }, { status: 400 });
+        const validationResult = validateProviderData(body);
+        if (!validationResult.isValid) {
+            return NextResponse.json({ error: validationResult.error }, { status: 400 });
         }
 
         try {
@@ -105,13 +92,13 @@ export async function POST(request: NextRequest) {
                     availability: body.availability,
                     rating: body.rating,
                     isVerified: body.isVerified || false,
-                    status: (body.status && Object.values(WorkStatus).includes(body.status)) ? body.status : WorkStatus.ACTIVE,
+                    status: body.status || WorkStatus.ACTIVE,
                     metadata: body.metadata,
                 },
                 select: providerSelectFields,
             });
 
-            await cache.deleteByPrefix('service-providers:');
+            await cache.invalidateByTags(['service-providers']);
             return NextResponse.json(newProvider, { status: 201 });
         } catch (error) {
             console.error('Error creating provider:', error);

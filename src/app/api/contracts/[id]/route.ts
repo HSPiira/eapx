@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { isAdmin } from '@/lib/auth-utils';
 import { contractSelectFields } from '@/lib/select-fields';
+import { parseRequestBody, validateContractData } from '@/lib/api-utils';
 
 type Params = Promise<{ id: string }>;
 
@@ -59,74 +60,22 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
         }
 
         const { id } = await params;
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+
+        const { body, error: parseError } = await parseRequestBody(request);
+        if (parseError) {
+            return NextResponse.json({ error: parseError }, { status: 400 });
         }
 
-        // Validate dates if provided
-        const startDate = body.startDate ? new Date(body.startDate) : undefined;
-        const endDate = body.endDate ? new Date(body.endDate) : undefined;
-        const renewalDate = body.renewalDate ? new Date(body.renewalDate) : undefined;
-
-        if (startDate && isNaN(startDate.getTime())) {
-            return NextResponse.json(
-                { error: 'Invalid start date format' },
-                { status: 400 }
-            );
-        }
-
-        if (endDate && isNaN(endDate.getTime())) {
-            return NextResponse.json(
-                { error: 'Invalid end date format' },
-                { status: 400 }
-            );
-        }
-
-        if (renewalDate && isNaN(renewalDate.getTime())) {
-            return NextResponse.json(
-                { error: 'Invalid renewal date format' },
-                { status: 400 }
-            );
-        }
-
-        if (startDate && endDate && endDate <= startDate) {
-            return NextResponse.json(
-                { error: 'End date must be after start date' },
-                { status: 400 }
-            );
-        }
-
-        if (endDate && renewalDate && renewalDate <= endDate) {
-            return NextResponse.json(
-                { error: 'Renewal date must be after end date' },
-                { status: 400 }
-            );
+        const validationResult = validateContractData(body);
+        if (!validationResult.isValid) {
+            return NextResponse.json({ error: validationResult.error }, { status: 400 });
         }
 
         try {
             // Update contract
             const updatedContract = await prisma.contract.update({
                 where: { id },
-                data: {
-                    clientId: body.clientId,
-                    startDate,
-                    endDate,
-                    renewalDate,
-                    billingRate: body.billingRate !== undefined && body.billingRate !== null
-                        ? parseFloat(body.billingRate)
-                        : undefined,
-                    isRenewable: body.isRenewable,
-                    isAutoRenew: body.isAutoRenew,
-                    paymentStatus: body.paymentStatus,
-                    paymentFrequency: body.paymentFrequency,
-                    paymentTerms: body.paymentTerms,
-                    currency: body.currency,
-                    status: body.status,
-                    notes: body.notes,
-                },
+                data: validationResult.data!,
                 select: contractSelectFields,
             });
 

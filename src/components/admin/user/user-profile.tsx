@@ -3,10 +3,10 @@
 import React from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
-import Image from "next/image";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Settings, User, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import UserAvatarDisplay from './user-avatar-display';
 
 type Profile = {
     id: string;
@@ -40,19 +40,11 @@ const UserProfile: React.FC = () => {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-2 px-2 py-2 md:justify-center md:px-0 md:py-2 lg:justify-start lg:px-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
-                    {displayImage ? (
-                        <Image
-                            src={displayImage}
-                            alt={displayName || ''}
-                            className="w-8 h-8 rounded-full object-cover"
-                            width={48}
-                            height={48}
-                        />
-                    ) : (
-                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                            {displayName?.charAt(0).toUpperCase() || '?'}
-                        </div>
-                    )}
+                    <UserAvatarDisplay
+                        imageUrl={displayImage}
+                        name={displayName}
+                        size={32}
+                    />
                     <span className="font-medium text-gray-900 dark:text-white text-sm truncate hidden md:hidden lg:flex">
                         {displayName || 'Unknown'}
                     </span>

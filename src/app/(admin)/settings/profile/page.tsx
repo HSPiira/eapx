@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoadingSpinner } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import UserAvatarDisplay from '@/components/admin/user/user-avatar-display';
 
 interface Profile {
     id: string;
@@ -113,18 +113,19 @@ const ProfilePage = () => {
         );
     }
 
+    const displayedAvatarUrl = formData.avatar ? URL.createObjectURL(formData.avatar) : (profile?.image || session?.user?.image);
+    const displayNameForAvatar = profile?.fullName || session?.user?.name || 'Unknown';
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-semibold mb-1 text-gray-900 dark:text-white">Profile</h1>
             <p className="text-gray-500 dark:text-gray-400 mb-6">Manage settings for your careAxis profile</p>
 
             <div className="flex items-center gap-4 mb-6">
-                <Image
-                    src={profile?.image || session?.user?.image || 'https://i.pravatar.cc/100'}
-                    alt="Profile"
-                    className="w-16 h-16 rounded-full object-cover"
-                    width={48}
-                    height={48}
+                <UserAvatarDisplay
+                    imageUrl={displayedAvatarUrl}
+                    name={displayNameForAvatar}
+                    size={64}
                 />
                 <div>
                     <label
@@ -149,7 +150,6 @@ const ProfilePage = () => {
                         type="button"
                         className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded text-red-500 bg-white dark:bg-black"
                         onClick={() => {
-                            // Reset avatar in state (and optionally call API)  
                             setFormData(prev => ({ ...prev, avatar: null }));
                         }}
                     >
@@ -252,32 +252,43 @@ const ProfilePage = () => {
                                 type="button"
                                 className="px-1 text-gray-700 dark:text-gray-200"
                                 onClick={() => {
-                                    // Focus the textarea for editing  
-                                    document.querySelector('textarea')?.focus();
+                                    const textarea = document.querySelector('textarea');
+                                    if (!textarea) return;
+                                    const start = textarea.selectionStart;
+                                    const end = textarea.selectionEnd;
+                                    const text = formData.about;
+                                    if (start === end) return;
+                                    const newText =
+                                        text.substring(0, start) +
+                                        '- ' +
+                                        text.substring(start, end) +
+                                        text.substring(end);
+                                    setFormData(prev => ({ ...prev, about: newText }));
                                 }}
-                                title="Edit"
+                                title="List Item"
                             >
-                                ✎
+                                <span>&bull;</span>
                             </button>
                         </div>
                         <Textarea
                             value={formData.about}
                             onChange={e => setFormData(prev => ({ ...prev, about: e.target.value }))}
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
-                            rows={4}
+                            placeholder="Tell us about yourself..."
+                            rows={5}
+                            className="w-full border-none focus:ring-0 dark:bg-gray-900 text-gray-900 dark:text-gray-200"
                         />
                     </div>
                 </div>
 
-                {error && <p className="text-red-500">{error}</p>}
+                {error && <p className="text-red-500 text-sm">{error}</p>}
 
                 <button
                     type="submit"
-                    disabled={isUpdating}
                     className={`mt-4 px-6 py-2 rounded ${isUpdating
                         ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                         : 'bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100'
                         }`}
+                    disabled={isUpdating}
                 >
                     {isUpdating ? (
                         <div className="flex items-center gap-2">

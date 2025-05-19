@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
                     { taxId: { contains: search, mode: Prisma.QueryMode.insensitive } },
                 ]
                 : undefined,
-            industryId: industryId || undefined,
+            ...(industryId && industryId !== 'all' && { industryId: industryId }),
             status: status && status !== 'all' ? (status as BaseStatus) : undefined,
             isVerified: isVerified,
             preferredContactMethod: preferredContactMethod,

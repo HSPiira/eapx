@@ -10,6 +10,9 @@ import { z } from 'zod';
 const staffRoleEnum = z.enum(Object.values(StaffRole) as [string, ...string[]]);
 const workStatusEnum = z.enum(Object.values(WorkStatus) as [string, ...string[]]);
 
+// Define Params type for route handlers
+type Params = Promise<{ id: string }>;
+
 // Validation schema for staff creation/update
 const staffSchema = z.object({
     profileId: z.string(),
@@ -28,9 +31,10 @@ const staffSchema = z.object({
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search, status } = getPaginationParams(searchParams);
         const role = searchParams.get('role') as StaffRole | undefined;
@@ -46,7 +50,7 @@ export async function GET(
         }
 
         const where: Prisma.StaffWhereInput = {
-            clientId: params.id,
+            clientId: id,
             deletedAt: null,
             OR: search
                 ? [
@@ -61,7 +65,7 @@ export async function GET(
             }),
         };
 
-        const cacheKey = `clients:${params.id}:staff:${page}:${limit}:${search}:${status}:${role}:${hasBeneficiaries}`;
+        const cacheKey = `clients:${id}:staff:${page}:${limit}:${search}:${status}:${role}:${hasBeneficiaries}`;
         const cached = await cache.get(cacheKey);
         if (cached) return NextResponse.json(cached);
 
@@ -95,9 +99,10 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         let body;
         try {
             body = await request.json();
@@ -133,7 +138,7 @@ export async function POST(
 
         const newStaff = await prisma.staff.create({
             data: {
-                clientId: params.id,
+                clientId: id,
                 userId: profile.userId,
                 profileId: body.profileId,
                 role: body.role,
@@ -155,7 +160,7 @@ export async function POST(
             },
         });
 
-        await cache.deleteByPrefix(`clients:${params.id}:staff:`);
+        await cache.deleteByPrefix(`clients:${id}:staff:`);
         return NextResponse.json(newStaff, { status: 201 });
     });
 } 

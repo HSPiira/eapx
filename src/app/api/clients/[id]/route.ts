@@ -3,50 +3,29 @@ import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { BaseStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { clientSelectFields } from '@/lib/select-fields/clients';
 
-// Reuse the same select fields from the main route
-const clientSelectFields = {
-    id: true,
-    name: true,
-    email: true,
-    phone: true,
-    website: true,
-    address: true,
-    billingAddress: true,
-    taxId: true,
-    contactPerson: true,
-    contactEmail: true,
-    contactPhone: true,
-    industryId: true,
-    industry: {
-        select: {
-            id: true,
-            name: true,
-            code: true
-        }
-    },
-    status: true,
-    preferredContactMethod: true,
-    timezone: true,
-    isVerified: true,
-    notes: true,
-    metadata: true,
-    createdAt: true,
-    updatedAt: true
-};
+type Params = Promise<{ id: string }>;
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         const client = await prisma.client.findUnique({
-            where: { id: params.id },
+            where: {
+                id: id,
+                deletedAt: null,
+            },
             select: clientSelectFields,
         });
 
         if (!client) {
-            return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+            return NextResponse.json(
+                { error: 'Client not found' },
+                { status: 404 }
+            );
         }
 
         return NextResponse.json(client);
@@ -55,9 +34,10 @@ export async function GET(
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         let body;
         try {
             body = await request.json();
@@ -66,7 +46,7 @@ export async function PUT(
         }
 
         const existingClient = await prisma.client.findUnique({
-            where: { id: params.id },
+            where: { id: id },
         });
 
         if (!existingClient) {
@@ -74,7 +54,7 @@ export async function PUT(
         }
 
         const updatedClient = await prisma.client.update({
-            where: { id: params.id },
+            where: { id: id },
             data: {
                 name: body.name,
                 email: body.email,
@@ -104,11 +84,12 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         const existingClient = await prisma.client.findUnique({
-            where: { id: params.id },
+            where: { id: id },
         });
 
         if (!existingClient) {
@@ -117,7 +98,7 @@ export async function DELETE(
 
         // Soft delete by setting deletedAt
         await prisma.client.update({
-            where: { id: params.id },
+            where: { id: id },
             data: { deletedAt: new Date() },
         });
 

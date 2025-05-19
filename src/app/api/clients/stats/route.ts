@@ -1,7 +1,7 @@
 import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
-import { BaseStatus, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
                                 data: body.updates,
                             });
                             return { id: clientId, success: true, data: updated };
-                        } catch (error) {
+                        } catch {
                             return { id: clientId, success: false, error: 'Update failed' };
                         }
                     })
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
                                 data: { deletedAt: new Date() },
                             });
                             return { id: clientId, success: true };
-                        } catch (error) {
+                        } catch {
                             return { id: clientId, success: false, error: 'Delete failed' };
                         }
                     })
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
                                 data: { isVerified: true },
                             });
                             return { id: clientId, success: true, data: updated };
-                        } catch (error) {
+                        } catch {
                             return { id: clientId, success: false, error: 'Verification failed' };
                         }
                     })

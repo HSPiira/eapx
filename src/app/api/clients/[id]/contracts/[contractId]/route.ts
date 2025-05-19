@@ -1,7 +1,7 @@
 import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
-import { ContractStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { ContractStatus, PaymentStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

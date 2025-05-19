@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface Client {
     id: string;
@@ -36,6 +38,12 @@ interface ClientListProps {
 }
 
 export function ClientList({ clients }: ClientListProps) {
+    const router = useRouter();
+
+    const handleRowClick = (clientId: string) => {
+        router.push(`/clients/${clientId}`);
+    };
+
     return (
         <div className="rounded-md border">
             <Table>
@@ -52,7 +60,14 @@ export function ClientList({ clients }: ClientListProps) {
                 </TableHeader>
                 <TableBody>
                     {clients.map((client) => (
-                        <TableRow key={client.id}>
+                        <TableRow
+                            key={client.id}
+                            className={cn(
+                                "cursor-pointer hover:bg-muted/50",
+                                "transition-colors"
+                            )}
+                            onClick={() => handleRowClick(client.id)}
+                        >
                             <TableCell>
                                 <div className="flex items-center gap-2">
                                     <div>
@@ -81,7 +96,14 @@ export function ClientList({ clients }: ClientListProps) {
                                 {format(new Date(client.updatedAt), 'MMM d, yyyy')}
                             </TableCell>
                             <TableCell>
-                                <Button variant="ghost" size="icon">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // TODO: Implement actions menu
+                                    }}
+                                >
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </TableCell>

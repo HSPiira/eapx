@@ -10,6 +10,8 @@ import { z } from 'zod';
 const assignmentStatusEnum = z.enum(Object.values(AssignmentStatus) as [string, ...string[]]);
 const frequencyEnum = z.enum(Object.values(Frequency) as [string, ...string[]]);
 
+type Params = Promise<{ id: string }>;
+
 // Validation schema for service assignment creation/update
 const serviceAssignmentSchema = z.object({
     serviceId: z.string(),
@@ -22,9 +24,10 @@ const serviceAssignmentSchema = z.object({
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search, status } = getPaginationParams(searchParams);
         const categoryId = searchParams.get('categoryId') || undefined;
@@ -41,7 +44,7 @@ export async function GET(
 
         const where: Prisma.ServiceAssignmentWhereInput = {
             contract: {
-                clientId: params.id,
+                clientId: id,
             },
             deletedAt: null,
             OR: search
@@ -61,7 +64,7 @@ export async function GET(
             }),
         };
 
-        const cacheKey = `clients:${params.id}:services:${page}:${limit}:${search}:${status}:${categoryId}:${hasSessions}`;
+        const cacheKey = `clients:${id}:services:${page}:${limit}:${search}:${status}:${categoryId}:${hasSessions}`;
         const cached = await cache.get(cacheKey);
         if (cached) return NextResponse.json(cached);
 
@@ -98,9 +101,10 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const {id} = await params;
         let body;
         try {
             body = await request.json();
@@ -131,7 +135,7 @@ export async function POST(
         // Get active contract for the client
         const contract = await prisma.contract.findFirst({
             where: {
-                clientId: params.id,
+                clientId: id,
                 status: 'ACTIVE',
                 deletedAt: null,
             },
@@ -163,7 +167,7 @@ export async function POST(
             },
         });
 
-        await cache.deleteByPrefix(`clients:${params.id}:services:`);
+        await cache.deleteByPrefix(`clients:${id}:services:`);
         return NextResponse.json(newServiceAssignment, { status: 201 });
     });
 } 

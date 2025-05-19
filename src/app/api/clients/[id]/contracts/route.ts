@@ -6,6 +6,8 @@ import { ContractStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+type Params = Promise<{ id: string }>;
+
 // Create Zod enums from Prisma enums
 const contractStatusEnum = z.enum(Object.values(ContractStatus) as [string, ...string[]]);
 const paymentStatusEnum = z.enum(Object.values(PaymentStatus) as [string, ...string[]]);
@@ -32,9 +34,10 @@ const contractSchema = z.object({
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search, status } = getPaginationParams(searchParams);
         const paymentStatus = searchParams.get('paymentStatus') as PaymentStatus | undefined;
@@ -52,7 +55,7 @@ export async function GET(
         }
 
         const where: Prisma.ContractWhereInput = {
-            clientId: params.id,
+            clientId: id,
             deletedAt: null,
             OR: search
                 ? [
@@ -66,7 +69,7 @@ export async function GET(
             isAutoRenew: isAutoRenew,
         };
 
-        const cacheKey = `clients:${params.id}:contracts:${page}:${limit}:${search}:${status}:${paymentStatus}:${isRenewable}:${isAutoRenew}`;
+        const cacheKey = `clients:${id}:contracts:${page}:${limit}:${search}:${status}:${paymentStatus}:${isRenewable}:${isAutoRenew}`;
         const cached = await cache.get(cacheKey);
         if (cached) return NextResponse.json(cached);
 
@@ -104,9 +107,10 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
+        const { id } = await params;
         let body;
         try {
             body = await request.json();
@@ -125,7 +129,7 @@ export async function POST(
 
         const newContract = await prisma.contract.create({
             data: {
-                clientId: params.id,
+                clientId: id,
                 startDate: body.startDate,
                 endDate: body.endDate,
                 renewalDate: body.renewalDate,
@@ -154,7 +158,7 @@ export async function POST(
             },
         });
 
-        await cache.deleteByPrefix(`clients:${params.id}:contracts:`);
+        await cache.deleteByPrefix(`clients:${id}:contracts:`);
         return NextResponse.json(newContract, { status: 201 });
     });
 } 

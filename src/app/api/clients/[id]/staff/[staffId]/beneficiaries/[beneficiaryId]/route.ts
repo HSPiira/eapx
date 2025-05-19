@@ -1,7 +1,7 @@
 import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
-import { BaseStatus, RelationType, Prisma } from '@prisma/client';
+import { BaseStatus, RelationType } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -91,7 +91,7 @@ export async function PUT(
             return NextResponse.json({ error: 'Beneficiary not found' }, { status: 404 });
         }
 
-        // Check if guardian exists if provided
+        // Check if guardian exists is provided
         if (body.guardianId) {
             const guardian = await prisma.user.findUnique({
                 where: { id: body.guardianId },

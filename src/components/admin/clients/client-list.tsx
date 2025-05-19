@@ -19,7 +19,11 @@ interface Client {
     id: string;
     name: string;
     email: string;
-    industry: string;
+    industry: {
+        id: string;
+        name: string;
+        code: string;
+    };
     status: string;
     isVerified: boolean;
     activeContracts: number;
@@ -65,7 +69,7 @@ export function ClientList({ clients }: ClientListProps) {
                                     )}
                                 </div>
                             </TableCell>
-                            <TableCell>{client.industry}</TableCell>
+                            <TableCell>{client.industry.name}</TableCell>
                             <TableCell>
                                 <Badge variant={client.status === 'ACTIVE' ? 'default' : 'secondary'}>
                                     {client.status}

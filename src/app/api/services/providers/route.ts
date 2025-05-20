@@ -4,7 +4,32 @@ import { cache } from '@/lib/cache';
 import { getPaginationParams, validateEnumValue, parseRequestBody, validateProviderData } from '@/lib/api-utils';
 import { WorkStatus, ServiceProviderType, Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { providerSelectFields } from '@/lib/select-fields';
+
+const providerSelectFields = {
+    id: true,
+    name: true,
+    type: true,
+    contactEmail: true,
+    contactPhone: true,
+    location: true,
+    qualifications: true,
+    specializations: true,
+    availability: true,
+    rating: true,
+    isVerified: true,
+    status: true,
+    metadata: true,
+    createdAt: true,
+    updatedAt: true,
+    _count: {
+        select: {
+            interventions: true,
+            sessions: true,
+            availabilitySlots: true,
+            SessionForm: true
+        }
+    }
+};
 
 export async function GET(request: NextRequest) {
     return withRouteMiddleware(request, async () => {

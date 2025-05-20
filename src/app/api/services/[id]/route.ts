@@ -2,7 +2,7 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { serviceSelectFields } from '@/lib/select-fields/services';
+import { serviceSelectFields } from '@/lib/select-fields';
 
 type Params = Promise<{ id: string }>;
 
@@ -48,8 +48,8 @@ export async function PUT(
             return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
         }
 
-        if (!body.name || !body.categoryId) {
-            return NextResponse.json({ error: 'Name and category are required' }, { status: 400 });
+        if (!body.name) {
+            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
 
         try {
@@ -58,21 +58,13 @@ export async function PUT(
                 data: {
                     name: body.name,
                     description: body.description,
-                    categoryId: body.categoryId,
-                    status: body.status,
-                    duration: body.duration,
-                    capacity: body.capacity,
-                    prerequisites: body.prerequisites,
-                    isPublic: body.isPublic,
-                    price: body.price,
                     metadata: body.metadata,
-                    serviceProviderId: body.serviceProviderId,
                 },
                 select: serviceSelectFields,
             });
 
             await cache.delete(`service:${id}`);
-            await cache.invalidateByTags(['services']);
+            await cache.deleteByPrefix('services:');
 
             return NextResponse.json(updatedService);
         } catch (error) {
@@ -97,7 +89,7 @@ export async function DELETE(
             });
 
             await cache.delete(`service:${id}`);
-            await cache.invalidateByTags(['services']);
+            await cache.deleteByPrefix('services:');
 
             return NextResponse.json(deletedService);
         } catch (error) {

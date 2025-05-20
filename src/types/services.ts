@@ -7,7 +7,7 @@ export interface Service {
     capacity: number | null;
     isPublic: boolean;
     price: number | null;
-    category: {
+    intervention: {
         id: string;
         name: string;
     };

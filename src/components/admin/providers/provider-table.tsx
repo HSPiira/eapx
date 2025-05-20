@@ -55,17 +55,24 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
     };
 
     return (
-        <div className="flex gap-6">
-            <div className="flex-1">
-                <Table>
+        <div className="w-full overflow-x-auto">
+            <div className="min-w-[900px]">
+                <Table className="w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Rating</TableHead>
-                            <TableHead>Services</TableHead>
-                            <TableHead><span className="sr-only">Actions</span></TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[160px]">Name</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[180px]">Email</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[140px]">Phone</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[160px]">Type</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[140px]">Status</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Rating</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Services</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Sessions</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Location</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Qualifications</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Specializations</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Verified</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[120px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -78,7 +85,7 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
                                 )}
                                 onClick={() => handleRowClick(provider)}
                             >
-                                <TableCell className="font-medium">
+                                <TableCell className="whitespace-nowrap min-w-[160px]">
                                     <div className="flex items-center gap-2">
                                         {provider.name}
                                         {provider.isVerified && (
@@ -86,17 +93,38 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
                                         )}
                                     </div>
                                 </TableCell>
-                                <TableCell>{provider.type}</TableCell>
-                                <TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[180px]">{provider.contactEmail}</TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[140px]">{provider.contactPhone}</TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[160px]">{provider.type}</TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[140px]">
                                     <Badge variant={provider.status === 'ACTIVE' ? 'default' : 'secondary'}>
                                         {provider.status.toLowerCase()}
                                     </Badge>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[120px]">
                                     {provider.rating ? provider.rating.toFixed(1) : '-'}
                                 </TableCell>
-                                <TableCell>{provider._count?.services || 0}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="whitespace-nowrap min-w-[120px]">{provider._count?.services || 0}</TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[120px]">{provider._count?.sessions || 0}</TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[120px]">{provider.location}</TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[120px]">
+                                    {provider.qualifications.map((qual, index) => (
+                                        <Badge key={index} variant="secondary">
+                                            {qual}
+                                        </Badge>
+                                    ))}
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[120px]">
+                                    {provider.specializations.map((spec, index) => (
+                                        <Badge key={index} variant="secondary">
+                                            {spec}
+                                        </Badge>
+                                    ))}
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap min-w-[120px]">
+                                    {provider.isVerified ? 'Yes' : 'No'}
+                                </TableCell>
+                                <TableCell className="text-right whitespace-nowrap min-w-[120px]">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" className="h-8 w-8 p-0">

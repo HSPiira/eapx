@@ -50,8 +50,9 @@ export async function GET() {
         return NextResponse.json(
             staff.map((member) => ({
                 id: member.id,
-                fullName: member.profile.fullName,
+                name: member.profile.fullName,
                 email: member.profile.email,
+                companyId: member.clientId,
                 role: member.role,
                 status: member.status,
                 startDate: member.startDate.toISOString(),

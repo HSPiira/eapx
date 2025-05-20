@@ -2,25 +2,16 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { getPaginationParams } from '@/lib/api-utils';
-import { BaseStatus, Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { serviceSelectFields } from '@/lib/select-fields/services';
+import { Prisma } from '@prisma/client';
+import { serviceSelectFields } from '@/lib/select-fields';
 
 export async function GET(request: NextRequest) {
     return withRouteMiddleware(request, async () => {
         const { searchParams } = new URL(request.url);
-        const { page, limit, offset, search, status } = getPaginationParams(searchParams);
-        const categoryId = searchParams.get('categoryId') || undefined;
+        const { page, limit, offset, search } = getPaginationParams(searchParams);
 
-        if (status && status !== 'all') {
-            if (!Object.values(BaseStatus).includes(status as BaseStatus)) {
-                return NextResponse.json({
-                    error: `Invalid status value. Must be one of: ${Object.values(BaseStatus).join(', ')}`,
-                }, { status: 400 });
-            }
-        }
-
-        const where: Prisma.ServiceWhereInput = {
+        const where = {
             deletedAt: null,
             OR: search
                 ? [
@@ -28,11 +19,9 @@ export async function GET(request: NextRequest) {
                     { description: { contains: search, mode: Prisma.QueryMode.insensitive } },
                 ]
                 : undefined,
-            categoryId: categoryId || undefined,
-            status: status && status !== 'all' ? (status as BaseStatus) : undefined,
         };
 
-        const cacheKey = `services:${page}:${limit}:${search}:${status}`;
+        const cacheKey = `services:${page}:${limit}:${search}`;
         const cached = await cache.get(cacheKey);
         if (cached) return NextResponse.json(cached);
 
@@ -69,25 +58,25 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
         }
 
-        if (!body.name || !body.categoryId) {
-            return NextResponse.json({ error: 'Name and category are required' }, { status: 400 });
+        if (!body.name) {
+            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
 
         const newService = await prisma.service.create({
             data: {
                 name: body.name,
                 description: body.description,
-                categoryId: body.categoryId,
-                status: (body.status || 'ACTIVE') as BaseStatus,
-                duration: body.duration,
-                capacity: body.capacity,
-                prerequisites: body.prerequisites,
-                isPublic: body.isPublic ?? true,
-                price: body.price,
                 metadata: body.metadata,
-                serviceProviderId: body.serviceProviderId,
             },
-            select: serviceSelectFields,
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                metadata: true,
+                createdAt: true,
+                updatedAt: true,
+                deletedAt: true,
+            },
         });
 
         await cache.deleteByPrefix('services:');

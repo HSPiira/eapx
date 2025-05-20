@@ -33,6 +33,7 @@ const clientSelectFields = {
     isVerified: true,
     notes: true,
     metadata: true,
+    deletedAt: true,
     createdAt: true,
     updatedAt: true
 };
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
 
         const where: Prisma.ClientWhereInput = {
             deletedAt: null,
+            status: status && status !== 'all' ? (status as BaseStatus) : 'ACTIVE',
             OR: search
                 ? [
                     { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
@@ -104,9 +106,8 @@ export async function GET(request: NextRequest) {
                 ]
                 : undefined,
             ...(industryId && industryId !== 'all' && { industryId: industryId }),
-            status: status && status !== 'all' ? (status as BaseStatus) : undefined,
-            isVerified: isVerified,
-            preferredContactMethod: preferredContactMethod,
+            ...(isVerified !== undefined && { isVerified }),
+            ...(preferredContactMethod && { preferredContactMethod }),
             createdAt: {
                 ...(createdAfter && { gte: createdAfter }),
                 ...(createdBefore && { lte: createdBefore }),
@@ -119,11 +120,33 @@ export async function GET(request: NextRequest) {
             }),
         };
 
+        console.log('Client query where clause:', JSON.stringify(where, null, 2));
+        console.log('Query parameters:', {
+            page,
+            limit,
+            offset,
+            search,
+            status,
+            industryId,
+            isVerified,
+            preferredContactMethod,
+            createdAfter,
+            createdBefore,
+            hasContract,
+            hasStaff
+        });
+
         const cacheKey = `clients:${page}:${limit}:${search}:${status}:${industryId}:${isVerified}:${preferredContactMethod}:${createdAfter}:${createdBefore}:${hasContract}:${hasStaff}`;
+        console.log('Cache key:', cacheKey);
         const cached = await cache.get(cacheKey);
-        if (cached) return NextResponse.json(cached);
+        if (cached) {
+            console.log('Returning cached response');
+            return NextResponse.json(cached);
+        }
 
         const totalCount = await prisma.client.count({ where });
+        console.log('Total count:', totalCount);
+
         const clients = await prisma.client.findMany({
             where,
             select: clientSelectFields,
@@ -131,6 +154,35 @@ export async function GET(request: NextRequest) {
             take: limit,
             orderBy: { createdAt: 'desc' },
         });
+
+        console.log('Found clients:', clients.map(c => ({
+            id: c.id,
+            name: c.name,
+            status: c.status,
+            deletedAt: c.deletedAt,
+            isVerified: c.isVerified,
+            industryId: c.industryId,
+            preferredContactMethod: c.preferredContactMethod,
+            createdAt: c.createdAt
+        })));
+
+        // Let's also check if Minet Uganda exists in the database
+        const minetUganda = await prisma.client.findFirst({
+            where: {
+                name: { contains: 'Minet Uganda', mode: Prisma.QueryMode.insensitive }
+            },
+            select: clientSelectFields
+        });
+        console.log('Minet Uganda details:', minetUganda ? {
+            id: minetUganda.id,
+            name: minetUganda.name,
+            status: minetUganda.status,
+            deletedAt: minetUganda.deletedAt,
+            isVerified: minetUganda.isVerified,
+            industryId: minetUganda.industryId,
+            preferredContactMethod: minetUganda.preferredContactMethod,
+            createdAt: minetUganda.createdAt
+        } : 'Not found');
 
         const response = {
             data: clients,

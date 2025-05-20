@@ -176,7 +176,7 @@ export default function ProvidersPage() {
                         <Button onClick={() => setIsCreateDialogOpen(true)}>Add Provider</Button>
                     </DialogTrigger>
                     <DialogContent
-                        onPointerDownOutside={() => { }}
+                        onPointerDownOutside={e => e.preventDefault()}
                         onEscapeKeyDown={() => { }}
                     >
                         <DialogHeader>
@@ -197,7 +197,7 @@ export default function ProvidersPage() {
                 {editingProvider && (
                     <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                         <DialogContent
-                            onPointerDownOutside={() => { }}
+                            onPointerDownOutside={e => e.preventDefault()}
                             onEscapeKeyDown={() => { }}
                         >
                             <DialogHeader>

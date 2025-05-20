@@ -1,66 +1,85 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
-import { Service } from '@/types/services';
 
-interface ServiceListProps {
-    services: Service[];
+interface Intervention {
+    id: string;
+    name: string;
+    description: string | null;
+    service: {
+        id: string;
+        name: string;
+    };
+    status: string;
+    duration: number | null;
+    capacity: number | null;
+    prerequisites: string | null;
+    isPublic: boolean;
+    price: number | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+    ServiceProvider?: { name: string } | null;
 }
 
-export function ServiceList({ services }: ServiceListProps) {
+interface InterventionListProps {
+    interventions: Intervention[];
+}
+
+export function InterventionList({ interventions }: InterventionListProps) {
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {services.length === 0 ? (
+            {interventions.length === 0 ? (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
-                    <p>No services available</p>
+                    <p>No interventions available</p>
                 </div>
             ) : (
-                services.map((service) => (
-                    <Card key={service.id} className="hover:shadow-lg transition-shadow">
+                interventions.map((intervention) => (
+                    <Card key={intervention.id} className="hover:shadow-lg transition-shadow">
                         <CardHeader>
                             <div className="flex items-center justify-between">
-                                <CardTitle>{service.name}</CardTitle>
-                                <Badge variant={service.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                                    {service.status.toLowerCase()}
+                                <CardTitle>{intervention.name}</CardTitle>
+                                <Badge variant={intervention.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                                    {intervention.status.toLowerCase()}
                                 </Badge>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <CardDescription className="text-base mb-4">
-                                {service.description || 'No description available'}
+                                {intervention.description || 'No description available'}
                             </CardDescription>
                             <div className="space-y-2 text-sm text-muted-foreground">
                                 <div className="flex justify-between">
                                     <span>Category:</span>
-                                    <span>{service.category.name}</span>
+                                    <span>{intervention.service?.name ?? '-'}</span>
                                 </div>
-                                {service.duration && (
+                                {intervention.duration && (
                                     <div className="flex justify-between">
                                         <span>Duration:</span>
-                                        <span>{service.duration} minutes</span>
+                                        <span>{intervention.duration} minutes</span>
                                     </div>
                                 )}
-                                {service.capacity && (
+                                {intervention.capacity && (
                                     <div className="flex justify-between">
                                         <span>Capacity:</span>
-                                        <span>{service.capacity} people</span>
+                                        <span>{intervention.capacity} people</span>
                                     </div>
                                 )}
-                                {service.price && (
+                                {intervention.price && (
                                     <div className="flex justify-between">
                                         <span>Price:</span>
-                                        <span>${service.price.toFixed(2)}</span>
+                                        <span>${intervention.price.toFixed(2)}</span>
                                     </div>
                                 )}
-                                {service.ServiceProvider && (
+                                {intervention.ServiceProvider && (
                                     <div className="flex justify-between">
                                         <span>Provider:</span>
-                                        <span>{service.ServiceProvider.name}</span>
+                                        <span>{intervention.ServiceProvider.name}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between">
                                     <span>Visibility:</span>
-                                    <span>{service.isPublic ? 'Public' : 'Private'}</span>
+                                    <span>{intervention.isPublic ? 'Public' : 'Private'}</span>
                                 </div>
                             </div>
                         </CardContent>

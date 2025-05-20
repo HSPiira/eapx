@@ -1,0 +1,26 @@
+export const interventionSelectFields = {
+    id: true,
+    name: true,
+    description: true,
+    status: true,
+    duration: true,
+    capacity: true,
+    prerequisites: true,
+    isPublic: true,
+    price: true,
+    metadata: true,
+    createdAt: true,
+    updatedAt: true,
+    ServiceProvider: {
+        select: {
+            id: true,
+            name: true,
+            type: true,
+            contactEmail: true,
+            contactPhone: true,
+            location: true,
+            rating: true,
+            isVerified: true,
+        },
+    },
+}; 

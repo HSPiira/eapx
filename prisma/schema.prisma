@@ -367,7 +367,7 @@ model Contract {
 // Service Management Domain
 // =========================================
 
-model ServiceCategory {
+model Service {
   id          String    @id @default(cuid())
   name        String    @unique
   description String?
@@ -376,22 +376,22 @@ model ServiceCategory {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  services Service[]
+  interventions Intervention[]
 
   @@index([deletedAt])
 }
 
-model Service {
-  id            String          @id @default(cuid())
+model Intervention {
+  id            String     @id @default(cuid())
   name          String
   description   String?
-  categoryId    String
-  category      ServiceCategory @relation(fields: [categoryId], references: [id])
-  status        BaseStatus      @default(ACTIVE)
+  serviceId     String
+  service       Service    @relation(fields: [serviceId], references: [id])
+  status        BaseStatus @default(ACTIVE)
   duration      Int?
   capacity      Int?
   prerequisites String?
-  isPublic      Boolean         @default(true)
+  isPublic      Boolean    @default(true)
   price         Float?
   metadata      Json?
   deletedAt     DateTime?
@@ -406,7 +406,7 @@ model Service {
 
   @@index([status])
   @@index([isPublic])
-  @@index([categoryId])
+  @@index([serviceId])
   @@index([deletedAt])
 }
 
@@ -414,7 +414,7 @@ model ServiceAssignment {
   id         String           @id @default(cuid())
   serviceId  String
   contractId String
-  service    Service          @relation(fields: [serviceId], references: [id])
+  service    Intervention     @relation(fields: [serviceId], references: [id])
   contract   Contract         @relation(fields: [contractId], references: [id])
   status     AssignmentStatus @default(PENDING)
   startDate  DateTime
@@ -449,15 +449,38 @@ model ServiceProvider {
   deletedAt       DateTime?
   status          WorkStatus          @default(ACTIVE)
 
-  services Service[]
-  sessions ServiceSession[]
+  interventions     Intervention[]
+  sessions          ServiceSession[]
+  availabilitySlots CounselorAvailability[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  SessionForm SessionForm[]
 
   @@index([type])
   @@index([isVerified])
   @@index([rating])
+  @@index([deletedAt])
+}
+
+model CounselorAvailability {
+  id          String    @id @default(cuid())
+  counselorId String
+  startTime   DateTime
+  endTime     DateTime
+  isAvailable Boolean   @default(true)
+  notes       String?
+  metadata    Json?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  counselor ServiceProvider @relation(fields: [counselorId], references: [id])
+
+  @@index([counselorId])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([isAvailable])
   @@index([deletedAt])
 }
 
@@ -483,9 +506,10 @@ model ServiceSession {
 
   staff           Staff?            @relation(fields: [staffId], references: [id])
   beneficiary     Beneficiary?      @relation(fields: [beneficiaryId], references: [id])
-  service         Service           @relation(fields: [serviceId], references: [id])
+  service         Intervention      @relation(fields: [serviceId], references: [id])
   provider        ServiceProvider   @relation(fields: [providerId], references: [id])
   SessionFeedback SessionFeedback[]
+  forms           SessionForm[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -509,6 +533,30 @@ model SessionFeedback {
 
   session ServiceSession @relation(fields: [sessionId], references: [id])
 
+  @@index([deletedAt])
+}
+
+model SessionForm {
+  id          String    @id @default(cuid())
+  sessionId   String
+  counselorId String
+  formData    Json
+  status      String
+  submittedAt DateTime
+  expiresAt   DateTime
+  metadata    Json?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  session   ServiceSession  @relation(fields: [sessionId], references: [id])
+  counselor ServiceProvider @relation(fields: [counselorId], references: [id])
+
+  @@index([sessionId])
+  @@index([counselorId])
+  @@index([status])
+  @@index([submittedAt])
+  @@index([expiresAt])
   @@index([deletedAt])
 }
 

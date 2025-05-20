@@ -2,27 +2,19 @@ export const serviceSelectFields = {
     id: true,
     name: true,
     description: true,
-    categoryId: true,
-    status: true,
-    duration: true,
-    capacity: true,
-    prerequisites: true,
-    isPublic: true,
-    price: true,
     metadata: true,
     createdAt: true,
     updatedAt: true,
-    category: {
+    interventions: {
         select: {
             id: true,
             name: true,
+            description: true,
+            status: true,
+            duration: true,
+            capacity: true,
+            isPublic: true,
+            price: true,
         },
     },
-    ServiceProvider: {
-        select: {
-            id: true,
-            name: true,
-            type: true,
-        },
-    },
-} as const;
+};

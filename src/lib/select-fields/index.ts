@@ -6,3 +6,4 @@ export * from './feedback';
 export * from './industries';
 export * from './services';
 export * from './session';
+export * from './interventions';

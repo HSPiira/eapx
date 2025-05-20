@@ -59,7 +59,7 @@ export async function GET(
                 ]
                 : undefined,
             status: status && status !== 'all' ? (status as WorkStatus) : undefined,
-            role: role,
+            ...(role && { role }),
             ...(hasBeneficiaries !== undefined && {
                 beneficiaries: hasBeneficiaries ? { some: {} } : { none: {} },
             }),

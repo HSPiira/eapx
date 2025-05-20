@@ -11,26 +11,26 @@ interface Stat {
 
 const stats: Stat[] = [
     {
-        title: "Active Services",
+        title: "Active Interventions",
         value: "12",
         icon: "Briefcase",
-        description: "Currently active wellness programs"
+        description: "Currently active interventions"
     },
     {
-        title: "Total Enrollments",
+        title: "Total Sessions",
         value: "1,234",
         icon: "Users",
-        description: "Employees enrolled in programs"
+        description: "Sessions booked for interventions"
     },
     {
-        title: "Program Completion",
+        title: "Completion Rate",
         value: "85%",
         icon: "BarChart",
-        description: "Average completion rate"
+        description: "Average intervention completion rate"
     }
 ];
 
-export function ServiceStats() {
+export function InterventionStats() {
     return (
         <div className="grid gap-4 md:grid-cols-3">
             {stats.map((stat) => {

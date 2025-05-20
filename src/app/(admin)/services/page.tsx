@@ -12,27 +12,22 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { ServiceForm, type ServiceFormData } from '@/components/admin/services/service-form';
+import { ServiceForm } from '@/components/admin/services/service-form';
+import type { ServiceFormData } from '@/components/admin/services/service-form';
 import { toast } from "sonner"
 
 interface Service {
     id: string;
     name: string;
     description: string | null;
-    status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'ARCHIVED' | 'DELETED';
-    duration: number | null;
-    capacity: number | null;
-    isPublic: boolean;
-    price: number | null;
-    category: {
+    metadata: Record<string, unknown>;
+    deletedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    interventions: Array<{
         id: string;
         name: string;
-    };
-    ServiceProvider?: {
-        id: string;
-        name: string;
-        type: string;
-    } | null;
+    }>;
 }
 
 interface ServicesResponse {
@@ -45,27 +40,12 @@ interface ServicesResponse {
     };
 }
 
-interface Category {
-    id: string;
-    name: string;
-}
-
 async function fetchServices(): Promise<ServicesResponse> {
     const response = await fetch('/api/services', {
         cache: 'no-store'
     });
     if (!response.ok) {
         throw new Error('Failed to fetch services');
-    }
-    return response.json();
-}
-
-async function fetchCategories(): Promise<{ data: Category[] }> {
-    const response = await fetch('/api/services/categories', {
-        cache: 'no-store'
-    });
-    if (!response.ok) {
-        throw new Error('Failed to fetch categories');
     }
     return response.json();
 }
@@ -96,11 +76,6 @@ export default function ServicesPage() {
         queryKey: ['services'],
         queryFn: fetchServices,
         retry: false,
-    });
-
-    const { data: categoriesData } = useQuery({
-        queryKey: ['service-categories'],
-        queryFn: fetchCategories,
     });
 
     const createServiceMutation = useMutation({
@@ -147,7 +122,8 @@ export default function ServicesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Services</h2>
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>
                         <Button>Add New Service</Button>
@@ -160,10 +136,9 @@ export default function ServicesPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <ServiceForm
-                            onSubmitAction={handleSubmit}
+                            onSubmit={handleSubmit}
                             isSubmitting={createServiceMutation.isPending}
                             onCancel={() => setOpen(false)}
-                            categories={categoriesData?.data || []}
                         />
                     </DialogContent>
                 </Dialog>

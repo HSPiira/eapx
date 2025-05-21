@@ -62,9 +62,6 @@ export const POST = withAuth(async (request: Request) => {
                             }
                         },
                         provider: {
-                            include: {
-                                profile: true
-                            }
                         }
                     }
                 }
@@ -97,7 +94,7 @@ export const GET = withAuth(async (request: Request) => {
         }
 
         // Build the where clause
-        const whereClause: unknown = {};
+        const whereClause: Record<string, unknown> = {};
 
         if (sessionId) {
             whereClause.sessionId = sessionId;
@@ -136,9 +133,6 @@ export const GET = withAuth(async (request: Request) => {
                             }
                         },
                         provider: {
-                            include: {
-                                profile: true
-                            }
                         }
                     }
                 }
@@ -148,7 +142,11 @@ export const GET = withAuth(async (request: Request) => {
             }
         });
 
-        return NextResponse.json(forms);
+        const count = await prisma.sessionForm.count({
+            where: whereClause,
+        });
+
+        return NextResponse.json({ forms, count });
     } catch (error) {
         console.error('Error fetching session forms:', error);
         return NextResponse.json(

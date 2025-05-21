@@ -41,4 +41,14 @@ export const sessionSelectFields = {
             },
         },
     },
+    staff: {
+        select: {
+            id: true,
+            profile: {
+                select: {
+                    fullName: true,
+                },
+            },
+        },
+    },
 } as const;

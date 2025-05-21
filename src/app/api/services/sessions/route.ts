@@ -133,8 +133,7 @@ export async function POST(request: NextRequest) {
             // Get the default counseling service
             const counselingService = await prisma.service.findFirst({
                 where: {
-                    name: 'Counseling Session',
-                    status: 'ACTIVE'
+                    name: 'Counseling Session'
                 }
             });
 

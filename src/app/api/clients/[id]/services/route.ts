@@ -55,7 +55,7 @@ export async function GET(
                 : undefined,
             status: status && status !== 'all' ? (status as AssignmentStatus) : undefined,
             service: {
-                categoryId: categoryId,
+                // Remove categoryId filter
             },
             ...(hasSessions !== undefined && {
                 service: {
@@ -74,7 +74,6 @@ export async function GET(
             include: {
                 service: {
                     include: {
-                        category: true,
                         ServiceSession: true,
                     },
                 },
@@ -104,7 +103,7 @@ export async function POST(
     { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
-        const {id} = await params;
+        const { id } = await params;
         let body;
         try {
             body = await request.json();
@@ -160,7 +159,6 @@ export async function POST(
             include: {
                 service: {
                     include: {
-                        category: true,
                         ServiceSession: true,
                     },
                 },

@@ -123,15 +123,11 @@ export async function PATCH(
                 id: id,
             },
             data: {
-                role: validatedData.role,
                 status: validatedData.status,
                 startDate: validatedData.startDate ? new Date(validatedData.startDate) : undefined,
                 endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
                 qualifications: validatedData.qualifications,
                 specializations: validatedData.specializations,
-                emergencyContactName: validatedData.emergencyContactName,
-                emergencyContactPhone: validatedData.emergencyContactPhone,
-                emergencyContactEmail: validatedData.emergencyContactEmail,
             },
             include: {
                 profile: true,

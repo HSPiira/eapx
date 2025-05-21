@@ -1,6 +1,16 @@
-import { PrismaClient, type ServiceSession } from '@prisma/client';
+import { PrismaClient, type ServiceSession, type Staff, type ServiceProvider, type Intervention } from '@prisma/client';
 import type { SessionNotification } from '@/types/session-booking';
 import nodemailer from 'nodemailer';
+
+type ServiceSessionWithRelations = ServiceSession & {
+    staff?: (Staff & {
+        profile: {
+            fullName: string;
+        };
+    }) | null;
+    provider?: ServiceProvider | null;
+    service?: Intervention | null;
+};
 
 const prisma = new PrismaClient();
 
@@ -99,9 +109,9 @@ export class NotificationService {
         }
     }
 
-    private prepareEmailContent(type: SessionNotification['type'], session: ServiceSession) {
+    private prepareEmailContent(type: SessionNotification['type'], session: ServiceSessionWithRelations) {
         const sessionDate = new Date(session.scheduledAt).toLocaleString();
-        const staffName = session.staff?.profile?.name || 'Staff member';
+        const staffName = session.staff?.profile?.fullName || 'Staff member';
         const counselorName = session.provider?.name || 'Counselor';
 
         switch (type) {
@@ -113,7 +123,7 @@ export class NotificationService {
             
             Your counseling session has been confirmed for ${sessionDate}.
             Counselor: ${counselorName}
-            Service: ${session.service.name}
+            Service: ${session.service?.name || ''}
             
             Please arrive 5 minutes before your scheduled time.
             
@@ -130,7 +140,7 @@ export class NotificationService {
             
             This is a reminder that you have a counseling session scheduled for ${sessionDate}.
             Counselor: ${counselorName}
-            Service: ${session.service.name}
+            Service: ${session.service?.name || ''}
             
             Please arrive 5 minutes before your scheduled time.
             
@@ -147,7 +157,7 @@ export class NotificationService {
             
             A session form has been submitted for the session on ${sessionDate}.
             Staff: ${staffName}
-            Service: ${session.service.name}
+            Service: ${session.service?.name || ''}
             
             Please review the form at your earliest convenience.
             

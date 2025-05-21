@@ -90,16 +90,12 @@ export async function PUT(
         const updatedStaff = await prisma.staff.update({
             where: { id: staffId },
             data: {
-                role: body.role,
                 startDate: body.startDate,
                 endDate: body.endDate,
                 status: body.status,
                 qualifications: body.qualifications,
                 specializations: body.specializations,
                 preferredWorkingHours: body.preferredWorkingHours,
-                emergencyContactName: body.emergencyContactName,
-                emergencyContactPhone: body.emergencyContactPhone,
-                emergencyContactEmail: body.emergencyContactEmail,
                 metadata: body.metadata,
             },
             include: {

@@ -8,16 +8,17 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter,
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { StaffForm } from '@/app/(admin)/staff/_components/StaffForm';
-import { Plus, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
+import { StaffFormValues } from '@/app/(admin)/staff/_components/StaffForm';
 
 interface StaffFormModalProps {
     clientId: string;
+    onClose: () => void;
 }
 
 export function StaffFormModal({ clientId }: StaffFormModalProps) {
@@ -25,61 +26,82 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
     const router = useRouter();
     const { toast } = useToast();
 
-    const handleSubmit = async (data: any) => {
+    const handleSubmit = async (data: StaffFormValues) => {
         try {
-            // First create the user and profile
-            const userResponse = await fetch('/api/users', {
+            // 1. Check if user exists by email
+            const userCheckRes = await fetch(`/api/users?email=${encodeURIComponent(data.email)}`);
+            let user, profileId;
+
+            if (userCheckRes.ok) {
+                const existing = await userCheckRes.json();
+                if (existing && existing.id && existing.profileId) {
+                    // User exists, update profile
+                    user = existing;
+                    profileId = existing.profileId;
+
+                    await fetch(`/api/profiles/${profileId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fullName: data.fullName,
+                            phone: data.phone,
+                            // ...other profile fields as needed
+                        }),
+                    });
+                }
+            }
+
+            // 2. If user does not exist, create user (and profile)
+            if (!user || !profileId) {
+                const userRes = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: data.email,
+                        fullName: data.fullName,
+                        phone: data.phone,
+                        // ...other user/profile fields as needed
+                    }),
+                });
+                const newUser = await userRes.json();
+                if (!newUser.id || !newUser.profileId) throw new Error('User/Profile creation failed');
+                user = newUser;
+                profileId = newUser.profileId;
+            }
+
+            // 3. Create staff
+            const staffRes = await fetch(`/api/clients/${clientId}/staff`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: data.email,
-                    fullName: data.fullName,
-                    phone: data.phone,
+                    jobTitle: data.jobTitle,
+                    managementLevel: data.managementLevel,
+                    maritalStatus: data.maritalStatus,
+                    startDate: data.startDate,
+                    endDate: data.endDate,
+                    status: data.status,
+                    qualifications: data.qualifications,
+                    specializations: data.specializations,
+                    preferredWorkingHours: data.preferredWorkingHours,
+                    profileId,
+                    userId: user.id,
+                    // ...other staff fields as needed
                 }),
             });
 
-            if (!userResponse.ok) {
-                throw new Error('Failed to create user');
-            }
-
-            const userData = await userResponse.json();
-
-            // Then create the staff record
-            const staffResponse = await fetch('/api/staff', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    profileId: userData.profileId,
-                    role: data.role,
-                    qualifications: data.qualifications || [],
-                    specializations: data.specializations || [],
-                    emergencyContactName: data.emergencyContactName,
-                    emergencyContactPhone: data.emergencyContactPhone,
-                    emergencyContactEmail: data.emergencyContactEmail,
-                    clientId,
-                }),
-            });
-
-            if (!staffResponse.ok) {
-                throw new Error('Failed to create staff member');
-            }
+            if (!staffRes.ok) throw new Error('Staff creation failed');
 
             toast({
                 title: "Success",
                 description: "Staff member created successfully",
             });
-
             setOpen(false);
             router.refresh();
-        } catch (error) {
+        } catch (error: Error | unknown) {
             console.error('Error creating staff member:', error);
             toast({
                 title: "Error",
-                description: "Failed to create staff member",
+                description: error instanceof Error ? error.message : "Failed to create staff member",
                 variant: "destructive",
             });
         }
@@ -101,23 +123,11 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                    <StaffForm onSubmit={handleSubmit} />
+                    <StaffForm
+                        onSubmit={handleSubmit}
+                        onCancel={() => setOpen(false)}
+                    />
                 </div>
-                <DialogFooter className="">
-                    <Button
-                        variant="outline"
-                        onClick={() => setOpen(false)}
-                        className="mr-2"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="submit"
-                        form="staff-form"
-                    >
-                        Add Staff Member
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

@@ -131,7 +131,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
                 // Create new user
                 const newUser = await prismaClient.user.create({
                     data: {
-                        id: user.id,
+                        // id: user.id,
                         email: user.email,
                         status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
                         emailVerified: new Date(),
@@ -317,8 +317,10 @@ export async function authMiddleware(request: NextRequest) {
     });
 }
 
-export function withAuth(handler: Function) {
-    return async function (request: NextRequest, ...args: any[]) {
+type RequestHandler = (request: NextRequest, ...args: unknown[]) => Promise<NextResponse>;
+
+export function withAuth(handler: RequestHandler) {
+    return async function (request: NextRequest, ...args: unknown[]) {
         const authResponse = await authMiddleware(request);
         if (authResponse.status !== 200) {
             return authResponse;

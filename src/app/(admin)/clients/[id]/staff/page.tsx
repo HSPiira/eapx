@@ -1,64 +1,57 @@
-import React from 'react';
-import { prisma } from '@/lib/prisma';
-import { notFound } from 'next/navigation';
-import { ClientStaffTable } from './client-staff-table';
+'use client';
+
 import { StaffFormModal } from './_components/StaffFormModal';
+import { ClientStaffTable } from './client-staff-table';
+import { useQuery } from '@tanstack/react-query';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { use } from 'react';
 
-type Params = Promise<{ id: string }>;
-
-async function getClientStaff(clientId: string) {
-    const client = await prisma.client.findUnique({
-        where: { id: clientId },
-        select: { name: true }
-    });
-
-    if (!client) {
-        notFound();
-    }
-
-    const staff = await prisma.staff.findMany({
-        where: {
-            clientId,
-            deletedAt: null,
-        },
-        include: {
-            profile: true,
-            client: {
-                select: {
-                    name: true,
-                },
-            },
-        },
-    });
-
-    return {
-        clientName: client.name,
-        staff: staff.map((member) => ({
-            id: member.id,
-            fullName: member.profile.fullName,
-            email: member.profile.email,
-            role: member.role,
-            status: member.status,
-            startDate: member.startDate.toISOString(),
-            client: member.client,
-        })),
-    };
+interface Params {
+    id: string;
 }
 
-export default async function ClientStaffPage({
+async function getClientStaff(clientId: string) {
+    const response = await fetch(`/api/clients/${clientId}/staff`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch staff');
+    }
+    return response.json();
+}
+
+export default function ClientStaffPage({
     params,
 }: {
-    params: Params;
+    params: Promise<Params>;
 }) {
-    const { id } = await params;
-    const { clientName, staff } = await getClientStaff(id);
+    const resolvedParams = use(params);
+    const { id } = resolvedParams;
+    const { data, isLoading, error } = useQuery({
+        queryKey: ['client-staff', id],
+        queryFn: () => getClientStaff(id),
+    });
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center min-h-[400px]">
+                <LoadingSpinner className="w-8 h-8" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="text-center py-8">
+                <p className="text-red-500 mb-4">Failed to load staff</p>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto">
             <div className="flex justify-end mb-6">
-                <StaffFormModal clientId={id} />
+                <StaffFormModal clientId={id} onClose={() => { }} />
             </div>
-            <ClientStaffTable staff={staff} />
+            <ClientStaffTable staff={data?.data || []} />
         </div>
     );
 } 

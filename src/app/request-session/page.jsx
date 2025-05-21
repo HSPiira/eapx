@@ -1,3 +1,4 @@
+'use client'
 import { useEffect, useState } from "react";
 import { SessionRequestForm } from "@/components/session-booking/SessionRequestForm";
 

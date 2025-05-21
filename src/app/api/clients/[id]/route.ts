@@ -4,6 +4,7 @@ import { cache } from '@/lib/cache';
 import { BaseStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { clientSelectFields } from '@/lib/select-fields/clients';
+import { clientSchema } from '@/lib/validation/clients';
 
 type Params = Promise<{ id: string }>;
 
@@ -36,7 +37,7 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async () => {
+    return withRouteMiddleware(request, async ({ }) => {
         const { id } = await params;
         let body;
         try {
@@ -51,6 +52,15 @@ export async function PUT(
 
         if (!existingClient) {
             return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+        }
+
+        // Validate the request body
+        const validationResult = clientSchema.safeParse(body);
+        if (!validationResult.success) {
+            return NextResponse.json({
+                error: 'Validation failed',
+                details: validationResult.error.errors,
+            }, { status: 400 });
         }
 
         const updatedClient = await prisma.client.update({

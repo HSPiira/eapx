@@ -5,7 +5,6 @@ import { getPaginationParams } from '@/lib/api-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma, SessionStatus } from '@prisma/client';
 import { sessionSelectFields } from '@/lib/select-fields';
-import type { SessionRequest } from '@/types/session-booking';
 
 export async function GET(request: NextRequest) {
     return withRouteMiddleware(request, async () => {

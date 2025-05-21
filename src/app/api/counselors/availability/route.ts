@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import type { CounselorAvailability } from '@/types/session-booking';
 import { withAuth } from '@/middleware/auth';
-
+import { Prisma } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const POST = withAuth(async (request: Request) => {
@@ -51,14 +51,10 @@ export const POST = withAuth(async (request: Request) => {
                 endTime: new Date(availabilityData.endTime),
                 isAvailable: availabilityData.isAvailable,
                 notes: availabilityData.notes,
-                metadata: availabilityData.metadata
+                // metadata: availabilityData.metadata as unknown as Prisma.JsonNull,
             },
             include: {
-                counselor: {
-                    include: {
-                        profile: true
-                    }
-                }
+                counselor: true
             }
         });
 
@@ -89,7 +85,7 @@ export const GET = withAuth(async (request: Request) => {
         }
 
         // Build the where clause
-        const whereClause: any = {
+        const whereClause: Prisma.CounselorAvailabilityWhereInput = {
             deletedAt: null
         };
 
@@ -125,11 +121,7 @@ export const GET = withAuth(async (request: Request) => {
         const availability = await prisma.counselorAvailability.findMany({
             where: whereClause,
             include: {
-                counselor: {
-                    include: {
-                        profile: true
-                    }
-                }
+                counselor: true
             },
             orderBy: {
                 startTime: 'asc'

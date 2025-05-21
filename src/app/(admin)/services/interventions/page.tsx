@@ -35,74 +35,9 @@ interface Intervention {
     updatedAt: string;
 }
 
-interface InterventionsResponse {
-    data: Intervention[];
-    metadata: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-    };
-}
-
 interface Category {
     id: string;
     name: string;
-}
-
-async function fetchInterventions(): Promise<InterventionsResponse> {
-    const response = await fetch('/api/services/interventions');
-    if (!response.ok) {
-        throw new Error('Failed to fetch interventions');
-    }
-    return response.json();
-}
-
-async function createIntervention(data: InterventionFormData): Promise<Intervention> {
-    const response = await fetch('/api/services/interventions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create intervention');
-    }
-
-    return response.json();
-}
-
-async function updateIntervention({ id, ...data }: InterventionFormData & { id: string }) {
-    const response = await fetch(`/api/services/interventions/${id}`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update intervention');
-    }
-
-    return response.json();
-}
-
-async function deleteIntervention(id: string) {
-    const response = await fetch(`/api/services/interventions/${id}`, {
-        method: 'DELETE',
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete intervention');
-    }
-
-    return response.json();
 }
 
 async function fetchCategories(): Promise<{ data: Category[] }> {
@@ -113,10 +48,52 @@ async function fetchCategories(): Promise<{ data: Category[] }> {
     return response.json();
 }
 
+async function createIntervention(data: unknown): Promise<unknown> {
+    const response = await fetch('/api/services/interventions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create intervention');
+    }
+    return response.json();
+}
+
+async function updateIntervention(data: unknown): Promise<unknown> {
+    const { id, ...rest } = data as { id: string };
+    const response = await fetch(`/api/services/interventions/${id}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(rest),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update intervention');
+    }
+    return response.json();
+}
+
+async function deleteIntervention(id: unknown): Promise<unknown> {
+    const response = await fetch(`/api/services/interventions/${id}`, {
+        method: 'DELETE',
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete intervention');
+    }
+    return response.json();
+}
+
 export default function InterventionsPage() {
     const [open, setOpen] = React.useState(false);
     const queryClient = useQueryClient();
-    const { data, isLoading, refetch } = useQuery({
+    const { data, isLoading } = useQuery({
         queryKey: ['interventions'],
         queryFn: async () => {
             const res = await fetch('/api/services/interventions');
@@ -174,9 +151,20 @@ export default function InterventionsPage() {
     }, [createInterventionMutation]);
 
     const handleEdit = React.useCallback((intervention: Intervention) => {
-        // TODO: Implement edit modal
-        console.log('Edit intervention:', intervention);
-    }, []);
+        updateInterventionMutation.mutate({
+            id: intervention.id,
+            name: intervention.name,
+            description: intervention.description || '',
+            serviceId: intervention.service.id,
+            status: intervention.status as "ACTIVE" | "INACTIVE" | "PENDING" | "ARCHIVED",
+            duration: intervention.duration || 0,
+            capacity: intervention.capacity || 0,
+            prerequisites: intervention.prerequisites || '',
+            isPublic: intervention.isPublic,
+            price: intervention.price || 0,
+            metadata: intervention.metadata
+        });
+    }, [updateInterventionMutation]);
 
     const handleDelete = React.useCallback((intervention: Intervention) => {
         if (window.confirm(`Are you sure you want to delete the intervention "${intervention.name}"?`)) {

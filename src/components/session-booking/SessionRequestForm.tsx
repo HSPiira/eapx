@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,17 +15,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
 import { AvailabilityPicker } from './AvailabilityPicker';
 import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ChevronsUpDown, Check, Plus } from 'lucide-react';
+import { ChevronsUpDown, Check } from 'lucide-react';
 
 const sessionRequestSchema = z.object({
     companyId: z.string().min(1, 'Company is required'),
@@ -46,7 +44,7 @@ const sessionRequestSchema = z.object({
     notes: z.string().optional(),
 });
 
-type SessionRequestFormData = z.infer<typeof sessionRequestSchema>;
+export type SessionRequestFormData = z.infer<typeof sessionRequestSchema>;
 
 interface Company {
     id: string;
@@ -64,6 +62,11 @@ interface Counselor {
     id: string;
     name: string;
     email: string;
+}
+
+interface Beneficiary {
+    id: string;
+    name: string;
 }
 
 interface SessionRequestFormProps {
@@ -104,20 +107,7 @@ export function SessionRequestForm({
     const [selfOrBeneficiary, setSelfOrBeneficiary] = React.useState<'self' | 'beneficiary'>('self');
     const [staffOpen, setStaffOpen] = React.useState(false);
     const [selectedStaff, setSelectedStaff] = React.useState<string>('');
-    const [showAddBeneficiary, setShowAddBeneficiary] = React.useState(false);
-    const [newBeneficiary, setNewBeneficiary] = React.useState({ name: '', gender: '', relation: '', dob: '', notes: '' });
     const [filteredStaff, setFilteredStaff] = React.useState<Staff[]>([]);
-    const genderOptions = [
-        { id: 'male', label: 'Male' },
-        { id: 'female', label: 'Female' },
-        { id: 'other', label: 'Other' },
-    ];
-    const relationOptions = [
-        { id: 'spouse', label: 'Spouse' },
-        { id: 'child', label: 'Child' },
-        { id: 'parent', label: 'Parent' },
-        { id: 'other', label: 'Other' },
-    ];
     const [notes, setNotes] = React.useState('');
     const [selectedCounselor, setSelectedCounselor] = React.useState<string>('');
     const [counselorOpen, setCounselorOpen] = React.useState(false);
@@ -130,51 +120,16 @@ export function SessionRequestForm({
     const [companySessionTypeOpen, setCompanySessionTypeOpen] = React.useState(false);
     const [selectedBeneficiary, setSelectedBeneficiary] = React.useState('');
     const [beneficiaryOpen, setBeneficiaryOpen] = React.useState(false);
-    const [beneficiaries, setBeneficiaries] = React.useState<any[]>([]);
+    const [beneficiaries] = React.useState<Beneficiary[]>([]);
 
     const {
-        register,
         handleSubmit,
         setValue,
-        watch,
-        formState: { errors },
     } = useForm<SessionRequestFormData>({
         resolver: zodResolver(sessionRequestSchema),
     });
 
-    const sessionMethod = watch('sessionMethod');
     const selectedCompanyObj = companies.find(c => c.id === selectedCompany);
-
-    const handleCompanyChange = (companyId: string) => {
-        setSelectedCompany(companyId);
-        setValue('companyId', companyId);
-        setValue('staffId', ''); // Reset staff selection
-    };
-
-    const handleTimeSelect = (date: Date, startTime: string) => {
-        setSelectedDate(date);
-        // Calculate endTime as 1 hour after startTime
-        const [startHour, startMinute] = startTime.split(":").map(Number);
-        const end = new Date(date);
-        end.setHours(startHour);
-        end.setMinutes(startMinute + 60); // add 60 minutes
-        const endHour = end.getHours().toString().padStart(2, '0');
-        const endMinute = end.getMinutes().toString().padStart(2, '0');
-        const endTime = `${endHour}:${endMinute}`;
-        setSelectedTime({ start: startTime, end: endTime });
-        setValue('date', date);
-        setValue('startTime', startTime);
-        setValue('endTime', endTime);
-    };
-
-    const onFormSubmit = async (data: SessionRequestFormData) => {
-        try {
-            await onSubmit(data);
-            toast.success('Session request submitted successfully');
-        } catch (error) {
-            toast.error('Failed to submit session request');
-        }
-    };
 
     // Add step titles
     const stepTitles = [
@@ -584,11 +539,13 @@ export function SessionRequestForm({
                                     <Calendar
                                         mode="single"
                                         selected={selectedDate}
-                                        onSelect={date => {
-                                            setSelectedDate(date);
-                                            setSelectedTime(undefined); // reset time when date changes
+                                        onSelect={(date) => {
+                                            if (date instanceof Date) {
+                                                setSelectedDate(date);
+                                                setSelectedTime(undefined);
+                                            }
                                         }}
-                                        disabled={date => {
+                                        disabled={(date) => {
                                             const today = new Date();
                                             today.setHours(0, 0, 0, 0);
                                             return date < today;
@@ -603,9 +560,9 @@ export function SessionRequestForm({
                     {selectedCounselor && selectedDate && (
                         <div className="mt-4">
                             <AvailabilityPicker
-                                counselorId={selectedCounselor}
                                 selectedDate={selectedDate}
                                 selectedTimeSlot={selectedTimeSlot}
+                                className="mt-4"
                                 onTimeSelect={(date, startTime) => {
                                     setSelectedDate(date);
                                     setSelectedTimeSlot(startTime);

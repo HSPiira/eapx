@@ -35,7 +35,45 @@ const clientSelectFields = {
     metadata: true,
     deletedAt: true,
     createdAt: true,
-    updatedAt: true
+    updatedAt: true,
+    staff: {
+        where: {
+            deletedAt: null
+        },
+        select: {
+            id: true,
+            jobTitle: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            profile: {
+                select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                    dob: true,
+                    gender: true,
+                    nationality: true,
+                    address: true,
+                    idNumber: true,
+                    passportNumber: true,
+                    idType: true,
+                    bloodType: true,
+                    allergies: true,
+                    medicalConditions: true,
+                    dietaryRestrictions: true,
+                    accessibilityNeeds: true,
+                    emergencyContactName: true,
+                    emergencyContactPhone: true,
+                    emergencyContactEmail: true,
+                    preferredLanguage: true,
+                    preferredContactMethod: true,
+                    metadata: true
+                }
+            }
+        }
+    }
 };
 
 // Create Zod enum from Prisma enum

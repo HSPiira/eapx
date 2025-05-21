@@ -2,9 +2,10 @@
 
 import { DataTable } from "@/components/ui/data-table"
 import { columns } from "./columns"
+import { Staff } from "./columns"
 
 interface StaffTableProps {
-    data: any[]
+    data: Staff[]
 }
 
 export function StaffTable({ data }: StaffTableProps) {

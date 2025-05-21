@@ -1,35 +1,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { StaffRole, WorkStatus } from '@prisma/client';
+import { WorkStatus, ManagementLevel, MaritalStatus } from '@prisma/client';
 
 const staffSchema = z.object({
     profileId: z.string().min(1, "Profile ID is required"),
-    role: z.nativeEnum(StaffRole),
+    jobTitle: z.string().min(1, "Job title is required"),
     status: z.nativeEnum(WorkStatus).default(WorkStatus.ACTIVE),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
     qualifications: z.array(z.string()),
     specializations: z.array(z.string()),
-    emergencyContactName: z.string().optional(),
-    emergencyContactPhone: z.string().optional(),
-    emergencyContactEmail: z.string().email("Invalid email address").optional(),
     clientId: z.string().min(1, "Client ID is required"),
+    managementLevel: z.nativeEnum(ManagementLevel).default(ManagementLevel.JUNIOR),
+    maritalStatus: z.nativeEnum(MaritalStatus).default(MaritalStatus.SINGLE),
 });
 
-type StaffMember = {
-    id: string;
-    profile: {
-        fullName: string;
-        email: string | null;
-    };
-    role: StaffRole;
-    status: WorkStatus;
-    startDate: Date;
-    client: {
-        name: string;
-    };
-};
 
 export async function GET() {
     try {
@@ -53,7 +39,7 @@ export async function GET() {
                 name: member.profile.fullName,
                 email: member.profile.email,
                 companyId: member.clientId,
-                role: member.role,
+                jobTitle: member.jobTitle,
                 status: member.status,
                 startDate: member.startDate.toISOString(),
                 client: member.client,
@@ -96,18 +82,18 @@ export async function POST(request: Request) {
         // Create the staff record using the existing profile
         const staff = await prisma.staff.create({
             data: {
-                role: body.role,
+                jobTitle: body.jobTitle,
                 status: body.status,
                 startDate: body.startDate ? new Date(body.startDate) : new Date(),
                 endDate: body.endDate ? new Date(body.endDate) : null,
                 qualifications: body.qualifications,
                 specializations: body.specializations,
-                emergencyContactName: body.emergencyContactName,
-                emergencyContactPhone: body.emergencyContactPhone,
-                emergencyContactEmail: body.emergencyContactEmail,
                 profileId: profile.id,
                 clientId: body.clientId,
                 userId: profile.userId,
+                companyId: body.clientId,
+                managementLevel: body.managementLevel,
+                maritalStatus: body.maritalStatus,
             },
             include: {
                 profile: true,
@@ -123,7 +109,7 @@ export async function POST(request: Request) {
             id: staff.id,
             fullName: staff.profile.fullName,
             email: staff.profile.email,
-            role: staff.role,
+            jobTitle: staff.jobTitle,
             status: staff.status,
             startDate: staff.startDate.toISOString(),
             client: staff.client,

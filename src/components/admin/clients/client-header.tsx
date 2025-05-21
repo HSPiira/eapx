@@ -2,26 +2,19 @@
 'use client';
 
 import React from 'react';
-import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 
-export function ClientHeader() {
-    const router = useRouter();
+interface ClientHeaderProps {
+    onAddClick: () => void;
+}
 
+export function ClientHeader({ onAddClick }: ClientHeaderProps) {
     return (
         <div className="flex justify-between items-center">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Clients</h1>
-                <p className="text-muted-foreground">
-                    Manage and monitor your client organizations
-                </p>
-            </div>
-            <Button
-                onClick={() => router.push('/clients/new')}
-                className="flex items-center gap-2"
-            >
-                <Plus className="h-4 w-4" />
+            <h1 className="text-3xl font-bold">Clients</h1>
+            <Button onClick={onAddClick}>
+                <Plus className="w-4 h-4 mr-2" />
                 Add Client
             </Button>
         </div>

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui';
-import { SessionRequestForm } from '@/components/session-booking/SessionRequestForm';
+import { SessionRequestForm, type SessionRequestFormData } from '@/components/session-booking/SessionRequestForm';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 
@@ -44,7 +44,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         try {
                             return { ok: true, data: JSON.parse(text) };
                         } catch (e) {
-                            console.error('Failed to parse sessions response:', text);
+                            console.error('Failed to parse sessions response:', e);
                             throw new Error('Invalid JSON from sessions API');
                         }
                     }),
@@ -54,7 +54,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         try {
                             return { ok: true, data: JSON.parse(text) };
                         } catch (e) {
-                            console.error('Failed to parse clients response:', text);
+                            console.error('Failed to parse clients response:', e);
                             throw new Error('Invalid JSON from clients API');
                         }
                     }),
@@ -64,7 +64,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         try {
                             return { ok: true, data: JSON.parse(text) };
                         } catch (e) {
-                            console.error('Failed to parse providers response:', text);
+                            console.error('Failed to parse providers response:', e);
                             throw new Error('Invalid JSON from providers API');
                         }
                     }),
@@ -74,7 +74,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         try {
                             return { ok: true, data: JSON.parse(text) };
                         } catch (e) {
-                            console.error('Failed to parse staff response:', text);
+                            console.error('Failed to parse staff response:', e);
                             throw new Error('Invalid JSON from staff API');
                         }
                     }),
@@ -84,15 +84,15 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                 setCompanies(companiesRes.data.data || companiesRes.data);
                 setCounselors(counselorsRes.data.data || counselorsRes.data);
                 setStaff(staffRes.data.data || staffRes.data);
-            } catch (error: any) {
+            } catch (error) {
                 console.error('Failed to load data:', error);
-                toast.error(`Failed to load data: ${error.message}`);
+                toast.error(`Failed to load data: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
             }
         }
         loadData();
     }, []);
 
-    const handleRequestSession = async (data: any) => {
+    const handleRequestSession = async (data: SessionRequestFormData) => {
         try {
             setIsLoading(true);
             const res = await fetch('/api/services/sessions', {
@@ -104,10 +104,20 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
             toast.success('Session request submitted!');
             setModalOpen(false);
         } catch (err) {
-            toast.error('Failed to submit session request');
+            toast.error('Failed to submit session request', {
+                description: err instanceof Error ? err.message : 'An unknown error occurred',
+            });
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handlePointerDownOutside = (event: Event) => {
+        event.preventDefault();
+    };
+
+    const handleEscapeKeyDown = (event: KeyboardEvent) => {
+        event.preventDefault();
     };
 
     return (
@@ -124,7 +134,10 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         <DialogTrigger asChild>
                             <Button>Request Session</Button>
                         </DialogTrigger>
-                        <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+                        <DialogContent
+                            onPointerDownOutside={handlePointerDownOutside}
+                            onEscapeKeyDown={handleEscapeKeyDown}
+                        >
                             <DialogHeader>
                                 <DialogTitle>Request a Session</DialogTitle>
                                 <DialogDescription>

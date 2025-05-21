@@ -6,20 +6,26 @@ import { ClientHeader, ClientFilters, ClientStats, ClientList } from '@/componen
 import { Button, LoadingSpinner } from '@/components/ui';
 import { useQuery } from '@tanstack/react-query';
 import { BaseStatus, ContactMethod } from '@prisma/client';
+import { AddClientModal } from '@/components/admin/clients/add-client-modal';
 
 interface Client {
     id: string;
     name: string;
-    email: string;
+    email: string | null;
+    phone: string | null;
+    website: string | null;
     industry: {
         id: string;
         name: string;
         code: string;
-    };
+    } | null;
     status: string;
     isVerified: boolean;
     activeContracts: number;
     totalStaff: number;
+    contactPerson: string | null;
+    preferredContactMethod: string | null;
+    timezone: string | null;
     updatedAt: Date;
 }
 
@@ -88,6 +94,7 @@ async function fetchClientStats(filters: ClientFiltersState): Promise<ClientStat
 }
 
 export default function ClientsPage() {
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [filters, setFilters] = useState<ClientFiltersState>({
         search: '',
         status: 'all',
@@ -106,7 +113,7 @@ export default function ClientsPage() {
         retry: false,
     });
 
-    const { data: stats} = useQuery<ClientStatsResponse>({
+    const { data: stats } = useQuery<ClientStatsResponse>({
         queryKey: ['client-stats', { industryId: filters.industryId }], // Include relevant filters in query key for stats
         queryFn: () => fetchClientStats(filters),
         retry: false,
@@ -129,7 +136,7 @@ export default function ClientsPage() {
 
     return (
         <div className="container mx-auto p-6 space-y-6">
-            <ClientHeader />
+            <ClientHeader onAddClick={() => setIsAddModalOpen(true)} />
             <ClientStats stats={stats} />
             <ClientFilters onFilterChangeAction={handleFilterChange} currentFilters={filters} />
 
@@ -145,6 +152,15 @@ export default function ClientsPage() {
             ) : (
                 <ClientList clients={clients?.data || []} />
             )}
+
+            <AddClientModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onSuccess={() => {
+                    refetchClients();
+                    setIsAddModalOpen(false);
+                }}
+            />
         </div>
     );
 }

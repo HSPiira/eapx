@@ -37,7 +37,6 @@ export async function GET(
             include: {
                 service: {
                     include: {
-                        category: true,
                         ServiceSession: true,
                     },
                 },
@@ -101,7 +100,6 @@ export async function PUT(
             include: {
                 service: {
                     include: {
-                        category: true,
                         ServiceSession: true,
                     },
                 },

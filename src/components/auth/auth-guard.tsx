@@ -1,14 +1,14 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { isPublicPath } from '@/config/auth';
+import { useSession } from 'next-auth/react';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    const { data: session, status } = useSession();
     const router = useRouter();
     const pathname = usePathname();
+    const { status } = useSession();
 
     useEffect(() => {
         // Check if the current path is public
@@ -21,14 +21,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         }
 
         // If the path is not public and there's no session, redirect to login
-        if (!isPathPublic && status === 'unauthenticated') {
+        if (status === 'unauthenticated' && !isPathPublic) {
             const callbackUrl = encodeURIComponent(pathname);
             router.push(`/auth/login?callbackUrl=${callbackUrl}`);
         }
-    }, [status, pathname, router]);
+    }, [router, pathname, status]);
 
     // Show nothing while checking authentication
-    if (status === 'loading') {
+    if (!pathname || status === 'loading') {
         return null;
     }
 
@@ -43,10 +43,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     // If authenticated, show the protected content
-    if (status === 'authenticated') {
-        return <>{children}</>;
-    }
-
-    // Show nothing while redirecting
-    return null;
+    return <>{children}</>;
 } 

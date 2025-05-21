@@ -7,26 +7,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 // Create Zod enums from Prisma enums
-const staffRoleEnum = z.enum(Object.values(StaffRole) as [string, ...string[]]);
-const workStatusEnum = z.enum(Object.values(WorkStatus) as [string, ...string[]]);
 
 // Define Params type for route handlers
 type Params = Promise<{ id: string }>;
 
 // Validation schema for staff creation/update
-const staffSchema = z.object({
+const createStaffSchema = z.object({
     profileId: z.string(),
-    role: staffRoleEnum,
-    startDate: z.string().transform(str => new Date(str)),
-    endDate: z.string().transform(str => new Date(str)).optional().nullable(),
-    status: workStatusEnum.optional(),
-    qualifications: z.array(z.string()),
-    specializations: z.array(z.string()),
-    preferredWorkingHours: z.record(z.unknown()).optional().nullable(),
-    emergencyContactName: z.string().optional().nullable(),
-    emergencyContactPhone: z.string().optional().nullable(),
-    emergencyContactEmail: z.string().email().optional().nullable(),
-    metadata: z.record(z.unknown()).optional().nullable(),
+    jobTitle: z.string(),
+    companyId: z.string().optional(),
+    managementLevel: z.enum(['JUNIOR', 'MID', 'SENIOR', 'EXECUTIVE', 'OTHER']).optional(),
+    maritalStatus: z.enum(['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']).optional(),
+    startDate: z.string().transform((val) => new Date(val)),
+    endDate: z.string().transform((val) => new Date(val)).optional(),
+    status: z.enum(['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED']).optional(),
+    qualifications: z.array(z.string()).optional(),
+    specializations: z.array(z.string()).optional(),
+    preferredWorkingHours: z.any().optional(),
+    metadata: z.any().optional(),
 });
 
 export async function GET(
@@ -73,7 +71,30 @@ export async function GET(
         const staff = await prisma.staff.findMany({
             where,
             include: {
-                profile: true,
+                profile: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        preferredName: true,
+                        email: true,
+                        phone: true,
+                        dob: true,
+                        gender: true,
+                        address: true,
+                        nationality: true,
+                        bloodType: true,
+                        allergies: true,
+                        medicalConditions: true,
+                        dietaryRestrictions: true,
+                        accessibilityNeeds: true,
+                        emergencyContactName: true,
+                        emergencyContactPhone: true,
+                        emergencyContactEmail: true,
+                        preferredLanguage: true,
+                        preferredContactMethod: true,
+                        metadata: true
+                    }
+                },
                 beneficiaries: true,
                 ServiceSession: true,
             },
@@ -111,7 +132,7 @@ export async function POST(
         }
 
         // Validate request body
-        const validationResult = staffSchema.safeParse(body);
+        const validationResult = createStaffSchema.safeParse(body);
         if (!validationResult.success) {
             return NextResponse.json({
                 error: 'Validation failed',
@@ -121,7 +142,7 @@ export async function POST(
 
         // Check if profile exists
         const profile = await prisma.profile.findUnique({
-            where: { id: body.profileId },
+            where: { id: validationResult.data.profileId },
         });
 
         if (!profile) {
@@ -140,21 +161,44 @@ export async function POST(
             data: {
                 clientId: id,
                 userId: profile.userId,
-                profileId: body.profileId,
-                role: body.role,
-                startDate: body.startDate,
-                endDate: body.endDate,
-                status: body.status || 'ACTIVE',
-                qualifications: body.qualifications,
-                specializations: body.specializations,
-                preferredWorkingHours: body.preferredWorkingHours,
-                emergencyContactName: body.emergencyContactName,
-                emergencyContactPhone: body.emergencyContactPhone,
-                emergencyContactEmail: body.emergencyContactEmail,
-                metadata: body.metadata,
+                profileId: validationResult.data.profileId,
+                jobTitle: validationResult.data.jobTitle,
+                companyId: validationResult.data.companyId || id,
+                managementLevel: validationResult.data.managementLevel || 'JUNIOR',
+                maritalStatus: validationResult.data.maritalStatus || 'SINGLE',
+                startDate: validationResult.data.startDate,
+                endDate: validationResult.data.endDate,
+                status: validationResult.data.status || 'ACTIVE',
+                qualifications: validationResult.data.qualifications || [],
+                specializations: validationResult.data.specializations || [],
+                preferredWorkingHours: validationResult.data.preferredWorkingHours,
+                metadata: validationResult.data.metadata,
             },
             include: {
-                profile: true,
+                profile: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        preferredName: true,
+                        email: true,
+                        phone: true,
+                        dob: true,
+                        gender: true,
+                        address: true,
+                        nationality: true,
+                        bloodType: true,
+                        allergies: true,
+                        medicalConditions: true,
+                        dietaryRestrictions: true,
+                        accessibilityNeeds: true,
+                        emergencyContactName: true,
+                        emergencyContactPhone: true,
+                        emergencyContactEmail: true,
+                        preferredLanguage: true,
+                        preferredContactMethod: true,
+                        metadata: true
+                    }
+                },
                 beneficiaries: true,
                 ServiceSession: true,
             },

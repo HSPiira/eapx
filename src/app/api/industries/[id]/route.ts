@@ -2,7 +2,6 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '@/lib/auth-utils';
 import { industrySelectFields } from '@/lib/select-fields';
 
 type Params = Promise<{ id: string }>;
@@ -12,15 +11,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async ({ session }) => {
-        // Authorization - Check if user is admin
-        if (!(await isAdmin(session))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Admin access required' },
-                { status: 403 }
-            );
-        }
-
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         const cacheKey = `industry:${id}`;
@@ -46,15 +37,7 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async ({ session }) => {
-        // Authorization - Check if user is admin
-        if (!(await isAdmin(session))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Admin access required' },
-                { status: 403 }
-            );
-        }
-
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         let body;
@@ -113,15 +96,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Params }
 ) {
-    return withRouteMiddleware(request, async ({ session }) => {
-        // Authorization - Check if user is admin
-        if (!(await isAdmin(session))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Admin access required' },
-                { status: 403 }
-            );
-        }
-
+    return withRouteMiddleware(request, async () => {
         const { id } = await params;
 
         try {

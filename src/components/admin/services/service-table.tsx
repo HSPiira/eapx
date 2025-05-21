@@ -9,9 +9,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Button } from '@/components/ui';
-import { Input } from "@/components/ui/input";
-import { Search, ArrowUpDown } from 'lucide-react';
 import { ServiceDetailsCard } from './service-details-card';
 
 interface Service {
@@ -35,9 +32,9 @@ interface ServiceTableProps {
 }
 
 export function ServiceTable({ services = [], onEdit, onDelete }: ServiceTableProps) {
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [sortField, setSortField] = React.useState<keyof Service>('name');
-    const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
+    const [searchQuery] = React.useState('');
+    const [sortField] = React.useState<keyof Service>('name');
+    const [sortDirection] = React.useState<'asc' | 'desc'>('asc');
     const [selectedService, setSelectedService] = React.useState<Service | null>(null);
 
     const filteredServices = React.useMemo(() => {
@@ -49,8 +46,8 @@ export function ServiceTable({ services = [], onEdit, onDelete }: ServiceTablePr
 
     const sortedServices = React.useMemo(() => {
         return [...filteredServices].sort((a, b) => {
-            let aValue = a[sortField];
-            let bValue = b[sortField];
+            const aValue = a[sortField];
+            const bValue = b[sortField];
 
             // Handle null/undefined values
             if (aValue == null && bValue == null) return 0;

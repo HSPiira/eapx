@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 
@@ -17,7 +14,6 @@ interface TimeSlot {
 
 interface AvailabilityPickerProps {
     onTimeSelect: (date: Date, startTime: string) => void;
-    counselorId: string;
     selectedDate?: Date;
     selectedTimeSlot?: string | null;
     className?: string;
@@ -25,7 +21,6 @@ interface AvailabilityPickerProps {
 
 export function AvailabilityPicker({
     onTimeSelect,
-    counselorId,
     selectedDate,
     selectedTimeSlot,
     className

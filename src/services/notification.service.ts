@@ -1,4 +1,4 @@
-import { PrismaClient, type ActionType } from '@prisma/client';
+import { PrismaClient, type ServiceSession } from '@prisma/client';
 import type { SessionNotification } from '@/types/session-booking';
 import nodemailer from 'nodemailer';
 
@@ -99,7 +99,7 @@ export class NotificationService {
         }
     }
 
-    private prepareEmailContent(type: SessionNotification['type'], session: any) {
+    private prepareEmailContent(type: SessionNotification['type'], session: ServiceSession) {
         const sessionDate = new Date(session.scheduledAt).toLocaleString();
         const staffName = session.staff?.profile?.name || 'Staff member';
         const counselorName = session.provider?.name || 'Counselor';

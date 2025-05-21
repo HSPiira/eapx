@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { interventionSelectFields } from '@/lib/select-fields';
-import { Prisma, BaseStatus } from '@prisma/client';
+import { BaseStatus } from '@prisma/client';
 
 type Params = Promise<{ id: string }>;
 

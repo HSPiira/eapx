@@ -21,6 +21,21 @@ const beneficiaryUpdateSchema = z.object({
     lastServiceDate: z.string().transform(str => new Date(str)).optional().nullable(),
     preferredLanguage: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
+    profile: z.object({
+        fullName: z.string().min(2, 'Name must be at least 2 characters').optional(),
+        email: z.string().email('Invalid email address').optional().nullable(),
+        phone: z.string().optional().nullable(),
+        dob: z.string().transform(str => new Date(str)).optional().nullable(),
+        gender: z.string().optional().nullable(),
+        nationality: z.string().optional().nullable(),
+        address: z.string().optional().nullable(),
+        emergencyContactName: z.string().optional().nullable(),
+        emergencyContactPhone: z.string().optional().nullable(),
+        emergencyContactEmail: z.string().email('Invalid email address').optional().nullable(),
+        medicalConditions: z.array(z.string()).optional(),
+        allergies: z.array(z.string()).optional(),
+        bloodType: z.string().optional().nullable(),
+    }).optional(),
 });
 
 export async function GET(
@@ -39,7 +54,25 @@ export async function GET(
                 deletedAt: null,
             },
             include: {
-                profile: true,
+                profile: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        phone: true,
+                        dob: true,
+                        gender: true,
+                        nationality: true,
+                        address: true,
+                        emergencyContactName: true,
+                        emergencyContactPhone: true,
+                        emergencyContactEmail: true,
+                        medicalConditions: true,
+                        allergies: true,
+                        bloodType: true,
+                        metadata: true
+                    }
+                },
                 guardian: true,
                 userLink: true,
                 ServiceSession: true,
@@ -85,6 +118,9 @@ export async function PUT(
                 },
                 deletedAt: null,
             },
+            include: {
+                profile: true,
+            },
         });
 
         if (!beneficiary) {
@@ -113,6 +149,14 @@ export async function PUT(
             }
         }
 
+        // Update profile if provided
+        if (body.profile) {
+            await prisma.profile.update({
+                where: { id: beneficiary.profile.id },
+                data: body.profile,
+            });
+        }
+
         const updatedBeneficiary = await prisma.beneficiary.update({
             where: { id: beneficiaryId },
             data: {
@@ -126,7 +170,25 @@ export async function PUT(
                 notes: body.notes,
             },
             include: {
-                profile: true,
+                profile: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        phone: true,
+                        dob: true,
+                        gender: true,
+                        nationality: true,
+                        address: true,
+                        emergencyContactName: true,
+                        emergencyContactPhone: true,
+                        emergencyContactEmail: true,
+                        medicalConditions: true,
+                        allergies: true,
+                        bloodType: true,
+                        metadata: true
+                    }
+                },
                 guardian: true,
                 userLink: true,
                 ServiceSession: true,

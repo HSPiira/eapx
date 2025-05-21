@@ -97,7 +97,7 @@ export const GET = withAuth(async (request: Request) => {
         }
 
         // Build the where clause
-        const whereClause: any = {};
+        const whereClause: unknown = {};
 
         if (sessionId) {
             whereClause.sessionId = sessionId;

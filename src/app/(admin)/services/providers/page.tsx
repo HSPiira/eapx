@@ -13,15 +13,6 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { ProviderForm, type ProviderFormData } from '@/components/admin/providers/provider-form';
-import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Search } from 'lucide-react';
 import { toast } from "sonner"
 
 interface Provider {
@@ -203,7 +194,7 @@ export default function ProvidersPage() {
                             <DialogHeader>
                                 <DialogTitle>Edit Provider</DialogTitle>
                                 <DialogDescription>
-                                    Update the service provider's information.
+                                    Update the service provider&apos;s information.
                                 </DialogDescription>
                             </DialogHeader>
                             <ProviderForm

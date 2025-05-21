@@ -97,7 +97,7 @@ export default async function StaffDetailsPage({
                             <CardContent className="space-y-2">
                                 <div>
                                     <p className="text-sm font-medium">Role</p>
-                                    <Badge variant="secondary">{staff.role}</Badge>
+                                    <Badge variant="secondary">{staff.jobTitle}</Badge>
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium">Status</p>
@@ -123,9 +123,9 @@ export default async function StaffDetailsPage({
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium">Emergency Contact</p>
-                                    <p>{staff.emergencyContactName || 'Not provided'}</p>
+                                    <p>{staff.profile.emergencyContactName || 'Not provided'}</p>
                                     <p className="text-sm text-muted-foreground">
-                                        {staff.emergencyContactPhone || 'No phone number'}
+                                        {staff.profile.emergencyContactPhone || 'No phone number'}
                                     </p>
                                 </div>
                             </CardContent>

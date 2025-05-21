@@ -1,284 +1,205 @@
-import { withRouteMiddleware } from '@/middleware/api-middleware';
-import { prisma } from '@/lib/prisma';
-import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
-import { getPaginationParams } from '@/lib/api-utils';
-import { isAdmin } from '@/lib/auth-utils';
+import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
 import { industrySelectFields } from '@/lib/select-fields';
+import { Prisma } from '@prisma/client';
+
+const industrySchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    code: z.string().optional(),
+    description: z.string().optional(),
+    parentId: z.string().optional(),
+    externalId: z.string().optional(),
+    metadata: z.record(z.unknown()).optional(),
+});
 
 export async function GET(request: NextRequest) {
-    return withRouteMiddleware(request, async ({ session }) => {
-        // Authorization - Check if user is admin
-        if (!(await isAdmin(session))) {
-            return NextResponse.json(
-                {
-                    error: 'Forbidden - Admin access required',
-                    details: 'Your account does not have the required admin role to access this resource.',
-                    code: 'MISSING_ADMIN_ROLE'
-                },
-                { status: 403 }
-            );
-        }
-
+    try {
         const { searchParams } = new URL(request.url);
-        const { page, limit, offset, search } = getPaginationParams(searchParams);
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '10');
+        const search = searchParams.get('search') || '';
         const parentId = searchParams.get('parentId');
 
-        // Cache key based on parameters
-        const cacheKey = `industries:${page}:${limit}:${search}:${parentId}`;
-
-        // Try to get from cache first
-        const cachedData = await cache.get(cacheKey);
-        if (cachedData) {
-            return NextResponse.json(cachedData);
-        }
+        // Calculate skip for pagination
+        const skip = (page - 1) * limit;
 
         // Build where clause
         const where: Prisma.IndustryWhereInput = {
             deletedAt: null,
-            ...(search ? {
+            ...(search && {
                 OR: [
-                    { name: { contains: search, mode: 'insensitive' } },
-                    { code: { contains: search, mode: 'insensitive' } },
-                    { description: { contains: search, mode: 'insensitive' } }
-                ]
-            } : {}),
-            ...(parentId ? { parentId } : { parentId: null })
+                    { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                    { code: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                ],
+            }),
+            ...(parentId && parentId !== 'all' ? { parentId } : {}),
         };
 
-        // Get total count for pagination metadata
-        const totalCount = await prisma.industry.count({ where });
+        // Get total count for pagination
+        const total = await prisma.industry.count({ where });
 
-        // Fetch industries with pagination
+        // Fetch paginated industries
         const industries = await prisma.industry.findMany({
             where,
             select: industrySelectFields,
-            skip: offset,
+            orderBy: { name: 'asc' },
+            skip,
             take: limit,
-            orderBy: {
-                name: 'asc'
-            }
         });
 
-        const response = {
+        return NextResponse.json({
             data: industries,
             metadata: {
-                total: totalCount,
+                total,
                 page,
                 limit,
-                totalPages: Math.ceil(totalCount / limit)
-            }
-        };
-
-        // Cache the results
-        await cache.set(cacheKey, response, { tags: ['industries'] });
-
-        return NextResponse.json(response);
-    });
+                totalPages: Math.ceil(total / limit),
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching industries:', error);
+        return NextResponse.json(
+            { error: 'Failed to fetch industries' },
+            { status: 500 }
+        );
+    }
 }
 
-export async function POST(request: NextRequest) {
-    return withRouteMiddleware(request, async ({ session }) => {
-        // Authorization - Check if user is admin
-        if (!(await isAdmin(session))) {
-            return NextResponse.json(
-                {
-                    error: 'Forbidden - Admin access required',
-                    details: 'Your account does not have the required admin role to access this resource.',
-                    code: 'MISSING_ADMIN_ROLE'
-                },
-                { status: 403 }
-            );
-        }
+export async function POST(request: Request) {
+    try {
+        const body = await request.json();
+        const validatedData = industrySchema.parse(body);
 
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
-        }
-
-        if (!body.name) {
-            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-        }
-
-        // Check for duplicate name
-        const existingIndustry = await prisma.industry.findFirst({
-            where: {
-                name: body.name,
-                deletedAt: null
-            }
+        const industry = await prisma.industry.create({
+            data: {
+                name: validatedData.name,
+                code: validatedData.code || null,
+                description: validatedData.description || null,
+                parentId: validatedData.parentId || null,
+                externalId: validatedData.externalId || null,
+                metadata: validatedData.metadata as Prisma.InputJsonValue,
+            },
+            select: industrySelectFields,
         });
 
-        if (existingIndustry) {
+        return NextResponse.json(industry);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
             return NextResponse.json(
-                { error: 'Industry with this name already exists' },
+                { error: 'Invalid data', details: error.errors },
                 { status: 400 }
             );
         }
 
-        try {
-            const newIndustry = await prisma.industry.create({
-                data: {
-                    name: body.name,
-                    code: body.code,
-                    description: body.description,
-                    parentId: body.parentId,
-                    externalId: body.externalId,
-                    metadata: body.metadata
-                },
-                select: industrySelectFields
-            });
-
-            // Invalidate cache
-            await cache.invalidateByTags(['industries']);
-
-            return NextResponse.json(newIndustry, { status: 201 });
-        } catch (error) {
-            console.error('Error creating industry:', error);
-            return NextResponse.json({ error: 'Failed to create industry' }, { status: 500 });
-        }
-    });
+        console.error('Error creating industry:', error);
+        return NextResponse.json(
+            { error: 'Failed to create industry' },
+            { status: 500 }
+        );
+    }
 }
 
-// PUT /api/industries
 export async function PUT(request: NextRequest) {
-    return withRouteMiddleware(request, async ({ session }) => {
-        // Authorization - Check if user is admin
-        if (!(await isAdmin(session))) {
-            return NextResponse.json(
-                {
-                    error: 'Forbidden - Admin access required',
-                    details: 'Your account does not have the required admin role to access this resource.',
-                    code: 'MISSING_ADMIN_ROLE'
-                },
-                { status: 403 }
-            );
-        }
+    let body;
+    try {
+        body = await request.json();
+    } catch {
+        return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
 
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
-        }
+    if (!body.id || !body.name) {
+        return NextResponse.json({ error: 'Industry ID and name are required' }, { status: 400 });
+    }
 
-        if (!body.name) {
-            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    // Check for duplicate name  
+    const existingIndustry = await prisma.industry.findFirst({
+        where: {
+            name: body.name,
+            id: { not: body.id },
+            deletedAt: null
         }
+    });
 
-        // Check for duplicate name
-        const existingIndustry = await prisma.industry.findFirst({
-            where: {
+    if (existingIndustry) {
+        return NextResponse.json(
+            { error: 'Industry with this name already exists' },
+            { status: 400 }
+        );
+    }
+
+    try {
+        const updatedIndustry = await prisma.industry.update({
+            where: { id: body.id, deletedAt: null },
+            data: {
                 name: body.name,
-                deletedAt: null
-            }
+                code: body.code,
+                description: body.description,
+                parentId: body.parentId,
+                externalId: body.externalId,
+                metadata: body.metadata
+            },
+            select: industrySelectFields
         });
 
-        if (existingIndustry) {
+        return NextResponse.json(updatedIndustry);
+    } catch (error) {
+        console.error('Error updating industry:', error);
+        return NextResponse.json({ error: 'Failed to update industry' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: NextRequest) {
+    let body;
+    try {
+        body = await request.json();
+    } catch {
+        return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+
+    if (!body.id) {
+        return NextResponse.json({ error: 'Industry ID is required' }, { status: 400 });
+    }
+
+    try {
+        // Check if industry has children
+        const hasChildren = await prisma.industry.findFirst({
+            where: { parentId: body.id, deletedAt: null }
+        });
+
+        if (hasChildren) {
             return NextResponse.json(
-                { error: 'Industry with this name already exists' },
+                { error: 'Cannot delete industry with child industries' },
                 { status: 400 }
             );
         }
 
-        try {
-            const updatedIndustry = await prisma.industry.update({
-                where: { id: body.id, deletedAt: null },
-                data: {
-                    name: body.name,
-                    code: body.code,
-                    description: body.description,
-                    parentId: body.parentId,
-                    externalId: body.externalId,
-                    metadata: body.metadata
-                },
-                select: industrySelectFields
-            });
+        // Check if industry is used by any clients
+        const hasClients = await prisma.client.findFirst({
+            where: {
+                industryId: body.id,
+                deletedAt: null
+            }
+        });
 
-            // Invalidate caches
-            await cache.delete(`industry:${body.id}`);
-            await cache.invalidateByTags(['industries']);
-
-            return NextResponse.json(updatedIndustry);
-        } catch (error) {
-            console.error('Error updating industry:', error);
-            return NextResponse.json({ error: 'Failed to update industry' }, { status: 500 });
-        }
-    });
-}
-
-// DELETE /api/industries
-export async function DELETE(request: NextRequest) {
-    return withRouteMiddleware(request, async ({ session }) => {
-        // Authorization - Check if user is admin
-        if (!(await isAdmin(session))) {
+        if (hasClients) {
             return NextResponse.json(
-                {
-                    error: 'Forbidden - Admin access required',
-                    details: 'Your account does not have the required admin role to access this resource.',
-                    code: 'MISSING_ADMIN_ROLE'
-                },
-                { status: 403 }
+                { error: 'Cannot delete industry that is assigned to clients' },
+                { status: 400 }
             );
         }
 
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
-        }
-
-        if (!body.id) {
-            return NextResponse.json({ error: 'Industry ID is required' }, { status: 400 });
-        }
-
-        try {
-            // Check if industry has children
-            const hasChildren = await prisma.industry.findFirst({
-                where: { parentId: body.id, deletedAt: null }
-            });
-
-            if (hasChildren) {
-                return NextResponse.json(
-                    { error: 'Cannot delete industry with child industries' },
-                    { status: 400 }
-                );
+        // Soft delete industry
+        await prisma.industry.update({
+            where: { id: body.id, deletedAt: null },
+            data: {
+                deletedAt: new Date()
             }
+        });
 
-            // Check if industry is used by any clients
-            const hasClients = await prisma.client.findFirst({
-                where: {
-                    industryId: body.id,
-                    deletedAt: null
-                }
-            });
-
-            if (hasClients) {
-                return NextResponse.json(
-                    { error: 'Cannot delete industry that is assigned to clients' },
-                    { status: 400 }
-                );
-            }
-
-            // Soft delete industry
-            await prisma.industry.update({
-                where: { id: body.id, deletedAt: null },
-                data: {
-                    deletedAt: new Date()
-                }
-            });
-
-            // Invalidate caches
-            await cache.delete(`industry:${body.id}`);
-            await cache.invalidateByTags(['industries']);
-
-            return new NextResponse(null, { status: 204 });
-        } catch (error) {
-            console.error('Error deleting industry:', error);
-            return NextResponse.json({ error: 'Failed to delete industry' }, { status: 500 });
-        }
-    });
+        return new NextResponse(null, { status: 204 });
+    } catch (error) {
+        console.error('Error deleting industry:', error);
+        return NextResponse.json({ error: 'Failed to delete industry' }, { status: 500 });
+    }
 } 

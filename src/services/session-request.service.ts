@@ -1,5 +1,5 @@
-import { PrismaClient, type ServiceSession, type Prisma } from '@prisma/client';
-import type { SessionRequest, RequestMethod, SessionRequestStatus } from '../types/session-booking';
+import { PrismaClient, type ServiceSession } from '@prisma/client';
+import type { SessionRequest, SessionRequestStatus } from '../types/session-booking';
 
 export class SessionRequestService {
     private prisma: PrismaClient;

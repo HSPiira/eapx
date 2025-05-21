@@ -55,4 +55,29 @@ export async function POST(request: Request) {
             { status: 500 }
         );
     }
+}
+
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+    if (!email) {
+        return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { email },
+        include: { profile: true }
+    });
+
+    if (!user || !user.profile) {
+        return NextResponse.json({}, { status: 404 });
+    }
+
+    return NextResponse.json({
+        id: user.id,
+        profileId: user.profile.id,
+        email: user.email,
+        fullName: user.profile.fullName,
+        // ...other fields as needed
+    });
 } 

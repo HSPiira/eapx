@@ -13,8 +13,6 @@ export function ClientStaffTable({ staff }: ClientStaffTableProps) {
         <DataTable
             columns={columns}
             data={staff}
-            searchKey="fullName"
-            searchPlaceholder="Search staff..."
         />
     )
 } 

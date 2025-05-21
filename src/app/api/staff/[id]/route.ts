@@ -3,7 +3,6 @@ import { auth } from '@/middleware/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { StaffRole, WorkStatus } from '@prisma/client';
-import { Parentheses } from 'lucide-react';
 
 type Params = Promise<{ id: string }>;
 

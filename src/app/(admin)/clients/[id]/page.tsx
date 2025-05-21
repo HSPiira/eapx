@@ -3,11 +3,10 @@
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { CheckCircle2, Pencil } from 'lucide-react';
+import { CheckCircle2, Pencil, Mail as MailIcon, BarChart, MapPin, Users, Info } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { EditClientModal } from '@/components/admin/clients/edit-client-modal';
 
@@ -76,151 +75,103 @@ export default function ClientOverviewPage() {
 
     return (
         <>
-            <div className="flex justify-end mb-6">
-                <Button
-                    variant="outline"
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="flex items-center gap-2"
-                >
-                    <Pencil className="h-4 w-4" />
-                    Edit Client
-                </Button>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Basic Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <div className="font-medium">Status:</div>
-                            <Badge variant={client.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                                {client.status}
-                            </Badge>
+            <div className="color-scheme-blue w-full max-w-3xl lg:max-w-4xl px-0 md:px-4 lg:px-0 bg-background rounded-xl p-0 md:p-8 shadow-none md:shadow space-y-2">
+                {/* Header */}
+                <div className="flex flex-wrap items-center gap-4 mb-2 md:mb-6 pt-2 md:pt-0">
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <h1 className="text-3xl font-bold text-blue-900 dark:text-blue-200 flex items-center gap-2 truncate">
+                            {client.name}
+                            {client.status === 'ACTIVE' && (
+                                <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-200 dark:border-green-700 ml-2">Active</Badge>
+                            )}
                             {client.isVerified && (
-                                <Badge variant="outline" className="flex items-center gap-1">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    Verified
+                                <Badge className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700 ml-2 flex items-center gap-1">
+                                    <CheckCircle2 className="h-4 w-4 text-blue-500 dark:text-blue-300" /> Verified
                                 </Badge>
                             )}
+                        </h1>
+                        {client.taxId && (
+                            <div className="text-sm text-muted-foreground mt-1 truncate">Tax ID: {client.taxId}</div>
+                        )}
+                    </div>
+                    <Button
+                        variant="default"
+                        onClick={() => setIsEditModalOpen(true)}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow ml-auto"
+                    >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                    </Button>
+                </div>
+
+                {/* Info Sections */}
+                <div className="grid md:grid-cols-2 gap-12 divide-y-2 md:divide-y-0 md:divide-x-2 divide-blue-100 dark:divide-blue-900">
+                    {/* Left Column */}
+                    <div className="pr-0 md:pr-8 space-y-6">
+                        {/* Contact Section */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-2 border-l-4 border-blue-400 dark:border-blue-700 pl-2">
+                                <span className="text-lg font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                                    <MailIcon className="h-5 w-5 text-blue-400 dark:text-blue-300" /> Contact
+                                </span>
+                            </div>
+                            {client.email && <InfoRow label="Email" value={client.email} />}
+                            {client.phone && <InfoRow label="Phone" value={client.phone} />}
+                            {client.website && <InfoRow label="Website" value={client.website} />}
+                            {client.preferredContactMethod && <InfoRow label="Preferred Contact" value={client.preferredContactMethod} />}
                         </div>
-                        {client.email && (
-                            <div>
-                                <div className="font-medium">Email:</div>
-                                <div className="text-muted-foreground">{client.email}</div>
-                            </div>
-                        )}
-                        {client.phone && (
-                            <div>
-                                <div className="font-medium">Phone:</div>
-                                <div className="text-muted-foreground">{client.phone}</div>
-                            </div>
-                        )}
-                        {client.website && (
-                            <div>
-                                <div className="font-medium">Website:</div>
-                                <div className="text-muted-foreground">{client.website}</div>
-                            </div>
-                        )}
+                        {/* Industry Section */}
                         {client.industry && (
                             <div>
-                                <div className="font-medium">Industry:</div>
-                                <div className="text-muted-foreground">{client.industry.name}</div>
+                                <div className="flex items-center gap-2 mb-2 border-l-4 border-blue-300 dark:border-blue-600 pl-2">
+                                    <span className="text-lg font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                                        <BarChart className="h-5 w-5 text-blue-300 dark:text-blue-400" /> Industry
+                                    </span>
+                                </div>
+                                <InfoRow label="Industry" value={client.industry.name} />
                             </div>
                         )}
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Contact Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {client.contactPerson && (
-                            <div>
-                                <div className="font-medium">Contact Person:</div>
-                                <div className="text-muted-foreground">{client.contactPerson}</div>
-                            </div>
-                        )}
-                        {client.contactEmail && (
-                            <div>
-                                <div className="font-medium">Contact Email:</div>
-                                <div className="text-muted-foreground">{client.contactEmail}</div>
-                            </div>
-                        )}
-                        {client.contactPhone && (
-                            <div>
-                                <div className="font-medium">Contact Phone:</div>
-                                <div className="text-muted-foreground">{client.contactPhone}</div>
-                            </div>
-                        )}
-                        {client.preferredContactMethod && (
-                            <div>
-                                <div className="font-medium">Preferred Contact Method:</div>
-                                <div className="text-muted-foreground">{client.preferredContactMethod}</div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Address Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {client.address && (
-                            <div>
-                                <div className="font-medium">Address:</div>
-                                <div className="text-muted-foreground">{client.address}</div>
-                            </div>
-                        )}
-                        {client.billingAddress && (
-                            <div>
-                                <div className="font-medium">Billing Address:</div>
-                                <div className="text-muted-foreground">{client.billingAddress}</div>
-                            </div>
-                        )}
-                        {client.taxId && (
-                            <div>
-                                <div className="font-medium">Tax ID:</div>
-                                <div className="text-muted-foreground">{client.taxId}</div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Additional Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {client.timezone && (
-                            <div>
-                                <div className="font-medium">Timezone:</div>
-                                <div className="text-muted-foreground">{client.timezone}</div>
-                            </div>
-                        )}
-                        {client.notes && (
-                            <div>
-                                <div className="font-medium">Notes:</div>
-                                <div className="text-muted-foreground">{client.notes}</div>
-                            </div>
-                        )}
+                    </div>
+                    {/* Right Column */}
+                    <div className="pl-0 md:pl-8 space-y-6">
+                        {/* Address Section */}
                         <div>
-                            <div className="font-medium">Created:</div>
-                            <div className="text-muted-foreground">
-                                {new Date(client.createdAt).toLocaleDateString()}
+                            <div className="flex items-center gap-2 mb-2 border-l-4 border-blue-200 dark:border-blue-800 pl-2">
+                                <span className="text-lg font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                                    <MapPin className="h-5 w-5 text-blue-200 dark:text-blue-400" /> Address
+                                </span>
                             </div>
+                            {client.address && <InfoRow label="Address" value={client.address} />}
+                            {client.billingAddress && <InfoRow label="Billing Address" value={client.billingAddress} />}
                         </div>
-                        <div>
-                            <div className="font-medium">Last Updated:</div>
-                            <div className="text-muted-foreground">
-                                {new Date(client.updatedAt).toLocaleDateString()}
+                        {/* Contact Person Section */}
+                        {(client.contactPerson || client.contactEmail || client.contactPhone) && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-2 border-l-4 border-blue-200 dark:border-blue-800 pl-2">
+                                    <span className="text-lg font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                                        <Users className="h-5 w-5 text-blue-200 dark:text-blue-400" /> Contact Person
+                                    </span>
+                                </div>
+                                {client.contactPerson && <InfoRow label="Name" value={client.contactPerson} />}
+                                {client.contactEmail && <InfoRow label="Email" value={client.contactEmail} />}
+                                {client.contactPhone && <InfoRow label="Phone" value={client.contactPhone} />}
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        )}
+                    </div>
+                </div>
+
+                {/* Additional Section */}
+                <div className="pt-8 mt-8 border-t-2 border-blue-100 dark:border-blue-900">
+                    <div className="flex items-center gap-2 mb-2 border-l-4 border-blue-100 dark:border-blue-900 pl-2">
+                        <span className="text-lg font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                            <Info className="h-5 w-5 text-blue-100 dark:text-blue-400" /> Additional
+                        </span>
+                    </div>
+                    {client.timezone && <InfoRow label="Timezone" value={client.timezone} />}
+                    {client.notes && <InfoRow label="Notes" value={client.notes} />}
+                    <InfoRow label="Created" value={new Date(client.createdAt).toLocaleDateString()} />
+                    <InfoRow label="Last Updated" value={new Date(client.updatedAt).toLocaleDateString()} />
+                </div>
             </div>
 
             <EditClientModal
@@ -233,5 +184,15 @@ export default function ClientOverviewPage() {
                 clientId={clientId}
             />
         </>
+    );
+}
+
+// Helper component for info rows
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-200 min-w-[120px]">{label}:</span>
+            <span className="text-sm text-muted-foreground">{value}</span>
+        </div>
     );
 } 

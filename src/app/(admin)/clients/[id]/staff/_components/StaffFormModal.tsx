@@ -29,7 +29,8 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
     const handleSubmit = async (data: StaffFormValues) => {
         try {
             // 1. Check if user exists by email
-            const userCheckRes = await fetch(`/api/users?email=${encodeURIComponent(data.email)}`);
+            const email = data.email as string; // Type assertion since we know it's a string from the Zod schema
+            const userCheckRes = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
             let user, profileId;
 
             if (userCheckRes.ok) {

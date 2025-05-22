@@ -14,7 +14,23 @@ async function getStaffMember(id: string) {
             deletedAt: null,
         },
         include: {
-            profile: true,
+            profile: {
+                select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                    emergencyContactName: true,
+                    emergencyContactPhone: true,
+                    emergencyContactEmail: true,
+                    preferredLanguage: true,
+                    preferredContactMethod: true,
+                    allergies: true,
+                    medicalConditions: true,
+                    dietaryRestrictions: true,
+                    accessibilityNeeds: true,
+                }
+            },
             client: {
                 select: {
                     name: true,

@@ -24,10 +24,17 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from '@/lib/utils';
 
+// Define enums to match your Prisma schema
+const ServiceProviderTypeEnum = z.enum(["COUNSELOR", "CLINIC", "HOTLINE", "COACH", "OTHER"]);
+const ProviderEntityTypeEnum = z.enum(["INDIVIDUAL", "COMPANY"]);
+
 const providerSchema = z.object({
     name: z.string().min(1, "Name is required"),
-    type: z.string().min(1, "Type is required"),
-    contactEmail: z.string().email().nullable(),
+    type: ServiceProviderTypeEnum.optional(),
+    entityType: ProviderEntityTypeEnum,
+    contactEmail: z.string({
+        required_error: "Contact email is required"
+    }).email("Must be a valid email"),
     contactPhone: z.string().nullable(),
     location: z.string().nullable(),
     qualifications: z.array(z.string()),
@@ -38,8 +45,9 @@ const providerSchema = z.object({
 
 export type ProviderFormData = {
     name: string;
-    type: string;
-    contactEmail: string | null;
+    type?: z.infer<typeof ServiceProviderTypeEnum>;
+    entityType: z.infer<typeof ProviderEntityTypeEnum>;
+    contactEmail: string;
     contactPhone: string | null;
     location: string | null;
     qualifications: string[];
@@ -65,8 +73,9 @@ export function ProviderForm({
         resolver: zodResolver(providerSchema),
         defaultValues: {
             name: initialData?.name || '',
-            type: initialData?.type || '',
-            contactEmail: initialData?.contactEmail || null,
+            type: initialData?.type || undefined,
+            entityType: initialData?.entityType || 'INDIVIDUAL',
+            contactEmail: initialData?.contactEmail || '',
             contactPhone: initialData?.contactPhone || null,
             location: initialData?.location || null,
             qualifications: initialData?.qualifications || [],
@@ -77,14 +86,13 @@ export function ProviderForm({
     });
 
     const [typeOpen, setTypeOpen] = useState(false);
+    const [entityTypeOpen, setEntityTypeOpen] = useState(false);
 
-    const providerTypes = [
-        { value: 'COUNSELOR', label: 'Counselor' },
-        { value: 'CLINIC', label: 'Clinic' },
-        { value: 'HOTLINE', label: 'Hotline' },
-        { value: 'COACH', label: 'Coach' },
-        { value: 'OTHER', label: 'Other' },
-    ];
+    // Use these enums for dropdown options in the form UI
+    const providerTypes = ServiceProviderTypeEnum.options.map(value => ({ value, label: value.charAt(0) + value.slice(1).toLowerCase() }));
+    const entityTypes = ProviderEntityTypeEnum.options.map(value => ({ value, label: value.charAt(0) + value.slice(1).toLowerCase() }));
+
+    const entityType = form.watch('entityType');
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -103,6 +111,62 @@ export function ProviderForm({
             </div>
 
             <div className="space-y-2">
+                <Label htmlFor="entityType">Entity Type</Label>
+                <Popover open={entityTypeOpen} onOpenChange={setEntityTypeOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={entityTypeOpen}
+                            className="w-full justify-between"
+                        >
+                            {form.watch("entityType")
+                                ? entityTypes.find(
+                                    (type) => type.value === form.watch("entityType")
+                                )?.label
+                                : "Select entity type"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                        <Command>
+                            <CommandInput placeholder="Search entity type..." />
+                            <CommandList>
+                                <CommandEmpty>No entity type found.</CommandEmpty>
+                                <CommandGroup>
+                                    {entityTypes.map((type) => (
+                                        <CommandItem
+                                            key={type.value}
+                                            value={type.label}
+                                            onSelect={() => {
+                                                form.setValue("entityType", type.value);
+                                                setEntityTypeOpen(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    form.watch("entityType") === type.value
+                                                        ? "opacity-100"
+                                                        : "opacity-0"
+                                                )}
+                                            />
+                                            {type.label}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+                {form.formState.errors.entityType && (
+                    <p className="text-sm text-red-500">
+                        {form.formState.errors.entityType.message}
+                    </p>
+                )}
+            </div>
+
+            <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
                 <Popover open={typeOpen} onOpenChange={setTypeOpen}>
                     <PopoverTrigger asChild>
@@ -111,6 +175,7 @@ export function ProviderForm({
                             role="combobox"
                             aria-expanded={typeOpen}
                             className="w-full justify-between"
+                            disabled={entityType === 'COMPANY'}
                         >
                             {form.watch("type")
                                 ? providerTypes.find(

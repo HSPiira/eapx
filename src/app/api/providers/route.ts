@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         const provider = await prisma.serviceProvider.create({
             data: {
                 name: body.name,
-                type: body.type,
+                type: body.type || null,
                 contactEmail: body.contactEmail,
                 contactPhone: body.contactPhone,
                 location: body.location,
@@ -125,7 +125,7 @@ export async function PUT(request: NextRequest) {
             where: { id: body.id, deletedAt: null },
             data: {
                 name: body.name,
-                type: body.type,
+                type: body.type || null,
                 contactEmail: body.contactEmail,
                 contactPhone: body.contactPhone,
                 location: body.location,

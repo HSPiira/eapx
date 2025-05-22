@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ProviderTable } from '@/components/admin/providers/provider-table';
 import { Button, LoadingSpinner } from '@/components/ui';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,19 +14,22 @@ import {
 } from "@/components/ui/dialog";
 import { ProviderForm, type ProviderFormData } from '@/components/admin/providers/provider-form';
 import { toast } from "sonner"
+import { ProviderEditModal } from '@/components/admin/providers/provider-edit-modal';
 
 interface Provider {
     id: string;
     name: string;
     type: string;
+    entityType: string;
     contactEmail: string | null;
     contactPhone: string | null;
     location: string | null;
     qualifications: string[];
     specializations: string[];
-    rating: number | null;
-    isVerified: boolean;
     status: 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
+    isVerified: boolean;
+    rating: number | null;
+    createdAt: string;
     _count?: {
         services: number;
         sessions: number;
@@ -34,7 +37,7 @@ interface Provider {
 }
 
 async function fetchProviders() {
-    const res = await fetch('/api/services/providers');
+    const res = await fetch('/api/providers');
     if (!res.ok) {
         throw new Error('Failed to fetch providers');
     }
@@ -88,136 +91,124 @@ async function deleteProvider(id: string) {
     return response.json();
 }
 
-export default function ProvidersPage() {
-    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+export default function ProvidersListPage() {
+    const [providers, setProviders] = useState<Provider[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
-    const queryClient = useQueryClient();
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
-    const { data: providers, isLoading } = useQuery({
-        queryKey: ['providers'],
-        queryFn: fetchProviders,
-    });
-
-    const createProviderMutation = useMutation({
-        mutationFn: createProvider,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['providers'] });
-            setIsCreateDialogOpen(false);
-            toast.success("Provider created successfully!")
-        },
-        onError: (error) => {
-            console.error('Error creating provider:', error);
-            toast.error("Failed to create provider.")
+    useEffect(() => {
+        async function fetchProviders() {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await fetch('/api/providers');
+                if (!res.ok) throw new Error('Failed to fetch providers');
+                const json = await res.json();
+                setProviders(json.data || []);
+            } catch (err: any) {
+                setError(err.message || 'Unknown error');
+            } finally {
+                setLoading(false);
+            }
         }
-    })
+        fetchProviders();
+    }, []);
 
-    const updateProviderMutation = useMutation({
-        mutationFn: updateProvider,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['providers'] });
+    const handleEdit = (provider: Provider) => {
+        setEditingProvider(provider);
+        setIsEditDialogOpen(true);
+    };
+
+    const handleUpdateProvider = async (data: ProviderFormData) => {
+        if (!editingProvider) return;
+        setIsEditSubmitting(true);
+        try {
+            const res = await fetch(`/api/providers/${editingProvider.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error('Failed to update provider');
+            const updated = await res.json();
+            setProviders(prev => prev.map(p => p.id === updated.id ? updated : p));
             setIsEditDialogOpen(false);
             setEditingProvider(null);
-            toast.success("Provider updated successfully!")
-        },
-        onError: (error) => {
-            console.error('Error updating provider:', error);
-            toast.error("Failed to update provider.")
+        } catch (err) {
+            alert('Failed to update provider');
+        } finally {
+            setIsEditSubmitting(false);
         }
-    })
+    };
 
-    const deleteProviderMutation = useMutation({
-        mutationFn: deleteProvider,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['providers'] });
-            toast.success("Provider deleted successfully!")
-        },
-        onError: (error) => {
-            console.error('Error deleting provider:', error);
-            toast.error("Failed to delete provider.")
+    const handleDelete = (id: string) => {
+        // TODO: Implement delete logic
+        alert(`Delete provider with id: ${id}`);
+    };
+
+    const handleAddProvider = async (data: ProviderFormData) => {
+        try {
+            const payload = {
+                ...data,
+                type: data.type ? data.type : null,
+            };
+            const res = await fetch('/api/providers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('Failed to add provider');
+            const json = await res.json();
+            setProviders(prev => [json, ...prev]);
+            setIsDialogOpen(false);
+        } catch (err) {
+            alert('Failed to add provider');
         }
-    })
-
-    const handleCreateProvider = useCallback(async (data: ProviderFormData) => {
-        createProviderMutation.mutate(data);
-    }, [createProviderMutation]);
-
-    const handleEditProvider = useCallback(async (data: ProviderFormData) => {
-        if (!editingProvider) return;
-        updateProviderMutation.mutate({ id: editingProvider.id, ...data });
-    }, [updateProviderMutation, editingProvider]);
-
-    const handleDeleteProvider = useCallback(async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this provider?')) {
-            deleteProviderMutation.mutate(id);
-        }
-    }, [deleteProviderMutation]);
-
-
-    if (isLoading) {
-        return <LoadingSpinner />;
-    }
+    };
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Service Providers</h1>
-                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <div>
+            <div className="flex items-center justify-between mb-2">
+                <h1 className="text-2xl font-bold">Providers</h1>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => setIsCreateDialogOpen(true)}>Add Provider</Button>
+                        <button
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            onClick={() => setIsDialogOpen(true)}
+                        >
+                            Add Provider
+                        </button>
                     </DialogTrigger>
-                    <DialogContent
-                        onPointerDownOutside={e => e.preventDefault()}
-                        onEscapeKeyDown={() => { }}
-                    >
+                    <DialogContent onInteractOutside={e => e.preventDefault()}>
                         <DialogHeader>
                             <DialogTitle>Add New Provider</DialogTitle>
                             <DialogDescription>
-                                Create a new service provider in the system.
+                                Add a new provider to the system.
                             </DialogDescription>
                         </DialogHeader>
                         <ProviderForm
-                            onSubmit={handleCreateProvider}
-                            isSubmitting={createProviderMutation.isPending}
-                            onCancel={() => setIsCreateDialogOpen(false)}
+                            onSubmit={handleAddProvider}
+                            isSubmitting={false}
+                            onCancel={() => setIsDialogOpen(false)}
                         />
                     </DialogContent>
                 </Dialog>
-
-                {/* Edit Dialog */}
-                {editingProvider && (
-                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                        <DialogContent
-                            onPointerDownOutside={e => e.preventDefault()}
-                            onEscapeKeyDown={() => { }}
-                        >
-                            <DialogHeader>
-                                <DialogTitle>Edit Provider</DialogTitle>
-                                <DialogDescription>
-                                    Update the service provider&apos;s information.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <ProviderForm
-                                onSubmit={handleEditProvider}
-                                isSubmitting={updateProviderMutation.isPending}
-                                onCancel={() => {
-                                    setIsEditDialogOpen(false);
-                                    setEditingProvider(null);
-                                }}
-                                initialData={editingProvider}
-                            />
-                        </DialogContent>
-                    </Dialog>
-                )}
             </div>
-
-            <ProviderTable
-                providers={providers?.data || []}
-                onEdit={(provider) => {
-                    setEditingProvider(provider);
-                    setIsEditDialogOpen(true);
+            {loading && <div className="p-4 text-gray-500">Loading...</div>}
+            {error && <div className="p-4 text-red-500">{error}</div>}
+            <ProviderTable providers={providers} onEdit={handleEdit} onDelete={handleDelete} />
+            <ProviderEditModal
+                open={isEditDialogOpen}
+                onOpenChange={open => {
+                    setIsEditDialogOpen(open);
+                    if (!open) setEditingProvider(null);
                 }}
-                onDelete={handleDeleteProvider}
+                provider={editingProvider}
+                onSubmit={handleUpdateProvider}
+                isSubmitting={isEditSubmitting}
             />
         </div>
     );

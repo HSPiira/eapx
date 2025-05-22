@@ -27,6 +27,7 @@ interface Provider {
     id: string;
     name: string;
     type: string;
+    entityType: string;
     contactEmail: string | null;
     contactPhone: string | null;
     location: string | null;
@@ -35,6 +36,7 @@ interface Provider {
     rating: number | null;
     isVerified: boolean;
     status: 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
+    createdAt: string;
     _count?: {
         services: number;
         sessions: number;
@@ -47,32 +49,30 @@ interface ProviderTableProps {
     onDelete: (id: string) => void; // Assuming onDelete takes ID for now
 }
 
+// Utility function to convert ENUM_STRING to Proper Case
+function toProperCase(str: string | null | undefined) {
+    if (!str) return '';
+    return str
+        .toLowerCase()
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProps) {
-    const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
-
-    const handleRowClick = (provider: Provider) => {
-        setSelectedProvider(selectedProvider?.id === provider.id ? null : provider);
-    };
-
     return (
         <div className="w-full overflow-x-auto">
             <div className="min-w-[900px]">
                 <Table className="w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="whitespace-nowrap min-w-[160px]">Name</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[180px]">Email</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[140px]">Phone</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[160px]">Type</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[140px]">Status</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Rating</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Services</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Sessions</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Location</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Qualifications</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Specializations</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Verified</TableHead>
-                            <TableHead className="whitespace-nowrap min-w-[120px]">Actions</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Entity Type</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Verified</TableHead>
+                            <TableHead>Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -80,12 +80,10 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
                             <TableRow
                                 key={provider.id}
                                 className={cn(
-                                    "cursor-pointer hover:bg-muted/50",
-                                    selectedProvider?.id === provider.id && "bg-muted"
+                                    "cursor-pointer hover:bg-muted/50"
                                 )}
-                                onClick={() => handleRowClick(provider)}
                             >
-                                <TableCell className="whitespace-nowrap min-w-[160px]">
+                                <TableCell>
                                     <div className="flex items-center gap-2">
                                         {provider.name}
                                         {provider.isVerified && (
@@ -93,38 +91,19 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
                                         )}
                                     </div>
                                 </TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[180px]">{provider.contactEmail}</TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[140px]">{provider.contactPhone}</TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[160px]">{provider.type}</TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[140px]">
+                                <TableCell>{toProperCase(provider.type)}</TableCell>
+                                <TableCell>{toProperCase(provider.entityType)}</TableCell>
+                                <TableCell>{provider.contactEmail}</TableCell>
+                                <TableCell>{provider.contactPhone}</TableCell>
+                                <TableCell>
                                     <Badge variant={provider.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                                        {provider.status.toLowerCase()}
+                                        {toProperCase(provider.status)}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[120px]">
-                                    {provider.rating ? provider.rating.toFixed(1) : '-'}
-                                </TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[120px]">{provider._count?.services || 0}</TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[120px]">{provider._count?.sessions || 0}</TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[120px]">{provider.location}</TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[120px]">
-                                    {provider.qualifications.map((qual, index) => (
-                                        <Badge key={index} variant="secondary">
-                                            {qual}
-                                        </Badge>
-                                    ))}
-                                </TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[120px]">
-                                    {provider.specializations.map((spec, index) => (
-                                        <Badge key={index} variant="secondary">
-                                            {spec}
-                                        </Badge>
-                                    ))}
-                                </TableCell>
-                                <TableCell className="whitespace-nowrap min-w-[120px]">
+                                <TableCell>
                                     {provider.isVerified ? 'Yes' : 'No'}
                                 </TableCell>
-                                <TableCell className="text-right whitespace-nowrap min-w-[120px]">
+                                <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -148,103 +127,6 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
                     </TableBody>
                 </Table>
             </div>
-
-            {selectedProvider && (
-                <div className="w-[400px]">
-                    <Card className="rounded-md">
-                        <CardHeader className="relative">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-                                onClick={() => setSelectedProvider(null)}
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                            <div className="flex items-center justify-between pr-8">
-                                <CardTitle>{selectedProvider.name}</CardTitle>
-                                <Badge variant={selectedProvider.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                                    {selectedProvider.status.toLowerCase()}
-                                </Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <div className="space-y-2 text-sm text-muted-foreground">
-                                    <div className="flex justify-between">
-                                        <span>Type:</span>
-                                        <span>{selectedProvider.type}</span>
-                                    </div>
-                                    {selectedProvider.contactEmail && (
-                                        <div className="flex justify-between">
-                                            <span>Email:</span>
-                                            <span>{selectedProvider.contactEmail}</span>
-                                        </div>
-                                    )}
-                                    {selectedProvider.contactPhone && (
-                                        <div className="flex justify-between">
-                                            <span>Phone:</span>
-                                            <span>{selectedProvider.contactPhone}</span>
-                                        </div>
-                                    )}
-                                    {selectedProvider.location && (
-                                        <div className="flex justify-between">
-                                            <span>Location:</span>
-                                            <span>{selectedProvider.location}</span>
-                                        </div>
-                                    )}
-                                    {selectedProvider.rating && (
-                                        <div className="flex justify-between">
-                                            <span>Rating:</span>
-                                            <span>{selectedProvider.rating.toFixed(1)}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {selectedProvider.qualifications.length > 0 && (
-                                    <div className="space-y-2">
-                                        <h4 className="text-sm font-medium">Qualifications</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedProvider.qualifications.map((qual, index) => (
-                                                <Badge key={index} variant="secondary">
-                                                    {qual}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedProvider.specializations.length > 0 && (
-                                    <div className="space-y-2">
-                                        <h4 className="text-sm font-medium">Specializations</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedProvider.specializations.map((spec, index) => (
-                                                <Badge key={index} variant="secondary">
-                                                    {spec}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-medium">Activity</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Services</p>
-                                            <p className="text-2xl font-bold">{selectedProvider._count?.services || 0}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Sessions</p>
-                                            <p className="text-2xl font-bold">{selectedProvider._count?.sessions || 0}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
         </div>
     );
 } 

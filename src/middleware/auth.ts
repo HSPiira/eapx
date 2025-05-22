@@ -296,7 +296,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
 export const { auth, handlers, signIn, signOut } = NextAuth(createConfig())
 
 export async function authMiddleware(request: NextRequest) {
-    const token = await getToken({ req: request });
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
     if (!token) {
         return NextResponse.json(

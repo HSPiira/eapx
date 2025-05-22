@@ -2,6 +2,7 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
+import { providerUpdateSchema } from '@/lib/validation/providers';
 
 type Params = Promise<{ id: string }>;
 
@@ -83,6 +84,66 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
             return NextResponse.json({ error: 'Failed to update provider' }, { status: 500 });
         }
     });
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Params }) {
+    try {
+        const body = await request.json();
+        const { id } = await params;
+        if (!id) {
+            return NextResponse.json({ error: 'Provider ID is required' }, { status: 400 });
+        }
+
+        // Log the incoming request data
+        console.log('PATCH request for provider:', { id, body });
+
+        // Convert empty strings to null for nullable fields
+        ['contactPhone', 'location', 'rating'].forEach((field) => {
+            if (body[field] === '') body[field] = null;
+        });
+
+        // Validate the request body
+        const parseResult = providerUpdateSchema.safeParse(body);
+        if (!parseResult.success) {
+            console.error('Validation failed:', parseResult.error.flatten());
+            return NextResponse.json({
+                error: 'Validation failed',
+                details: parseResult.error.flatten()
+            }, { status: 400 });
+        }
+
+        const data = parseResult.data;
+
+        // Only update provided fields
+        const dataToUpdate: Record<string, unknown> = {};
+        (Object.keys(data) as Array<keyof typeof data>).forEach((key) => {
+            if (data[key] !== undefined) {
+                dataToUpdate[key] = data[key];
+            }
+        });
+
+        // Log the data being sent to Prisma
+        console.log('Updating provider with data:', dataToUpdate);
+
+        const updatedProvider = await prisma.serviceProvider.update({
+            where: { id },
+            data: dataToUpdate,
+        });
+
+        // Log the successful update
+        console.log('Provider updated successfully:', updatedProvider);
+
+        return NextResponse.json(updatedProvider);
+    } catch (error) {
+        // Log the full error details
+        console.error('Error updating provider:', error);
+
+        // Return a more detailed error response
+        return NextResponse.json({
+            error: 'Failed to update provider',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+    }
 }
 
 // DELETE /api/providers/[id]

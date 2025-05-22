@@ -58,7 +58,15 @@ interface SessionData {
 interface ProviderData {
     name: string;
     type: ServiceProviderType;
-    status?: WorkStatus;
+    entityType: 'INDIVIDUAL' | 'COMPANY';
+    contactEmail: string;
+    contactPhone: string | null;
+    location: string | null;
+    qualifications: string[];
+    specializations: string[];
+    status: WorkStatus;
+    isVerified: boolean;
+    rating: number | null;
 }
 
 export function getPaginationParams(req: NextApiRequest | URLSearchParams): PaginationParams {
@@ -152,7 +160,7 @@ export async function parseRequestBody<T extends Record<string, unknown>>(reques
 
 export function validateProviderData(body: Record<string, unknown>): ValidationResult<ProviderData> {
     // Validate required fields
-    const requiredFieldsResult = validateRequiredFields(body, ['name', 'type']);
+    const requiredFieldsResult = validateRequiredFields(body, ['name', 'type', 'entityType', 'contactEmail']);
     if (!requiredFieldsResult.isValid) {
         return requiredFieldsResult;
     }
@@ -161,6 +169,14 @@ export function validateProviderData(body: Record<string, unknown>): ValidationR
     const typeResult = validateEnumValue(body.type as string, ServiceProviderType, 'type');
     if (!typeResult.isValid) {
         return typeResult;
+    }
+
+    // Validate entity type
+    if (!['INDIVIDUAL', 'COMPANY'].includes(body.entityType as string)) {
+        return {
+            isValid: false,
+            error: 'Invalid entity type. Must be either INDIVIDUAL or COMPANY'
+        };
     }
 
     // Validate status if provided
@@ -176,7 +192,15 @@ export function validateProviderData(body: Record<string, unknown>): ValidationR
         data: {
             name: body.name as string,
             type: body.type as ServiceProviderType,
-            status: body.status as WorkStatus | undefined
+            entityType: body.entityType as 'INDIVIDUAL' | 'COMPANY',
+            contactEmail: body.contactEmail as string,
+            contactPhone: body.contactPhone as string | null,
+            location: body.location as string | null,
+            qualifications: Array.isArray(body.qualifications) ? body.qualifications as string[] : [],
+            specializations: Array.isArray(body.specializations) ? body.specializations as string[] : [],
+            status: (body.status as WorkStatus) || WorkStatus.ACTIVE,
+            isVerified: body.isVerified as boolean || false,
+            rating: body.rating ? parseFloat(body.rating as string) : null
         }
     };
 }

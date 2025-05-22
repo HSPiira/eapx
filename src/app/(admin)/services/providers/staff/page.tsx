@@ -1,43 +1,60 @@
-// @ts-nocheck
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ProviderStaffModal } from '@/components/admin/providers/provider-staff-modal';
-import { ProviderStaffFormData } from '@/components/admin/providers/provider-staff-form';
 import { useToast } from '@/components/ui/use-toast';
+
+interface Provider {
+    id: string;
+    name: string;
+    entityType: string;
+}
+
+interface StaffMember {
+    id: string;
+    providerId?: string;
+    serviceProviderId?: string;
+    fullName: string;
+    role: string;
+    email: string;
+    status?: string;
+}
 
 export default function ProvidersStaffPage() {
     // Replace with actual providerId from context/router as needed
     const providerId = '1';
-    const [staff, setStaff] = useState([]);
+    const [staff, setStaff] = useState<StaffMember[]>([]);
     const [modalOpen, setModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState('add');
-    const [selectedStaff, setSelectedStaff] = useState(null);
+    const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+    const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
-    const [formError, setFormError] = useState(null);
-    const [providers, setProviders] = useState([]);
-    const [interventions, setInterventions] = useState([]);
-    const [services, setServices] = useState([]);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [providers, setProviders] = useState<Provider[]>([]);
+    const [interventions, setInterventions] = useState<{ id: string; name: string; service: string }[]>([]);
+    const [services, setServices] = useState<{ id: string; name: string }[]>([]);
 
     // Fetch staff and providers from API
     React.useEffect(() => {
         async function fetchStaffAndProviders() {
             // Fetch all providers
-            let allProviders = [];
+            let allProviders: Provider[] = [];
             try {
                 const res = await fetch('/api/providers');
                 const json = await res.json();
-                allProviders = (json.data || []).map(p => ({ id: p.id, name: p.name, entityType: p.entityType }));
+                allProviders = (json.data || []).map((p: Provider) => ({ id: p.id, name: p.name, entityType: p.entityType }));
                 setProviders(allProviders);
-            } catch (err) {
+            } catch (error) {
+                console.error('Error fetching providers:', error);
                 setProviders([]);
             }
             // Fetch staff
             try {
-                const res = await fetch(`/api/providers/${providerId}/staff`);
+                const res = await fetch(`/api/providers/staff`);
                 const json = await res.json();
+                console.log('Fetched staff:', json);
                 setStaff(json.data || []);
-            } catch (err) {
+            } catch (error) {
+                console.error('Error fetching staff:', error);
                 setStaff([]);
             }
         }
@@ -51,9 +68,10 @@ export default function ProvidersStaffPage() {
                 const res = await fetch('/api/providers');
                 const json = await res.json();
                 const companyProviders = (json.data || [])
-                    .map(p => ({ id: p.id, name: p.name, entityType: p.entityType }));
+                    .map((p: Provider) => ({ id: p.id, name: p.name, entityType: p.entityType }));
                 setProviders(companyProviders);
-            } catch (err) {
+            } catch (error) {
+                console.error('Error fetching providers:', error);
                 setProviders([]);
             }
             // Fetch interventions
@@ -61,9 +79,10 @@ export default function ProvidersStaffPage() {
                 const res = await fetch('/api/services/interventions?limit=200');
                 const json = await res.json();
                 const interventions = (json.data || [])
-                    .map(i => ({ id: i.id, name: i.name, service: i.service }));
+                    .map((i: { id: string; name: string; service: string }) => ({ id: i.id, name: i.name, service: i.service }));
                 setInterventions(interventions);
-            } catch (err) {
+            } catch (error) {
+                console.error('Error fetching interventions:', error);
                 setInterventions([]);
             }
             // Fetch services
@@ -71,7 +90,8 @@ export default function ProvidersStaffPage() {
                 const res = await fetch('/api/services?limit=200');
                 const json = await res.json();
                 setServices(json.data || []);
-            } catch (err) {
+            } catch (error) {
+                console.error('Error fetching services:', error);
                 setServices([]);
             }
         }
@@ -84,18 +104,18 @@ export default function ProvidersStaffPage() {
         setModalOpen(true);
     };
 
-    const handleEdit = (member) => {
+    const handleEdit = (member: StaffMember) => {
         setSelectedStaff(member);
         setModalMode('edit');
         setModalOpen(true);
     };
 
-    const handleSubmit = async (data) => {
+    const handleSubmit = async (data: Partial<StaffMember>) => {
         setIsSubmitting(true);
         setFormError(null);
         try {
             let res;
-            let staffProviderId = data.providerId || providerId;
+            const staffProviderId = data.providerId || providerId;
             if (modalMode === 'add') {
                 res = await fetch(`/api/providers/${staffProviderId}/staff`, {
                     method: 'POST',
@@ -110,7 +130,7 @@ export default function ProvidersStaffPage() {
                 });
             }
             if (res && !res.ok) {
-                let errorData = {};
+                let errorData: { error?: string } = {};
                 const contentType = res.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
                     errorData = await res.json();
@@ -121,7 +141,7 @@ export default function ProvidersStaffPage() {
             }
             // Refresh staff list
             const refreshed = await fetch(`/api/providers/${staffProviderId}/staff`);
-            let json = {};
+            let json: { data?: StaffMember[] } = {};
             const contentType = refreshed.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 json = await refreshed.json();
@@ -129,7 +149,8 @@ export default function ProvidersStaffPage() {
             setStaff(json.data || []);
             setModalOpen(false);
             toast({ title: 'Success', description: modalMode === 'add' ? 'Staff added.' : 'Staff updated.' });
-        } catch (e) {
+        } catch (error) {
+            console.error('Error submitting staff:', error);
             setFormError('An unexpected error occurred');
             toast({ title: 'Error', description: 'An unexpected error occurred', variant: 'destructive' });
         } finally {
@@ -137,7 +158,7 @@ export default function ProvidersStaffPage() {
         }
     };
 
-    const handleRemove = async (id) => {
+    const handleRemove = async (id: string) => {
         try {
             const res = await fetch(`/api/providers/${providerId}/staff/${id}`, { method: 'DELETE' });
             if (!res.ok) {
@@ -149,7 +170,8 @@ export default function ProvidersStaffPage() {
             const json = await refreshed.json();
             setStaff(json.data || []);
             toast({ title: 'Success', description: 'Staff removed.' });
-        } catch {
+        } catch (error) {
+            console.error('Error removing staff:', error);
             toast({ title: 'Error', description: 'An unexpected error occurred', variant: 'destructive' });
         }
     };
@@ -173,7 +195,7 @@ export default function ProvidersStaffPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {staff.map((member) => {
+                        {staff.map((member: StaffMember) => {
                             // Find the provider name for this staff member
                             const provider = providers.find(p => p.id === (member.providerId || member.serviceProviderId));
                             return (

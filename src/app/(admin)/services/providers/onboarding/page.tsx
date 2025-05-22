@@ -17,7 +17,7 @@ const mockOnboarding = [
 ];
 
 export default function ProvidersOnboardingPage() {
-    const [onboarding, setOnboarding] = useState(mockOnboarding);
+    const [onboarding] = useState(mockOnboarding);
 
     return (
         <div className="text-gray-900 dark:text-gray-100">

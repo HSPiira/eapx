@@ -2,8 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { ProviderTable } from '@/components/admin/providers/provider-table';
-import { Button, LoadingSpinner } from '@/components/ui';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Dialog,
     DialogContent,
@@ -12,83 +10,44 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { ProviderForm, type ProviderFormData } from '@/components/admin/providers/provider-form';
-import { toast } from "sonner"
+import { ProviderForm, ProviderFormData } from '@/components/admin/providers/provider-form';
 import { ProviderEditModal } from '@/components/admin/providers/provider-edit-modal';
+
+type ProviderType = 'COUNSELOR' | 'CLINIC' | 'HOTLINE' | 'COACH' | 'OTHER';
+type ProviderEntityType = 'INDIVIDUAL' | 'COMPANY';
+type ProviderStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
 
 interface Provider {
     id: string;
     name: string;
-    type: string;
-    entityType: string;
-    contactEmail: string | null;
+    type: ProviderType;
+    entityType: ProviderEntityType;
+    contactEmail: string;
     contactPhone: string | null;
     location: string | null;
     qualifications: string[];
     specializations: string[];
-    status: 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
+    status: ProviderStatus;
     isVerified: boolean;
     rating: number | null;
     createdAt: string;
+    updatedAt?: string;
     _count?: {
         services: number;
         sessions: number;
     };
 }
 
-async function fetchProviders() {
-    const res = await fetch('/api/providers');
-    if (!res.ok) {
-        throw new Error('Failed to fetch providers');
-    }
-    return res.json();
+interface Intervention {
+    id: string;
+    name: string;
+    serviceId?: string;
+    service?: { id: string; name: string };
 }
 
-async function createProvider(data: ProviderFormData) {
-    const response = await fetch('/api/services/providers', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create provider');
-    }
-
-    return response.json();
-}
-
-async function updateProvider({ id, ...data }: ProviderFormData & { id: string }) {
-    const response = await fetch(`/api/services/providers/${id}`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update provider');
-    }
-
-    return response.json();
-}
-
-async function deleteProvider(id: string) {
-    const response = await fetch(`/api/services/providers/${id}`, {
-        method: 'DELETE',
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete provider');
-    }
-
-    return response.json();
+interface Service {
+    id: string;
+    name: string;
 }
 
 export default function ProvidersListPage() {
@@ -99,6 +58,8 @@ export default function ProvidersListPage() {
     const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+    const [services, setServices] = useState<Service[]>([]);
+    const [interventions, setInterventions] = useState<Intervention[]>([]);
 
     useEffect(() => {
         async function fetchProviders() {
@@ -109,13 +70,32 @@ export default function ProvidersListPage() {
                 if (!res.ok) throw new Error('Failed to fetch providers');
                 const json = await res.json();
                 setProviders(json.data || []);
-            } catch (err: any) {
-                setError(err.message || 'Unknown error');
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                setError(errorMessage);
             } finally {
                 setLoading(false);
             }
         }
         fetchProviders();
+    }, []);
+
+    useEffect(() => {
+        async function fetchServicesAndInterventions() {
+            try {
+                const resServices = await fetch('/api/services?limit=200');
+                const jsonServices = await resServices.json();
+                setServices(jsonServices.data || []);
+                const resInterventions = await fetch('/api/services/interventions?limit=200');
+                const jsonInterventions = await resInterventions.json();
+                setInterventions((jsonInterventions.data || []).map((i: Intervention) => ({ ...i, service: i.service })));
+            } catch (error) {
+                console.error('Error fetching services and interventions:', error);
+                setServices([]);
+                setInterventions([]);
+            }
+        }
+        fetchServicesAndInterventions();
     }, []);
 
     const handleEdit = (provider: Provider) => {
@@ -137,7 +117,8 @@ export default function ProvidersListPage() {
             setProviders(prev => prev.map(p => p.id === updated.id ? updated : p));
             setIsEditDialogOpen(false);
             setEditingProvider(null);
-        } catch (err) {
+        } catch (error) {
+            console.error('Failed to update provider:', error);
             alert('Failed to update provider');
         } finally {
             setIsEditSubmitting(false);
@@ -149,7 +130,7 @@ export default function ProvidersListPage() {
         alert(`Delete provider with id: ${id}`);
     };
 
-    const handleAddProvider = async (data: ProviderFormData) => {
+    const handleAddProvider = async (data: ProviderFormData & { documents: Record<string, File | File[] | null>; interventionsOffered: string[] }) => {
         try {
             const payload = {
                 ...data,
@@ -164,7 +145,8 @@ export default function ProvidersListPage() {
             const json = await res.json();
             setProviders(prev => [json, ...prev]);
             setIsDialogOpen(false);
-        } catch (err) {
+        } catch (error) {
+            console.error('Failed to add provider:', error);
             alert('Failed to add provider');
         }
     };
@@ -193,6 +175,8 @@ export default function ProvidersListPage() {
                             onSubmit={handleAddProvider}
                             isSubmitting={false}
                             onCancel={() => setIsDialogOpen(false)}
+                            services={services}
+                            interventions={interventions}
                         />
                     </DialogContent>
                 </Dialog>

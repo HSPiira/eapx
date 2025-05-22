@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
     Table,
     TableBody,
@@ -9,10 +9,9 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui';
-import { X, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
     DropdownMenu,
@@ -23,20 +22,25 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+type ProviderType = 'COUNSELOR' | 'CLINIC' | 'HOTLINE' | 'COACH' | 'OTHER';
+type ProviderEntityType = 'INDIVIDUAL' | 'COMPANY';
+type ProviderStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
+
 interface Provider {
     id: string;
     name: string;
-    type: string;
-    entityType: string;
-    contactEmail: string | null;
+    type: ProviderType;
+    entityType: ProviderEntityType;
+    contactEmail: string;
     contactPhone: string | null;
     location: string | null;
     qualifications: string[];
     specializations: string[];
-    rating: number | null;
+    status: ProviderStatus;
     isVerified: boolean;
-    status: 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
+    rating: number | null;
     createdAt: string;
+    updatedAt?: string;
     _count?: {
         services: number;
         sessions: number;
@@ -46,7 +50,7 @@ interface Provider {
 interface ProviderTableProps {
     providers: Provider[];
     onEdit: (provider: Provider) => void;
-    onDelete: (id: string) => void; // Assuming onDelete takes ID for now
+    onDelete: (id: string) => void;
 }
 
 // Utility function to convert ENUM_STRING to Proper Case
@@ -65,14 +69,14 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
                 <Table className="w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Entity Type</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Phone</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Verified</TableHead>
-                            <TableHead>Actions</TableHead>
+                            <TableHead className="px-2 text-left">Name</TableHead>
+                            <TableHead className="px-2 text-left">Type</TableHead>
+                            <TableHead className="px-2 text-left">Entity Type</TableHead>
+                            <TableHead className="px-2 text-left">Email</TableHead>
+                            <TableHead className="px-2 text-left">Phone</TableHead>
+                            <TableHead className="px-2 text-left">Status</TableHead>
+                            <TableHead className="px-2 text-left">Verified</TableHead>
+                            <TableHead className="px-2 text-left">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -83,27 +87,22 @@ export function ProviderTable({ providers, onEdit, onDelete }: ProviderTableProp
                                     "cursor-pointer hover:bg-muted/50"
                                 )}
                             >
-                                <TableCell>
-                                    <div className="flex items-center gap-2">
-                                        {provider.name}
-                                        {provider.isVerified && (
-                                            <Badge variant="outline" className="text-xs">Verified</Badge>
-                                        )}
-                                    </div>
+                                <TableCell className="pl-2">{provider.name}
+                                    {provider.isVerified && (
+                                        <Badge variant="outline" className="text-xs ml-2">Verified</Badge>
+                                    )}
                                 </TableCell>
-                                <TableCell>{toProperCase(provider.type)}</TableCell>
-                                <TableCell>{toProperCase(provider.entityType)}</TableCell>
-                                <TableCell>{provider.contactEmail}</TableCell>
-                                <TableCell>{provider.contactPhone}</TableCell>
-                                <TableCell>
+                                <TableCell className="pl-2">{toProperCase(provider.type)}</TableCell>
+                                <TableCell className="pl-2">{toProperCase(provider.entityType)}</TableCell>
+                                <TableCell className="pl-2">{provider.contactEmail}</TableCell>
+                                <TableCell className="pl-2">{provider.contactPhone}</TableCell>
+                                <TableCell className="pl-2">
                                     <Badge variant={provider.status === 'ACTIVE' ? 'default' : 'secondary'}>
                                         {toProperCase(provider.status)}
                                     </Badge>
                                 </TableCell>
-                                <TableCell>
-                                    {provider.isVerified ? 'Yes' : 'No'}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="pl-2">{provider.isVerified ? 'Yes' : 'No'}</TableCell>
+                                <TableCell className="pl-2 text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" className="h-8 w-8 p-0">

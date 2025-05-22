@@ -25,8 +25,6 @@ import {
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, ChevronDown } from "lucide-react";
 
-// @ts-nocheck
-
 const staffSchema = z.object({
     providerId: z.string().min(1, 'Provider is required'),
     fullName: z.string().min(1, "Full name is required"),
@@ -87,7 +85,6 @@ export function ProviderStaffForm({
     // Step 1: Basic Info
     // Step 2: Specializations
     const stepTitles = ['Basic Information', 'Specializations'];
-    const isStep1Valid = !!form.watch('fullName') && !!form.watch('providerId');
 
     // Group interventions by service using services prop
     const interventionsByService = useMemo(() => {
@@ -242,14 +239,48 @@ export function ProviderStaffForm({
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="qualifications">Qualifications</Label>
-                                <Input
-                                    id="qualifications"
-                                    {...form.register("qualifications", {
-                                        setValueAs: v => Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map((s) => s.trim()).filter(Boolean) : [],
-                                    })}
-                                    placeholder="Comma-separated (e.g. BSc, MSc)"
-                                    defaultValue={initialData?.qualifications?.join(', ') || ''}
-                                />
+                                <div className="flex flex-wrap gap-2">
+                                    {form.watch('qualifications').map((qual, index) => (
+                                        <div key={index} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md">
+                                            <span>{qual}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const current = form.getValues('qualifications');
+                                                    form.setValue('qualifications', current.filter((_, i) => i !== index));
+                                                }}
+                                                className="text-muted-foreground hover:text-foreground"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="qualifications"
+                                        placeholder="Add qualification (e.g. BSc, MSc)"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const input = e.target as HTMLInputElement;
+                                                const value = input.value.trim();
+                                                if (value) {
+                                                    const current = form.getValues('qualifications');
+                                                    if (!current.includes(value)) {
+                                                        form.setValue('qualifications', [...current, value]);
+                                                    }
+                                                    input.value = '';
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                {form.formState.errors.qualifications && (
+                                    <p className="text-sm text-red-500">
+                                        {form.formState.errors.qualifications.message}
+                                    </p>
+                                )}
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Switch
@@ -264,54 +295,63 @@ export function ProviderStaffForm({
                     {step === 2 && (
                         <div className="space-y-4">
                             <Label>Specializations</Label>
-                            <div className="space-y-2">
-                                {Object.keys(interventionsByService).map((serviceName: string) => {
-                                    const group = interventionsByService[serviceName];
-                                    if (!group.length) return null; // skip empty groups
-                                    const allChecked = group.every((i: Intervention) => form.watch('specializations').includes(i.id));
-                                    const someChecked = group.some((i: Intervention) => form.watch('specializations').includes(i.id));
-                                    return (
-                                        <div key={serviceName} className="">
-                                            <div className="flex items-center gap-2 py-1">
-                                                <button
-                                                    type="button"
-                                                    className="flex items-center p-0 bg-none border-none"
-                                                    onClick={() => toggleGroup(serviceName)}
-                                                    aria-label={openGroups[serviceName] ? 'Collapse' : 'Expand'}
-                                                    tabIndex={0}
-                                                >
-                                                    <ChevronDown className={`h-4 w-4 transition-transform ${openGroups[serviceName] ? 'rotate-90' : 'rotate-0'}`} />
-                                                </button>
-                                                <Checkbox
-                                                    checked={allChecked ? true : (!allChecked && someChecked ? 'indeterminate' : false)}
-                                                    onCheckedChange={checked => handleCheckAll(serviceName, Boolean(checked))}
-                                                />
-                                                <span className="font-medium select-none">{serviceName}</span>
-                                            </div>
-                                            {openGroups[serviceName] && (
-                                                <div className="pl-8 space-y-2">
-                                                    {group.map((intervention: Intervention) => (
-                                                        <label key={intervention.id} className="flex items-center gap-2 cursor-pointer">
-                                                            <Checkbox
-                                                                checked={form.watch('specializations').includes(intervention.id)}
-                                                                onCheckedChange={checked => {
-                                                                    const current = form.getValues('specializations');
-                                                                    if (checked) {
-                                                                        form.setValue('specializations', [...current, intervention.id]);
-                                                                    } else {
-                                                                        form.setValue('specializations', current.filter((id: string) => id !== intervention.id));
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <span>{intervention.name}</span>
-                                                        </label>
-                                                    ))}
+                            {Object.keys(interventionsByService).length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No specializations available</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {Object.keys(interventionsByService).map((serviceName: string) => {
+                                        const group = interventionsByService[serviceName];
+                                        if (!group.length) return null;
+                                        const allChecked = group.every((i: Intervention) => form.watch('specializations').includes(i.id));
+                                        const someChecked = group.some((i: Intervention) => form.watch('specializations').includes(i.id));
+                                        return (
+                                            <div key={serviceName} className="border rounded-lg p-2">
+                                                <div className="flex items-center gap-2 py-1">
+                                                    <button
+                                                        type="button"
+                                                        className="flex items-center p-0 bg-none border-none"
+                                                        onClick={() => toggleGroup(serviceName)}
+                                                        aria-label={openGroups[serviceName] ? 'Collapse' : 'Expand'}
+                                                        tabIndex={0}
+                                                    >
+                                                        <ChevronDown className={`h-4 w-4 transition-transform ${openGroups[serviceName] ? 'rotate-90' : 'rotate-0'}`} />
+                                                    </button>
+                                                    <Checkbox
+                                                        checked={allChecked ? true : (!allChecked && someChecked ? 'indeterminate' : false)}
+                                                        onCheckedChange={checked => handleCheckAll(serviceName, Boolean(checked))}
+                                                    />
+                                                    <span className="font-medium select-none">{serviceName}</span>
                                                 </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                                {openGroups[serviceName] && (
+                                                    <div className="pl-8 space-y-2 mt-2">
+                                                        {group.map((intervention: Intervention) => (
+                                                            <label key={intervention.id} className="flex items-center gap-2 cursor-pointer">
+                                                                <Checkbox
+                                                                    checked={form.watch('specializations').includes(intervention.id)}
+                                                                    onCheckedChange={checked => {
+                                                                        const current = form.getValues('specializations');
+                                                                        if (checked) {
+                                                                            form.setValue('specializations', [...current, intervention.id]);
+                                                                        } else {
+                                                                            form.setValue('specializations', current.filter((id: string) => id !== intervention.id));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <span>{intervention.name}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {form.formState.errors.specializations && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.specializations.message}
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>

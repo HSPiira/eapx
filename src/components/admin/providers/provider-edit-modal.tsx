@@ -2,16 +2,56 @@ import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ProviderForm, ProviderFormData } from './provider-form';
 
+type ProviderType = 'COUNSELOR' | 'CLINIC' | 'HOTLINE' | 'COACH' | 'OTHER';
+type ProviderEntityType = 'INDIVIDUAL' | 'COMPANY';
+type ProviderStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
+
+interface Provider {
+    id: string;
+    name: string;
+    type: ProviderType;
+    entityType: ProviderEntityType;
+    contactEmail: string;
+    contactPhone: string | null;
+    location: string | null;
+    qualifications: string[];
+    specializations: string[];
+    status: ProviderStatus;
+    isVerified: boolean;
+    rating: number | null;
+    createdAt: string;
+    updatedAt?: string;
+    _count?: {
+        services: number;
+        sessions: number;
+    };
+}
+
 interface ProviderEditModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    provider: any | null; // Use your Provider type if available
+    provider: Provider | null;
     onSubmit: (data: ProviderFormData) => void;
     isSubmitting?: boolean;
 }
 
 export function ProviderEditModal({ open, onOpenChange, provider, onSubmit, isSubmitting }: ProviderEditModalProps) {
     if (!provider) return null;
+
+    // Convert provider data to match form data structure
+    const formData: Partial<ProviderFormData> = {
+        name: provider.name,
+        type: provider.type,
+        entityType: provider.entityType,
+        contactEmail: provider.contactEmail,
+        contactPhone: provider.contactPhone,
+        location: provider.location,
+        qualifications: provider.qualifications,
+        specializations: provider.specializations,
+        isVerified: provider.isVerified,
+        status: provider.status,
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent onInteractOutside={e => e.preventDefault()}>
@@ -22,7 +62,7 @@ export function ProviderEditModal({ open, onOpenChange, provider, onSubmit, isSu
                     </DialogDescription>
                 </DialogHeader>
                 <ProviderForm
-                    initialData={provider}
+                    initialData={formData}
                     onSubmit={onSubmit}
                     isSubmitting={isSubmitting}
                     onCancel={() => onOpenChange(false)}

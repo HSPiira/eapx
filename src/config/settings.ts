@@ -16,39 +16,43 @@ export const settingsSections: SettingsSection[] = [
     {
         title: 'Account',
         items: [
-            { label: 'Profile', icon: 'User', href: '/admin/settings/profile' },
-            { label: 'General', icon: 'Settings', href: '/admin/settings/general' },
-            { label: 'Calendars', icon: 'Calendar', href: '/admin/settings/calendars' },
-            { label: 'Appearance', icon: 'Eye', href: '/admin/settings/appearance' },
-            { label: 'Out of office', icon: 'Calendar', href: '/admin/settings/out-of-office' },
-            { label: 'Push Notifications', icon: 'Bell', href: '/admin/settings/push-notifications' },
+            { label: 'Profile', icon: 'User', href: '/settings/profile' },
+            { label: 'General', icon: 'Settings', href: '/settings/general' },
+            { label: 'Calendars', icon: 'Calendar', href: '/settings/calendars' },
+            { label: 'Appearance', icon: 'Eye', href: '/settings/appearance' },
+            { label: 'Notifications', icon: 'Bell', href: '/settings/notifications' },
+        ],
+    },
+    {
+        title: 'Organization',
+        items: [
+            { label: 'Industries', icon: 'Briefcase', href: '/settings/industries' },
         ],
     },
     {
         title: 'Security',
         items: [
-            { label: 'Password', icon: 'Key', href: '/admin/settings/password' },
-            { label: 'Impersonation', icon: 'Lock', href: '/admin/settings/impersonation' },
-            { label: 'Industries', icon: 'Briefcase', href: '/admin/settings/industries' },
+            { label: 'Password', icon: 'Key', href: '/settings/password' },
+            { label: 'Impersonation', icon: 'Lock', href: '/settings/impersonation' },
         ],
     },
     {
         title: 'Billing',
         items: [
-            { label: 'Manage billing', icon: 'CreditCard', href: '/admin/settings/billing' },
+            { label: 'Manage billing', icon: 'CreditCard', href: '/settings/billing' },
         ],
     },
     {
         title: 'Developer',
         items: [
-            { label: 'Webhooks', icon: 'Code', href: '/admin/settings/webhooks' },
-            { label: 'API keys', icon: 'Key', href: '/admin/settings/api-keys' },
+            { label: 'Webhooks', icon: 'Code', href: '/settings/webhooks' },
+            { label: 'API keys', icon: 'Key', href: '/settings/api-keys' },
         ],
     },
     {
         title: 'Teams',
         items: [
-            { label: 'Add a team', icon: 'Plus', href: '/admin/settings/teams' },
+            { label: 'Add a team', icon: 'Plus', href: '/settings/teams' },
         ],
     },
 ];

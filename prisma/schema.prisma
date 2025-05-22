@@ -75,23 +75,27 @@ enum EntityStatus {
 
 /// Represents an authenticated user in the system.
 model User {
-  id                 String     @id @default(cuid())
-  email              String?    @unique
-  password           String?
-  emailVerified      DateTime?
-  lastLoginAt        DateTime?
-  preferredLanguage  Language?
-  timezone           String?
-  isTwoFactorEnabled Boolean    @default(false)
-  status             UserStatus @default(ACTIVE)
-  statusChangedAt    DateTime? // When the status was last changed
-  inactiveReason     String? // Reason if status is INACTIVE
-  suspensionReason   String? // Reason if status is SUSPENDED
-  banReason          String? // Reason if status is BANNED
-  metadata           Json?
-  deletedAt          DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  id                  String     @id @default(cuid())
+  email               String?    @unique
+  password            String?
+  emailVerified       DateTime?
+  lastLoginAt         DateTime?
+  preferredLanguage   Language?
+  timezone            String?
+  isTwoFactorEnabled  Boolean    @default(false)
+  status              UserStatus @default(ACTIVE)
+  statusChangedAt     DateTime? // When the status was last changed
+  inactiveReason      String? // Reason if status is INACTIVE
+  suspensionReason    String? // Reason if status is SUSPENDED
+  banReason           String? // Reason if status is BANNED
+  failedLoginAttempts Int        @default(0) // For rate limiting
+  lastFailedLogin     DateTime? // For security monitoring
+  mfaSecret           String? // For 2FA
+  mfaBackupCodes      String[] // For 2FA recovery
+  metadata            Json?
+  deletedAt           DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
   // Relations
   accounts          Account[]
@@ -104,6 +108,8 @@ model User {
   beneficiaries     Beneficiary[]          @relation("UserBeneficiaries")
   guardianOf        Beneficiary[]          @relation("UserGuardians")
   statusTransitions UserStatusTransition[] // Track status change history
+  UserPreference    UserPreference[]
+  UserActivity      UserActivity[]
 
   @@index([lastLoginAt])
   @@index([isTwoFactorEnabled])
@@ -128,6 +134,11 @@ model Account {
   session_state     String?
   lastLoginAt       DateTime?
   deletedAt         DateTime?
+  isPrimary         Boolean   @default(false) // Mark primary account
+  lastTokenRefresh  DateTime? // Track token refresh
+  tokenExpiresAt    DateTime? // More explicit than expires_at
+  scopes            String[] // Store scopes as array
+  metadata          Json?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -147,6 +158,11 @@ model Session {
   ipAddress    String?
   userAgent    String?
   isValid      Boolean  @default(true)
+  deviceId     String? // Track unique devices
+  deviceType   String? // Mobile, desktop, etc.
+  location     String? // IP-based location
+  lastActivity DateTime @default(now()) // Track session activity
+  isRemembered Boolean  @default(false) // Remember me functionality
 
   user User @relation(fields: [userId], references: [id])
 
@@ -211,21 +227,55 @@ model UserRole {
   @@unique([userId, roleId]) // Prevent duplicate role assignments
 }
 
+model UserPreference {
+  id            String   @id @default(cuid())
+  userId        String
+  theme         String   @default("light")
+  notifications Json // Notification preferences
+  language      Language @default(ENGLISH)
+  timezone      String
+  dateFormat    String
+  timeFormat    String
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model UserActivity {
+  id           String   @id @default(cuid())
+  userId       String
+  activityType String
+  description  String
+  metadata     Json?
+  user         User     @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
 // =========================================
 // Profile & Identity Domain
 // =========================================
 
 /// Represents a person's profile information
 model Profile {
-  id                     String         @id @default(cuid())
-  fullName               String
-  preferredName          String?
-  dob                    DateTime?
-  gender                 Gender?
-  phone                  String?
-  email                  String?
-  image                  String?
-  address                String?
+  id             String    @id @default(cuid())
+  fullName       String
+  preferredName  String?
+  dob            DateTime?
+  gender         Gender?
+  phone          String?
+  email          String?
+  image          String?
+  address        String?
+  nationality    String?
+  idNumber       String?   @unique
+  passportNumber String?   @unique
+  idType         IdType?
+
+  // Health & Support Info
+  bloodType              String?
+  allergies              String[]
+  medicalConditions      String[]
+  dietaryRestrictions    String[]
+  accessibilityNeeds     String[]
+  // Contact & Metadata
   emergencyContactName   String?
   emergencyContactPhone  String?
   emergencyContactEmail  String?
@@ -240,12 +290,36 @@ model Profile {
   staff       Staff?
   beneficiary Beneficiary?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  EmergencyContact EmergencyContact[]
 
   @@index([preferredLanguage])
+  @@index([idNumber])
+  @@index([passportNumber])
   @@index([preferredContactMethod])
   @@index([deletedAt])
+}
+
+enum IdType {
+  NATIONAL_ID    @map("National ID")
+  PASSPORT       @map("Passport")
+  DRIVER_LICENSE @map("Driver License")
+  REFUGEE_CARD   @map("Refugee Card")
+  OTHER          @map("Other")
+}
+
+model EmergencyContact {
+  id           String   @id @default(cuid())
+  profileId    String
+  name         String
+  relationship String
+  phone        String
+  email        String?
+  isPrimary    Boolean  @default(false)
+  profile      Profile  @relation(fields: [profileId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // =========================================
@@ -255,13 +329,13 @@ model Profile {
 /// Represents a client organization in the system
 model Client {
   id                     String         @id @default(cuid())
-  name                   String
+  name                   String         @unique
   email                  String?
   phone                  String?
   website                String?
   address                String?
   billingAddress         String?
-  taxId                  String?
+  taxId                  String?        @unique
   contactPerson          String?
   contactEmail           String?
   contactPhone           String?
@@ -367,7 +441,7 @@ model Contract {
 // Service Management Domain
 // =========================================
 
-model ServiceCategory {
+model Service {
   id          String    @id @default(cuid())
   name        String    @unique
   description String?
@@ -376,22 +450,23 @@ model ServiceCategory {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  services Service[]
+  interventions          Intervention[]
+  ServiceProviderService ServiceProviderService[]
 
   @@index([deletedAt])
 }
 
-model Service {
-  id            String          @id @default(cuid())
+model Intervention {
+  id            String     @id @default(cuid())
   name          String
   description   String?
-  categoryId    String
-  category      ServiceCategory @relation(fields: [categoryId], references: [id])
-  status        BaseStatus      @default(ACTIVE)
+  serviceId     String
+  service       Service    @relation(fields: [serviceId], references: [id])
+  status        BaseStatus @default(ACTIVE)
   duration      Int?
   capacity      Int?
   prerequisites String?
-  isPublic      Boolean         @default(true)
+  isPublic      Boolean    @default(true)
   price         Float?
   metadata      Json?
   deletedAt     DateTime?
@@ -406,7 +481,7 @@ model Service {
 
   @@index([status])
   @@index([isPublic])
-  @@index([categoryId])
+  @@index([serviceId])
   @@index([deletedAt])
 }
 
@@ -414,7 +489,7 @@ model ServiceAssignment {
   id         String           @id @default(cuid())
   serviceId  String
   contractId String
-  service    Service          @relation(fields: [serviceId], references: [id])
+  service    Intervention     @relation(fields: [serviceId], references: [id])
   contract   Contract         @relation(fields: [contractId], references: [id])
   status     AssignmentStatus @default(PENDING)
   startDate  DateTime
@@ -434,26 +509,32 @@ model ServiceAssignment {
 }
 
 model ServiceProvider {
-  id              String              @id @default(cuid())
+  id              String               @id @default(cuid())
   name            String
-  type            ServiceProviderType
-  contactEmail    String?
+  type            ServiceProviderType?
+  contactEmail    String
   contactPhone    String?
   location        String?
+  entityType      ProviderEntityType   @default(INDIVIDUAL)
+  documents       Document[]
   qualifications  String[]
   specializations String[]
-  availability    Json?
   rating          Float?
-  isVerified      Boolean             @default(false)
+  isVerified      Boolean              @default(false)
   metadata        Json?
   deletedAt       DateTime?
-  status          WorkStatus          @default(ACTIVE)
+  status          WorkStatus           @default(ACTIVE)
 
-  services Service[]
-  sessions ServiceSession[]
+  interventions     Intervention[]
+  sessions          ServiceSession[]
+  availabilitySlots CounselorAvailability[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  SessionForm              SessionForm[]
+  ProviderStaff            ProviderStaff[]
+  ServiceProviderService   ServiceProviderService[]
+  ProviderOnboardingStatus ProviderOnboardingStatus[]
 
   @@index([type])
   @@index([isVerified])
@@ -461,10 +542,96 @@ model ServiceProvider {
   @@index([deletedAt])
 }
 
+model ServiceProviderService {
+  id                String           @id @default(cuid())
+  serviceProvider   ServiceProvider  @relation(fields: [serviceProviderId], references: [id])
+  serviceProviderId String
+  service           Service          @relation(fields: [serviceId], references: [id])
+  serviceId         String
+  notes             String?
+  isApproved        Boolean          @default(false)
+  ServiceSession    ServiceSession[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([serviceProviderId])
+  @@index([serviceId])
+  @@index([deletedAt])
+}
+
+model ProviderOnboardingStatus {
+  id                String          @id @default(cuid())
+  serviceProviderId String
+  hasSubmittedKYC   Boolean         @default(false)
+  hasSignedContract Boolean         @default(false)
+  servicesAligned   Boolean         @default(false)
+  documentsComplete Boolean         @default(false)
+  metadata          Json?
+  deletedAt         DateTime?
+  serviceProvider   ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([serviceProviderId])
+  @@index([hasSubmittedKYC])
+  @@index([hasSignedContract])
+  @@index([servicesAligned])
+  @@index([documentsComplete])
+  @@index([deletedAt])
+}
+
+enum ProviderEntityType {
+  INDIVIDUAL @map("Individual")
+  COMPANY    @map("Company")
+}
+
+model ProviderStaff {
+  id                String     @id @default(cuid())
+  serviceProviderId String
+  fullName          String
+  email             String?
+  phone             String?
+  role              String? // e.g. Team Leader, Counselor
+  qualifications    String[]
+  specializations   String[]
+  documents         Document[]
+  isPrimaryContact  Boolean    @default(false)
+  metadata          Json?
+
+  serviceProvider ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CounselorAvailability {
+  id          String    @id @default(cuid())
+  counselorId String
+  startTime   DateTime
+  endTime     DateTime
+  isAvailable Boolean   @default(true)
+  notes       String?
+  metadata    Json?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  counselor ServiceProvider @relation(fields: [counselorId], references: [id])
+
+  @@index([counselorId])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([isAvailable])
+  @@index([deletedAt])
+}
+
 model ServiceSession {
   id                 String        @id @default(cuid())
   serviceId          String
-  providerId         String
+  providerId         String?
   scheduledAt        DateTime
   completedAt        DateTime?
   status             SessionStatus @default(SCHEDULED)
@@ -478,19 +645,30 @@ model ServiceSession {
   metadata           Json?
   deletedAt          DateTime?
 
-  staffId       String?
-  beneficiaryId String?
+  checkInTime      DateTime? // When staff checked in
+  checkOutTime     DateTime? // When staff checked out
+  followUpRequired Boolean   @default(false)
+  followUpDate     DateTime?
 
-  staff           Staff?            @relation(fields: [staffId], references: [id])
-  beneficiary     Beneficiary?      @relation(fields: [beneficiaryId], references: [id])
-  service         Service           @relation(fields: [serviceId], references: [id])
-  provider        ServiceProvider   @relation(fields: [providerId], references: [id])
+  staffId           String?
+  beneficiaryId     String?
+  providerStaffId   String?
+  providerServiceId String?
+
+  staff           Staff?                  @relation(fields: [staffId], references: [id])
+  beneficiary     Beneficiary?            @relation(fields: [beneficiaryId], references: [id])
+  service         Intervention            @relation(fields: [serviceId], references: [id])
+  provider        ServiceProvider?        @relation(fields: [providerId], references: [id])
+  providerService ServiceProviderService? @relation(fields: [providerServiceId], references: [id])
   SessionFeedback SessionFeedback[]
+  forms           SessionForm[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status])
+  @@index([status, checkInTime, checkOutTime])
+  @@index([staffId, checkInTime, checkOutTime])
+  @@index([beneficiaryId, checkInTime, checkOutTime])
   @@index([scheduledAt])
   @@index([isGroupSession])
   @@index([providerId])
@@ -512,25 +690,51 @@ model SessionFeedback {
   @@index([deletedAt])
 }
 
+model SessionForm {
+  id          String    @id @default(cuid())
+  sessionId   String
+  counselorId String
+  formData    Json
+  status      String
+  submittedAt DateTime
+  expiresAt   DateTime
+  metadata    Json?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  session   ServiceSession  @relation(fields: [sessionId], references: [id])
+  counselor ServiceProvider @relation(fields: [counselorId], references: [id])
+
+  @@index([sessionId])
+  @@index([counselorId])
+  @@index([status])
+  @@index([submittedAt])
+  @@index([expiresAt])
+  @@index([deletedAt])
+}
+
 // =========================================
 // Staff & Beneficiary Management Domain
 // =========================================
 
 /// Represents a staff member in an organization
 model Staff {
-  id                    String     @id @default(cuid())
-  profileId             String     @unique
+  id                    String          @id @default(cuid())
+  profileId             String          @unique
   clientId              String
-  role                  StaffRole
+  jobTitle              String
+  companyId             String
+  managementLevel       ManagementLevel
+  employmentType        EmploymentType?
+  educationLevel        EducationLevel?
+  maritalStatus         MaritalStatus
   startDate             DateTime
   endDate               DateTime?
-  status                WorkStatus @default(ACTIVE)
+  status                WorkStatus      @default(ACTIVE)
   qualifications        String[]
   specializations       String[]
   preferredWorkingHours Json?
-  emergencyContactName  String?
-  emergencyContactPhone String?
-  emergencyContactEmail String?
   metadata              Json?
   deletedAt             DateTime?
 
@@ -547,25 +751,38 @@ model Staff {
   updatedAt DateTime @updatedAt
 
   @@index([status])
-  @@index([role])
+  @@index([managementLevel])
+  @@index([employmentType])
+  @@index([educationLevel])
+  @@index([maritalStatus])
   @@index([clientId])
   @@index([deletedAt])
 }
 
 /// Represents a beneficiary in the system
 model Beneficiary {
-  id                String       @id @default(cuid())
-  profileId         String       @unique
-  relation          RelationType
-  isStaffLink       Boolean      @default(false)
-  staffId           String
-  guardianId        String?
-  userLinkId        String?
-  status            BaseStatus   @default(ACTIVE)
-  lastServiceDate   DateTime?
-  preferredLanguage Language?
-  notes             String?
-  deletedAt         DateTime?
+  id                  String           @id @default(cuid())
+  profileId           String           @unique
+  relation            RelationType
+  relationshipDetails String?
+  dateOfBirth         DateTime?
+  isEmployed          Boolean?         @default(false)
+  isStudent           Boolean?         @default(false)
+  jobTitle            String?
+  educationLevel      EducationLevel?
+  maritalStatus       MaritalStatus?
+  employmentType      EmploymentType?
+  managementLevel     ManagementLevel?
+  vulnerabilityFlag   Boolean?         @default(false)
+  isStaffLink         Boolean          @default(false)
+  staffId             String
+  guardianId          String?
+  userLinkId          String?
+  status              BaseStatus       @default(ACTIVE)
+  lastServiceDate     DateTime?
+  preferredLanguage   Language?
+  notes               String?
+  deletedAt           DateTime?
 
   // Relations
   profile  Profile @relation(fields: [profileId], references: [id])
@@ -578,6 +795,9 @@ model Beneficiary {
   ServiceSession ServiceSession[]
 
   @@index([status])
+  @@index([relation])
+  @@index([isEmployed])
+  @@index([isStudent])
   @@index([lastServiceDate])
   @@index([deletedAt])
 }
@@ -699,8 +919,12 @@ model Document {
   contractId   String?
   contract     Contract? @relation(fields: [contractId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  ProviderStaff     ProviderStaff?   @relation(fields: [providerStaffId], references: [id])
+  providerStaffId   String?
+  ServiceProvider   ServiceProvider? @relation(fields: [serviceProviderId], references: [id])
+  serviceProviderId String?
 
   @@index([type])
   @@index([clientId])
@@ -959,4 +1183,35 @@ model UserStatusTransition {
   @@index([fromStatus])
   @@index([toStatus])
   @@index([createdAt])
+}
+
+enum ManagementLevel {
+  JUNIOR    @map("Junior")
+  MID       @map("Mid")
+  SENIOR    @map("Senior")
+  EXECUTIVE @map("Executive")
+  OTHER     @map("Other")
+}
+
+enum EmploymentType {
+  FULL_TIME  @map("Full Time")
+  PART_TIME  @map("Part Time")
+  CONTRACT   @map("Contract")
+  TEMPORARY  @map("Temporary")
+  CONSULTANT @map("Consultant")
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL @map("High School")
+  DIPLOMA     @map("Diploma")
+  BACHELORS   @map("Bachelors")
+  MASTERS     @map("Masters")
+  PHD         @map("PhD")
+}
+
+enum MaritalStatus {
+  SINGLE   @map("Single")
+  MARRIED  @map("Married")
+  DIVORCED @map("Divorced")
+  WIDOWED  @map("Widowed")
 }

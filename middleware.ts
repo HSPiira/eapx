@@ -3,41 +3,12 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { withSecurityHeaders } from "@/middleware/security"
 import { rateLimit } from "@/lib/rate-limit"
+import { isPublicPath } from "@/config/auth"
 
 // Rate limit configuration for auth routes
 const authRateLimit = {
     maxRequests: 5,       // 5 requests
     windowMs: 60 * 1000,  // per minute
-}
-
-// List of paths that should be considered public (no auth required)
-const publicPaths = [
-    "/",
-    "/auth/login",
-    "/auth/error",
-    "/favicon.ico",
-    "/logo.svg",
-    "/logo.png",
-    "/globe.svg",
-    "/window.svg",
-    "/file.svg",
-    "/microsoft.svg"
-]
-
-// Helper to determine if a path is public
-function isPublicPath(pathname: string): boolean {
-    return publicPaths.some(path =>
-        pathname === path || pathname.startsWith(path + "/")
-    )
-}
-
-// Helper to check if it's a static asset (e.g., public/* or _next/static/*)
-function isStaticAsset(pathname: string): boolean {
-    return pathname.startsWith("/_next/static") ||
-        pathname.startsWith("/_next/image") ||
-        pathname.startsWith("/static") ||     // your custom public assets
-        pathname.endsWith(".svg") ||
-        pathname.endsWith(".ico")
 }
 
 export default async function middleware(request: NextRequest) {
@@ -62,7 +33,7 @@ export default async function middleware(request: NextRequest) {
     }
 
     // 2. Allow all public or static asset requests through
-    if (isPublicPath(pathname) || isStaticAsset(pathname)) {
+    if (isPublicPath(pathname)) {
         return withSecurityHeaders(request, NextResponse.next())
     }
 
@@ -87,5 +58,14 @@ export default async function middleware(request: NextRequest) {
 
 // Apply middleware to all routes except those we explicitly exclude
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - api (API routes)
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         */
+        "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    ],
 }

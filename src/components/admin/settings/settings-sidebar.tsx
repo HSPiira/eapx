@@ -3,9 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import {icons, settingsSections } from '@/config';
+import { icons, settingsSections } from '@/config';
 
-export default function SettingsSidebarNav(){
+export default function SettingsSidebarNav() {
     const router = useRouter();
     const pathname = usePathname();
 
@@ -35,7 +35,7 @@ export default function SettingsSidebarNav(){
                                     <Link
                                         key={item.label}
                                         href={item.href}
-                                        className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-700 dark:text-gray-200 ${isActive ? 'bg-gray-100 dark:bg-gray-900 font-semibold' : ''}`}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-700 dark:text-gray-200 ${isActive ? 'bg-gray-100 dark:bg-gray-900 font-semibold' : ''}`}
                                     >
                                         <Icon className="w-4 h-4" />
                                         <span>{item.label}</span>

@@ -7,6 +7,10 @@ export const iconMap = {
     Users: Icons.Users,
     BarChart: Icons.BarChart,
     Settings: Icons.Settings,
+    Briefcase: Icons.Briefcase,
+    Clipboard: Icons.Clipboard,
+    List: Icons.List,
+    MessageSquare: Icons.MessageSquare,
     MoreHorizontal: Icons.MoreHorizontal,
 };
 

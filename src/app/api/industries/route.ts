@@ -71,6 +71,18 @@ export async function POST(request: Request) {
         const body = await request.json();
         const validatedData = industrySchema.parse(body);
 
+        // Prevent duplicate names  
+        const duplicate = await prisma.industry.findFirst({
+            where: { name: validatedData.name, deletedAt: null },
+            select: { id: true },
+        });
+        if (duplicate) {
+            return NextResponse.json(
+                { error: 'Industry with this name already exists' },
+                { status: 400 },
+            );
+        }
+
         const industry = await prisma.industry.create({
             data: {
                 name: validatedData.name,

@@ -1,10 +1,9 @@
 import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
-import { BaseStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { clientSelectFields } from '@/lib/select-fields/clients';
-import { clientSchema } from '@/lib/validation/clients';
+import { withAuth } from '@/middleware/auth';
 
 type Params = Promise<{ id: string }>;
 
@@ -33,86 +32,60 @@ export async function GET(
     });
 }
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: Params }
-) {
-    return withRouteMiddleware(request, async ({ }) => {
-        const { id } = await params;
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+export const PUT = withAuth(async (request: NextRequest, ...args: unknown[]) => {
+    try {
+        const userId = request.headers.get('x-user-id');
+        if (!userId) {
+            return NextResponse.json({ error: 'User ID not found' }, { status: 401 });
         }
 
-        const existingClient = await prisma.client.findUnique({
-            where: { id: id },
-        });
-
-        if (!existingClient) {
-            return NextResponse.json({ error: 'Client not found' }, { status: 404 });
-        }
-
-        // Validate the request body
-        const validationResult = clientSchema.safeParse(body);
-        if (!validationResult.success) {
-            return NextResponse.json({
-                error: 'Validation failed',
-                details: validationResult.error.errors,
-            }, { status: 400 });
-        }
+        const { id } = (args[0] as { params: { id: string } }).params;
+        const body = await request.json();
 
         const updatedClient = await prisma.client.update({
-            where: { id: id },
-            data: {
-                name: body.name,
-                email: body.email,
-                phone: body.phone,
-                website: body.website,
-                address: body.address,
-                billingAddress: body.billingAddress,
-                taxId: body.taxId,
-                contactPerson: body.contactPerson,
-                contactEmail: body.contactEmail,
-                contactPhone: body.contactPhone,
-                industryId: body.industryId,
-                status: body.status as BaseStatus,
-                preferredContactMethod: body.preferredContactMethod,
-                timezone: body.timezone,
-                isVerified: body.isVerified,
-                notes: body.notes,
-                metadata: body.metadata,
-            },
-            select: clientSelectFields,
+            where: { id },
+            data: body
         });
 
         await cache.deleteByPrefix('clients:');
         return NextResponse.json(updatedClient);
-    });
-}
+    } catch (error) {
+        console.error('Error updating client:', error);
+        return NextResponse.json(
+            { error: 'Failed to update client' },
+            { status: 500 }
+        );
+    }
+});
 
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Params }
-) {
-    return withRouteMiddleware(request, async () => {
-        const { id } = await params;
+export const DELETE = withAuth(async (request: NextRequest, ...args: unknown[]) => {
+    try {
+        const userId = request.headers.get('x-user-id');
+        if (!userId) {
+            return NextResponse.json({ error: 'User ID not found' }, { status: 401 });
+        }
+
+        const { id } = (args[0] as { params: { id: string } }).params;
+
         const existingClient = await prisma.client.findUnique({
-            where: { id: id },
+            where: { id },
         });
 
         if (!existingClient) {
             return NextResponse.json({ error: 'Client not found' }, { status: 404 });
         }
 
-        // Soft delete by setting deletedAt
-        await prisma.client.update({
-            where: { id: id },
-            data: { deletedAt: new Date() },
+        await prisma.client.delete({
+            where: { id },
         });
 
         await cache.deleteByPrefix('clients:');
-        return NextResponse.json({ message: 'Client deleted successfully' });
-    });
-} 
+        return new NextResponse(null, { status: 204 });
+    } catch (error) {
+        console.error('Error deleting client:', error);
+        return NextResponse.json(
+            { error: 'Failed to delete client' },
+            { status: 500 }
+        );
+    }
+}); 

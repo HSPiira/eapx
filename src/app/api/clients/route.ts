@@ -134,7 +134,6 @@ export async function GET(request: NextRequest) {
 
         const where: Prisma.ClientWhereInput = {
             deletedAt: null,
-            status: status && status !== 'all' ? (status as BaseStatus) : 'ACTIVE',
             OR: search
                 ? [
                     { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
@@ -144,12 +143,17 @@ export async function GET(request: NextRequest) {
                 ]
                 : undefined,
             ...(industryId && industryId !== 'all' && { industryId: industryId }),
-            ...(isVerified !== undefined && { isVerified }),
-            ...(preferredContactMethod && { preferredContactMethod }),
-            createdAt: {
-                ...(createdAfter && { gte: createdAfter }),
-                ...(createdBefore && { lte: createdBefore }),
-            },
+            status: status && status !== 'all' ? (status as BaseStatus) : undefined,
+            isVerified: isVerified,
+            preferredContactMethod: preferredContactMethod,
+            ...(createdAfter || createdBefore
+                ? {
+                    createdAt: {
+                        ...(createdAfter && { gte: createdAfter }),
+                        ...(createdBefore && { lte: createdBefore }),
+                    },
+                }
+                : {}),
             ...(hasContract !== undefined && {
                 contracts: hasContract ? { some: {} } : { none: {} },
             }),
@@ -203,24 +207,6 @@ export async function GET(request: NextRequest) {
             preferredContactMethod: c.preferredContactMethod,
             createdAt: c.createdAt
         })));
-
-        // Let's also check if Minet Uganda exists in the database
-        const minetUganda = await prisma.client.findFirst({
-            where: {
-                name: { contains: 'Minet Uganda', mode: Prisma.QueryMode.insensitive }
-            },
-            select: clientSelectFields
-        });
-        console.log('Minet Uganda details:', minetUganda ? {
-            id: minetUganda.id,
-            name: minetUganda.name,
-            status: minetUganda.status,
-            deletedAt: minetUganda.deletedAt,
-            isVerified: minetUganda.isVerified,
-            industryId: minetUganda.industryId,
-            preferredContactMethod: minetUganda.preferredContactMethod,
-            createdAt: minetUganda.createdAt
-        } : 'Not found');
 
         const response = {
             data: clients,

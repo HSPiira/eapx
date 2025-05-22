@@ -450,7 +450,8 @@ model Service {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  interventions Intervention[]
+  interventions          Intervention[]
+  ServiceProviderService ServiceProviderService[]
 
   @@index([deletedAt])
 }
@@ -514,9 +515,10 @@ model ServiceProvider {
   contactEmail    String?
   contactPhone    String?
   location        String?
+  entityType      ProviderEntityType  @default(INDIVIDUAL)
+  documents       Document[]
   qualifications  String[]
   specializations String[]
-  availability    Json?
   rating          Float?
   isVerified      Boolean             @default(false)
   metadata        Json?
@@ -527,14 +529,82 @@ model ServiceProvider {
   sessions          ServiceSession[]
   availabilitySlots CounselorAvailability[]
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  SessionForm SessionForm[]
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  SessionForm              SessionForm[]
+  ProviderStaff            ProviderStaff[]
+  ServiceProviderService   ServiceProviderService[]
+  ProviderOnboardingStatus ProviderOnboardingStatus[]
 
   @@index([type])
   @@index([isVerified])
   @@index([rating])
   @@index([deletedAt])
+}
+
+model ServiceProviderService {
+  id                String           @id @default(cuid())
+  serviceProvider   ServiceProvider  @relation(fields: [serviceProviderId], references: [id])
+  serviceProviderId String
+  service           Service          @relation(fields: [serviceId], references: [id])
+  serviceId         String
+  notes             String?
+  isApproved        Boolean          @default(false)
+  ServiceSession    ServiceSession[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([serviceProviderId])
+  @@index([serviceId])
+  @@index([deletedAt])
+}
+
+model ProviderOnboardingStatus {
+  id                String          @id @default(cuid())
+  serviceProviderId String
+  hasSubmittedKYC   Boolean         @default(false)
+  hasSignedContract Boolean         @default(false)
+  servicesAligned   Boolean         @default(false)
+  documentsComplete Boolean         @default(false)
+  metadata          Json?
+  deletedAt         DateTime?
+  serviceProvider   ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([serviceProviderId])
+  @@index([hasSubmittedKYC])
+  @@index([hasSignedContract])
+  @@index([servicesAligned])
+  @@index([documentsComplete])
+  @@index([deletedAt])
+}
+
+enum ProviderEntityType {
+  INDIVIDUAL @map("Individual")
+  COMPANY    @map("Company")
+}
+
+model ProviderStaff {
+  id                String     @id @default(cuid())
+  serviceProviderId String
+  fullName          String
+  email             String?
+  phone             String?
+  role              String? // e.g. Team Leader, Counselor
+  qualifications    String[]
+  specializations   String[]
+  documents         Document[]
+  isPrimaryContact  Boolean    @default(false)
+  metadata          Json?
+
+  serviceProvider ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CounselorAvailability {
@@ -561,7 +631,7 @@ model CounselorAvailability {
 model ServiceSession {
   id                 String        @id @default(cuid())
   serviceId          String
-  providerId         String
+  providerId         String?
   scheduledAt        DateTime
   completedAt        DateTime?
   status             SessionStatus @default(SCHEDULED)
@@ -580,13 +650,16 @@ model ServiceSession {
   followUpRequired Boolean   @default(false)
   followUpDate     DateTime?
 
-  staffId       String?
-  beneficiaryId String?
+  staffId           String?
+  beneficiaryId     String?
+  providerStaffId   String?
+  providerServiceId String?
 
-  staff           Staff?            @relation(fields: [staffId], references: [id])
-  beneficiary     Beneficiary?      @relation(fields: [beneficiaryId], references: [id])
-  service         Intervention      @relation(fields: [serviceId], references: [id])
-  provider        ServiceProvider   @relation(fields: [providerId], references: [id])
+  staff           Staff?                  @relation(fields: [staffId], references: [id])
+  beneficiary     Beneficiary?            @relation(fields: [beneficiaryId], references: [id])
+  service         Intervention            @relation(fields: [serviceId], references: [id])
+  provider        ServiceProvider?        @relation(fields: [providerId], references: [id])
+  providerService ServiceProviderService? @relation(fields: [providerServiceId], references: [id])
   SessionFeedback SessionFeedback[]
   forms           SessionForm[]
 
@@ -846,8 +919,12 @@ model Document {
   contractId   String?
   contract     Contract? @relation(fields: [contractId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  ProviderStaff     ProviderStaff?   @relation(fields: [providerStaffId], references: [id])
+  providerStaffId   String?
+  ServiceProvider   ServiceProvider? @relation(fields: [serviceProviderId], references: [id])
+  serviceProviderId String?
 
   @@index([type])
   @@index([clientId])

@@ -172,7 +172,7 @@ export default function ProvidersListPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <ProviderForm
-                            onSubmit={handleAddProvider}
+                            onSubmitAction={handleAddProvider}
                             isSubmitting={false}
                             onCancel={() => setIsDialogOpen(false)}
                             services={services}

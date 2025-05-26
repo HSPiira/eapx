@@ -143,7 +143,7 @@ export default function ServicesPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-            <ServiceTable services={services?.data || []} />
+            <ServiceTable services={services?.data || []} className="w-full table-fixed" />
         </div>
     );
 } 

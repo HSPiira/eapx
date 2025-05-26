@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
@@ -13,16 +13,20 @@ interface TimeSlot {
 }
 
 interface AvailabilityPickerProps {
-    onTimeSelect: (date: Date, startTime: string) => void;
+    onTimeSelectAction: (date: Date, startTime: string) => void;
     selectedDate?: Date;
     selectedTimeSlot?: string | null;
+    timeFormat?: '12' | '24';
+    formatTimeSlot?: (time: string, format: '12' | '24') => string;
     className?: string;
 }
 
 export function AvailabilityPicker({
-    onTimeSelect,
+    onTimeSelectAction,
     selectedDate,
     selectedTimeSlot,
+    timeFormat = '12',
+    formatTimeSlot,
     className
 }: AvailabilityPickerProps) {
     const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -70,7 +74,7 @@ export function AvailabilityPicker({
     // Handle time slot selection
     const handleTimeSelect = (slot: TimeSlot) => {
         if (!slot.isAvailable || !selectedDate) return;
-        onTimeSelect(selectedDate, dayjs(slot.startTime).format('HH:mm'));
+        onTimeSelectAction(selectedDate, dayjs(slot.startTime).format('HH:mm'));
     };
 
     if (!selectedDate) return null;
@@ -78,13 +82,10 @@ export function AvailabilityPicker({
     return (
         <div className={cn("grid gap-4", className)}>
             <Card>
-                <CardHeader>
-                    <CardTitle>Available Time Slots</CardTitle>
-                </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-4 gap-2 mt-2">
                         {timeSlots.map((slot) => {
-                            const start = slot.startTime instanceof Date ? slot.startTime : new Date(slot.startTime);
+                            const start = slot.startTime;
                             return (
                                 <Button
                                     key={start.toISOString()}
@@ -97,7 +98,7 @@ export function AvailabilityPicker({
                                     disabled={!slot.isAvailable}
                                     onClick={() => handleTimeSelect(slot)}
                                 >
-                                    {dayjs(start).format('h:mm A')}
+                                    {formatTimeSlot ? formatTimeSlot(dayjs(start).format('HH:mm'), timeFormat) : dayjs(start).format('h:mm A')}
                                 </Button>
                             );
                         })}

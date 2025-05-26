@@ -20,8 +20,7 @@ import {
     CommandGroup,
     CommandItem,
 } from "@/components/ui/command";
-import { Check, ChevronsUpDown, FileCheck, ChevronDown } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Check, ChevronsUpDown, ChevronDown, FileText, FileSignature, FileSpreadsheet, FileCode, FileArchive } from "lucide-react";
 import { cn } from '@/lib/utils';
 
 // Define enums to match your Prisma schema
@@ -64,7 +63,7 @@ interface Intervention {
 }
 
 interface ProviderFormProps {
-    onSubmit: (data: ProviderFormData & { documents: Record<string, File | File[] | null>; interventionsOffered: string[] }) => void;
+    onSubmitAction: (data: ProviderFormData & { documents: Record<string, File | File[] | null>; interventionsOffered: string[] }) => void;
     isSubmitting?: boolean;
     onCancel?: () => void;
     initialData?: Partial<ProviderFormData>;
@@ -73,14 +72,16 @@ interface ProviderFormProps {
 }
 
 export function ProviderForm({
-    onSubmit,
+    onSubmitAction,
     isSubmitting,
     initialData,
     services = [],
     interventions = [],
+    onCancel,
 }: ProviderFormProps) {
     const form = useForm<ProviderFormData>({
         resolver: zodResolver(providerSchema),
+        mode: 'onChange',
         defaultValues: {
             name: initialData?.name || '',
             type: initialData?.type || undefined,
@@ -120,7 +121,14 @@ export function ProviderForm({
     // Collapsible state for each service group
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     const toggleGroup = (serviceName: string) => {
-        setOpenGroups((prev) => ({ ...prev, [serviceName]: !prev[serviceName] }));
+        setOpenGroups((prev) => {
+            const newGroups: Record<string, boolean> = {};
+            Object.keys(prev).forEach(key => {
+                newGroups[key] = false;
+            });
+            newGroups[serviceName] = !prev[serviceName];
+            return newGroups;
+        });
     };
     // Check all/none for a group
     const handleCheckAll = (serviceName: string, checked: boolean) => {
@@ -152,7 +160,7 @@ export function ProviderForm({
     const handleBack = () => setStep(s => s - 1);
 
     const handleFormSubmit = (data: ProviderFormData) => {
-        onSubmit({ ...data, documents, interventionsOffered });
+        onSubmitAction({ ...data, documents, interventionsOffered });
     };
 
     const [typeOpen, setTypeOpen] = useState(false);
@@ -162,359 +170,460 @@ export function ProviderForm({
     const providerTypes = ServiceProviderTypeEnum.options.map(value => ({ value, label: value.charAt(0) + value.slice(1).toLowerCase() }));
     const entityTypes = ProviderEntityTypeEnum.options.map(value => ({ value, label: value.charAt(0) + value.slice(1).toLowerCase() }));
 
+    const [emptyServiceChecked, setEmptyServiceChecked] = useState<Record<string, boolean>>({});
 
     return (
-        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+        <div className="space-y-6">
             <div className="mb-4 text-sm font-medium text-muted-foreground">
                 Step {step} of 3: {step === 1 ? 'Provider Info' : step === 2 ? 'Documents' : 'Services & Interventions'}
             </div>
-            {step === 1 && (
-                <>
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input
-                            id="name"
-                            {...form.register("name")}
-                            placeholder="Enter provider name"
-                        />
-                        {form.formState.errors.name && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.name.message}
-                            </p>
-                        )}
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+                {step === 1 && (
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input
+                                id="name"
+                                {...form.register("name")}
+                                placeholder="Enter provider name"
+                            />
+                            {form.formState.errors.name && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.name.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Type</Label>
+                            <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={typeOpen}
+                                        className="w-full justify-between"
+                                    >
+                                        {form.watch("type") || "Select type..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-full p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search type..." />
+                                        <CommandList>
+                                            <CommandEmpty>No type found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {providerTypes.map((type) => (
+                                                    <CommandItem
+                                                        key={type.value}
+                                                        value={type.value}
+                                                        onSelect={() => {
+                                                            form.setValue("type", type.value);
+                                                            setTypeOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                form.watch("type") === type.value
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {type.label}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            {form.formState.errors.type && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.type.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Entity Type</Label>
+                            <Popover open={entityTypeOpen} onOpenChange={setEntityTypeOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={entityTypeOpen}
+                                        className="w-full justify-between"
+                                    >
+                                        {form.watch("entityType") || "Select entity type..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-full p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search entity type..." />
+                                        <CommandList>
+                                            <CommandEmpty>No entity type found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {entityTypes.map((type) => (
+                                                    <CommandItem
+                                                        key={type.value}
+                                                        value={type.value}
+                                                        onSelect={() => {
+                                                            form.setValue("entityType", type.value);
+                                                            setEntityTypeOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                form.watch("entityType") === type.value
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {type.label}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            {form.formState.errors.entityType && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.entityType.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="contactEmail">Contact Email</Label>
+                            <Input
+                                id="contactEmail"
+                                type="email"
+                                {...form.register("contactEmail")}
+                                placeholder="Enter contact email"
+                            />
+                            {form.formState.errors.contactEmail && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.contactEmail.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="contactPhone">Contact Phone</Label>
+                            <Input
+                                id="contactPhone"
+                                {...form.register("contactPhone")}
+                                placeholder="Enter contact phone"
+                            />
+                            {form.formState.errors.contactPhone && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.contactPhone.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="location">Location</Label>
+                            <Input
+                                id="location"
+                                {...form.register("location")}
+                                placeholder="Enter location"
+                            />
+                            {form.formState.errors.location && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.location.message}
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="entityType">Entity Type</Label>
-                        <Popover open={entityTypeOpen} onOpenChange={setEntityTypeOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={entityTypeOpen}
-                                    className="w-full justify-between"
-                                >
-                                    {form.watch("entityType")
-                                        ? entityTypes.find(
-                                            (type) => type.value === form.watch("entityType")
-                                        )?.label
-                                        : "Select entity type"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search entity type..." />
-                                    <CommandList>
-                                        <CommandEmpty>No entity type found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {entityTypes.map((type) => (
-                                                <CommandItem
-                                                    key={type.value}
-                                                    value={type.label}
-                                                    onSelect={() => {
-                                                        form.setValue("entityType", type.value);
-                                                        setEntityTypeOpen(false);
-                                                    }}
+                )}
+                {step === 2 && (
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Documents</Label>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Working Contract</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept=".pdf"
+                                                onChange={(e) => handleFileChange('workingContract', e.target.files)}
+                                            />
+                                            <div className="p-2 border rounded-md hover:bg-gray-50">
+                                                <FileText className="h-5 w-5 text-blue-500" />
+                                            </div>
+                                        </label>
+                                        {documents.workingContract && !Array.isArray(documents.workingContract) && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-green-500">{documents.workingContract.name}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDocuments(prev => ({ ...prev, workingContract: null }))}
+                                                    className="text-red-500 hover:text-red-700"
                                                 >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            form.watch("entityType") === type.value
-                                                                ? "opacity-100"
-                                                                : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {type.label}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {form.formState.errors.entityType && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.entityType.message}
-                            </p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="type">Type</Label>
-                        <Popover open={typeOpen} onOpenChange={setTypeOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={typeOpen}
-                                    className="w-full justify-between"
-                                >
-                                    {form.watch("type")
-                                        ? providerTypes.find(
-                                            (type) => type.value === form.watch("type")
-                                        )?.label
-                                        : "Select provider type"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search provider type..." />
-                                    <CommandList>
-                                        <CommandEmpty>No provider type found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {providerTypes.map((type) => (
-                                                <CommandItem
-                                                    key={type.value}
-                                                    value={type.label}
-                                                    onSelect={() => {
-                                                        form.setValue("type", type.value);
-                                                        setTypeOpen(false);
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            form.watch("type") === type.value
-                                                                ? "opacity-100"
-                                                                : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {type.label}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {form.formState.errors.type && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.type.message}
-                            </p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="contactEmail">Contact Email</Label>
-                        <Input
-                            id="contactEmail"
-                            type="email"
-                            {...form.register("contactEmail")}
-                            placeholder="Enter contact email"
-                        />
-                        {form.formState.errors.contactEmail && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.contactEmail.message}
-                            </p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="contactPhone">Contact Phone</Label>
-                        <Input
-                            id="contactPhone"
-                            type="tel"
-                            {...form.register("contactPhone")}
-                            placeholder="Enter contact phone"
-                        />
-                        {form.formState.errors.contactPhone && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.contactPhone.message}
-                            </p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="location">Location</Label>
-                        <Input
-                            id="location"
-                            {...form.register("location")}
-                            placeholder="Enter location"
-                        />
-                        {form.formState.errors.location && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.location.message}
-                            </p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="qualifications">Qualifications</Label>
-                        <Input
-                            id="qualifications"
-                            {...form.register("qualifications")}
-                            placeholder="Enter qualifications (comma-separated)"
-                        />
-                        {form.formState.errors.qualifications && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.qualifications.message}
-                            </p>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="specializations">Specializations</Label>
-                        <Input
-                            id="specializations"
-                            {...form.register("specializations")}
-                            placeholder="Enter specializations (comma-separated)"
-                        />
-                        {form.formState.errors.specializations && (
-                            <p className="text-sm text-red-500">
-                                {form.formState.errors.specializations.message}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Switch
-                            id="isVerified"
-                            checked={form.watch("isVerified")}
-                            onCheckedChange={(checked) => form.setValue("isVerified", checked)}
-                        />
-                        <Label htmlFor="isVerified">Verified</Label>
-                    </div>
-                </>
-            )}
-            {step === 2 && (
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Working Contract</Label>
-                        <div className="flex items-center space-x-2">
-                            <Input
-                                type="file"
-                                onChange={(e) => handleFileChange('workingContract', e.target.files)}
-                            />
-                            {documents.workingContract && (
-                                <FileCheck className="h-5 w-5 text-green-500" />
-                            )}
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>KYC Documents</Label>
-                        <div className="flex items-center space-x-2">
-                            <Input
-                                type="file"
-                                onChange={(e) => handleFileChange('kyc', e.target.files)}
-                            />
-                            {documents.kyc && (
-                                <FileCheck className="h-5 w-5 text-green-500" />
-                            )}
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>CV/Resume</Label>
-                        <div className="flex items-center space-x-2">
-                            <Input
-                                type="file"
-                                multiple
-                                onChange={(e) => handleFileChange('cv', e.target.files, true)}
-                            />
-                            {documents.cv && Array.isArray(documents.cv) && documents.cv.length > 0 && (
-                                <FileCheck className="h-5 w-5 text-green-500" />
-                            )}
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Declaration Form</Label>
-                        <div className="flex items-center space-x-2">
-                            <Input
-                                type="file"
-                                onChange={(e) => handleFileChange('declarationForm', e.target.files)}
-                            />
-                            {documents.declarationForm && (
-                                <FileCheck className="h-5 w-5 text-green-500" />
-                            )}
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Professional Documents</Label>
-                        <div className="flex items-center space-x-2">
-                            <Input
-                                type="file"
-                                multiple
-                                onChange={(e) => handleFileChange('professionalDocs', e.target.files, true)}
-                            />
-                            {documents.professionalDocs && Array.isArray(documents.professionalDocs) && documents.professionalDocs.length > 0 && (
-                                <FileCheck className="h-5 w-5 text-green-500" />
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-            {step === 3 && (
-                <div className="space-y-4">
-                    {Object.entries(interventionsByService).map(([serviceName, serviceInterventions]) => (
-                        <div key={serviceName} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    className="flex items-center space-x-2"
-                                    onClick={() => toggleGroup(serviceName)}
-                                >
-                                    <ChevronDown
-                                        className={cn(
-                                            "h-4 w-4 transition-transform",
-                                            openGroups[serviceName] ? "transform rotate-180" : ""
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         )}
-                                    />
-                                    <span>{serviceName}</span>
-                                </Button>
-                                <div className="flex items-center space-x-2">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleCheckAll(serviceName, true)}
-                                    >
-                                        All
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleCheckAll(serviceName, false)}
-                                    >
-                                        None
-                                    </Button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>KYC Documents</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept=".pdf"
+                                                onChange={(e) => handleFileChange('kyc', e.target.files)}
+                                            />
+                                            <div className="p-2 border rounded-md hover:bg-gray-50">
+                                                <FileSignature className="h-5 w-5 text-purple-500" />
+                                            </div>
+                                        </label>
+                                        {documents.kyc && !Array.isArray(documents.kyc) && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-green-500">{documents.kyc.name}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDocuments(prev => ({ ...prev, kyc: null }))}
+                                                    className="text-red-500 hover:text-red-700"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>CV/Resume</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                className="hidden"
+                                                accept=".pdf"
+                                                onChange={(e) => handleFileChange('cv', e.target.files, true)}
+                                            />
+                                            <div className="p-2 border rounded-md hover:bg-gray-50">
+                                                <FileSpreadsheet className="h-5 w-5 text-green-500" />
+                                            </div>
+                                        </label>
+                                        {documents.cv && Array.isArray(documents.cv) && documents.cv.length > 0 && (
+                                            <div className={cn(
+                                                "flex flex-col gap-2",
+                                                documents.cv.length > 3 && "max-h-[120px] overflow-y-auto pr-2"
+                                            )}>
+                                                {documents.cv.map((file, index) => (
+                                                    <div key={index} className="flex items-center gap-2">
+                                                        <span className="text-sm text-green-500">{file.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (Array.isArray(documents.cv)) {
+                                                                    const newFiles = [...documents.cv];
+                                                                    newFiles.splice(index, 1);
+                                                                    setDocuments(prev => ({ ...prev, cv: newFiles }));
+                                                                }
+                                                            }}
+                                                            className="text-red-500 hover:text-red-700"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Declaration Form</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept=".pdf"
+                                                onChange={(e) => handleFileChange('declarationForm', e.target.files)}
+                                            />
+                                            <div className="p-2 border rounded-md hover:bg-gray-50">
+                                                <FileCode className="h-5 w-5 text-orange-500" />
+                                            </div>
+                                        </label>
+                                        {documents.declarationForm && !Array.isArray(documents.declarationForm) && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-green-500">{documents.declarationForm.name}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDocuments(prev => ({ ...prev, declarationForm: null }))}
+                                                    className="text-red-500 hover:text-red-700"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Professional Documents</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                className="hidden"
+                                                accept=".pdf"
+                                                onChange={(e) => handleFileChange('professionalDocs', e.target.files, true)}
+                                            />
+                                            <div className="p-2 border rounded-md hover:bg-gray-50">
+                                                <FileArchive className="h-5 w-5 text-indigo-500" />
+                                            </div>
+                                        </label>
+                                        {documents.professionalDocs && Array.isArray(documents.professionalDocs) && documents.professionalDocs.length > 0 && (
+                                            <div className={cn(
+                                                "flex flex-col gap-2",
+                                                documents.professionalDocs.length > 3 && "max-h-[120px] overflow-y-auto pr-2"
+                                            )}>
+                                                {documents.professionalDocs.map((file, index) => (
+                                                    <div key={index} className="flex items-center gap-2">
+                                                        <span className="text-sm text-green-500">{file.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (Array.isArray(documents.professionalDocs)) {
+                                                                    const newFiles = [...documents.professionalDocs];
+                                                                    newFiles.splice(index, 1);
+                                                                    setDocuments(prev => ({ ...prev, professionalDocs: newFiles }));
+                                                                }
+                                                            }}
+                                                            className="text-red-500 hover:text-red-700"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                            {openGroups[serviceName] && (
-                                <div className="pl-4 space-y-2">
-                                    {serviceInterventions.map((intervention) => (
-                                        <div key={intervention.id} className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                id={intervention.id}
-                                                checked={interventionsOffered.includes(intervention.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setInterventionsOffered([...interventionsOffered, intervention.id]);
-                                                    } else {
-                                                        setInterventionsOffered(interventionsOffered.filter(id => id !== intervention.id));
-                                                    }
-                                                }}
-                                            />
-                                            <Label htmlFor={intervention.id}>{intervention.name}</Label>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </div>
-                    ))}
-                </div>
-            )}
-            <div className="flex justify-between pt-4">
+                    </div>
+                )}
+                {step === 3 && (
+                    <div className="space-y-4">
+                        {Object.entries(interventionsByService).map(([serviceName, serviceInterventions]) => (
+                            <div key={serviceName} className="space-y-2">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center min-w-0">
+                                        {serviceInterventions.length > 0 ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleGroup(serviceName)}
+                                                className="p-1 hover:bg-gray-100 rounded mr-2"
+                                            >
+                                                <ChevronDown
+                                                    className={cn(
+                                                        "h-4 w-4 transition-transform",
+                                                        openGroups[serviceName] ? "rotate-180" : ""
+                                                    )}
+                                                />
+                                            </button>
+                                        ) : null}
+                                        <span className="font-medium truncate">{serviceName}</span>
+                                    </div>
+                                    <div className="flex items-center min-w-[120px] justify-end space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={serviceInterventions.length > 0
+                                                ? serviceInterventions.every((i) => interventionsOffered.includes(i.id))
+                                                : emptyServiceChecked[serviceName] || false}
+                                            onChange={(e) => {
+                                                if (serviceInterventions.length > 0) {
+                                                    handleCheckAll(serviceName, e.target.checked);
+                                                } else {
+                                                    setEmptyServiceChecked(prev => ({ ...prev, [serviceName]: e.target.checked }));
+                                                }
+                                            }}
+                                        />
+                                        <span className="text-sm text-gray-500">Select All</span>
+                                    </div>
+                                </div>
+
+                                {serviceInterventions.length > 0 && openGroups[serviceName] && (
+                                    <div className={cn(
+                                        "flex flex-col space-y-2 ml-7",
+                                        serviceInterventions.length > 10 && "max-h-60 overflow-y-auto pr-2"
+                                    )}>
+                                        {serviceInterventions.map((intervention) => (
+                                            <div key={intervention.id} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={intervention.id}
+                                                    checked={interventionsOffered.includes(intervention.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setInterventionsOffered([...interventionsOffered, intervention.id]);
+                                                        } else {
+                                                            setInterventionsOffered(interventionsOffered.filter(id => id !== intervention.id));
+                                                        }
+                                                    }}
+                                                />
+                                                <Label htmlFor={intervention.id}>{intervention.name}</Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </form>
+            <div className="flex justify-end gap-2 mt-4">
+                {step === 1 && onCancel && (
+                    <Button type="button" variant="outline" onClick={onCancel}>
+                        Cancel
+                    </Button>
+                )}
                 {step > 1 && (
                     <Button type="button" variant="outline" onClick={handleBack}>
                         Back
                     </Button>
                 )}
-                {step < 3 ? (
+                {step < 3 && (
                     <Button type="button" onClick={handleNext}>
                         Next
                     </Button>
-                ) : (
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Submitting...' : 'Submit'}
+                )}
+                {step === 3 && (
+                    <Button type="submit" form="provider-form" disabled={isSubmitting}>
+                        {isSubmitting ? "Saving..." : "Save Provider"}
                     </Button>
                 )}
             </div>
-        </form>
+        </div>
     );
 } 

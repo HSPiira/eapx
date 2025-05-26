@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { SessionRequestFormData } from '@/components/session-booking/SessionRequestForm';
+import { SessionRequestFormData } from '@/components/session-booking/sessionRequestSchema';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -15,12 +15,24 @@ interface SessionEmailData extends SessionRequestFormData {
 }
 
 export async function sendSessionRequestEmail(
-    data: SessionEmailData,
-    recipients: {
-        staff: EmailRecipient;
-        counselor: EmailRecipient;
-        admin: EmailRecipient;
-    }
+    data: {
+        companyId: string;
+        staffId: string;
+        counselorId: string;
+        interventionId: string;
+        sessionMethod: string;
+        date: string;
+        startTime: string;
+        endTime: string;
+        sessionType: string;
+        companyName: string;
+        staffName: string;
+        counselorName: string;
+        notes: string;
+        duration: number;
+        isGroupSession: boolean
+    },
+    recipients: { staff: EmailRecipient; counselor: EmailRecipient; admin: EmailRecipient }
 ) {
     const { staff, counselor, admin } = recipients;
     const sessionDate = new Date(data.date).toLocaleDateString();

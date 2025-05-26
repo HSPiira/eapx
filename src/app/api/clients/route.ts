@@ -134,32 +134,6 @@ export async function GET(request: NextRequest) {
 
         const where: Prisma.ClientWhereInput = {
             deletedAt: null,
-            OR: search
-                ? [
-                    { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                    { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                    { contactPerson: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                    { taxId: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                ]
-                : undefined,
-            ...(industryId && industryId !== 'all' && { industryId: industryId }),
-            status: status && status !== 'all' ? (status as BaseStatus) : undefined,
-            isVerified: isVerified,
-            preferredContactMethod: preferredContactMethod,
-            ...(createdAfter || createdBefore
-                ? {
-                    createdAt: {
-                        ...(createdAfter && { gte: createdAfter }),
-                        ...(createdBefore && { lte: createdBefore }),
-                    },
-                }
-                : {}),
-            ...(hasContract !== undefined && {
-                contracts: hasContract ? { some: {} } : { none: {} },
-            }),
-            ...(hasStaff !== undefined && {
-                staff: hasStaff ? { some: {} } : { none: {} },
-            }),
         };
 
         console.log('Client query where clause:', JSON.stringify(where, null, 2));

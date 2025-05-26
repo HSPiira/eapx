@@ -55,7 +55,7 @@ export function ServiceDetailsCard({
                         cn(
                             // Modal style on sm/md, sidebar on lg+
                             'w-full max-w-md min-w-0 rounded-md bg-white pointer-events-auto mx-2 my-4 overflow-y-auto max-h-[90vh]',
-                            'lg:max-w-[420px] lg:mx-0 lg:my-0 lg:rounded-md lg:overflow-y-auto lg:max-h-[80vh]'
+                            'lg:w-[400px] lg:max-w-[400px] lg:mx-0 lg:my-0 lg:rounded-md lg:overflow-y-auto lg:max-h-[80vh]'
                         )
                     }
                 >

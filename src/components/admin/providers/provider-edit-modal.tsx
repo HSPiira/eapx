@@ -63,7 +63,7 @@ export function ProviderEditModal({ open, onOpenChange, provider, onSubmit, isSu
                 </DialogHeader>
                 <ProviderForm
                     initialData={formData}
-                    onSubmit={onSubmit}
+                    onSubmitAction={onSubmit}
                     isSubmitting={isSubmitting}
                     onCancel={() => onOpenChange(false)}
                 />

@@ -12,9 +12,11 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui';
-import { SessionRequestForm, type SessionRequestFormData } from '@/components/session-booking/SessionRequestForm';
+import { SessionRequestForm } from '@/components/session-booking/SessionRequestForm';
+import { SessionRequestFormData, ServiceProvider } from '@/components/session-booking/sessionRequestSchema';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
+import { ServiceProviderType, RelationType, ProviderStaff, Beneficiary } from '@prisma/client';
 
 const tabs = [
     { label: 'Upcoming', href: '/sessions/upcoming', icon: CalendarClock, key: 'upcoming', color: 'blue' },
@@ -29,15 +31,20 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
     const [counts, setCounts] = useState<Record<string, number>>({});
     const [modalOpen, setModalOpen] = useState(false);
     const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([]);
-    const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string }>>([]);
+    const [beneficiaries, setBeneficiaries] = useState<Array<{ id: string; name: string; relation: RelationType }>>([]);
+    const [serviceProviders, setServiceProviders] = useState<Array<ServiceProvider>>([]);
+    const [providerStaff] = useState<Array<ProviderStaff>>([]);
     const [staff, setStaff] = useState<Array<{ id: string; name: string; email: string; companyId: string }>>([]);
+    const [interventions, setInterventions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const { data: session } = useSession();
+    const [selectedCompany] = useState<string>('');
+    const [selectedStaff] = useState<string>('');
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [sessionsRes, companiesRes, counselorsRes, staffRes] = await Promise.all([
+                const [sessionsRes, companiesRes, serviceProvidersRes, staffRes, interventionsRes] = await Promise.all([
                     fetch('/api/services/sessions').then(async (res) => {
                         if (!res.ok) throw new Error(`Sessions API failed: ${res.status}`);
                         const text = await res.text();
@@ -58,7 +65,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                             throw new Error('Invalid JSON from clients API');
                         }
                     }),
-                    fetch('/api/services/providers').then(async (res) => {
+                    fetch('/api/providers').then(async (res) => {
                         if (!res.ok) throw new Error(`Providers API failed: ${res.status}`);
                         const text = await res.text();
                         try {
@@ -78,12 +85,28 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                             throw new Error('Invalid JSON from staff API');
                         }
                     }),
+                    fetch('/api/services/interventions').then(async (res) => {
+                        if (!res.ok) throw new Error(`Interventions API failed: ${res.status}`);
+                        const text = await res.text();
+                        try {
+                            return { ok: true, data: JSON.parse(text) };
+                        } catch (e) {
+                            console.error('Failed to parse interventions response:', e);
+                            throw new Error('Invalid JSON from interventions API');
+                        }
+                    })
                 ]);
 
                 setCounts(sessionsRes.data.data || sessionsRes.data);
                 setCompanies(companiesRes.data.data || companiesRes.data);
-                setCounselors(counselorsRes.data.data || counselorsRes.data);
+                const mappedServiceProviders: ServiceProvider[] = (serviceProvidersRes.data.data || serviceProvidersRes.data).map((sp: ServiceProvider) => ({
+                    ...sp,
+                    type: ServiceProviderType[sp.type as keyof typeof ServiceProviderType] ?? ServiceProviderType.COUNSELOR
+                }));
+                setServiceProviders(mappedServiceProviders);
                 setStaff(staffRes.data.data || staffRes.data);
+                const interventionsArr = interventionsRes.data.data || interventionsRes.data;
+                setInterventions(interventionsArr);
             } catch (error) {
                 console.error('Failed to load data:', error);
                 toast.error(`Failed to load data: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
@@ -91,6 +114,30 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
         }
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (selectedCompany && selectedStaff) {
+            fetch(`/api/clients/${selectedCompany}/staff/${selectedStaff}/beneficiaries`).then(async (res) => {
+                if (!res.ok) throw new Error(`Beneficiaries API failed: ${res.status}`);
+                const text = await res.text();
+                try {
+                    const json = JSON.parse(text);
+                    setBeneficiaries(
+                        (json.data || json).map((b: Beneficiary) => ({
+                            ...b,
+                            relation: RelationType[b.relation as keyof typeof RelationType]
+                        }))
+                    );
+                } catch (e) {
+                    console.error('Failed to parse beneficiaries response:', e);
+                }
+            }).catch(() => {
+                // Optionally handle error
+            });
+        } else {
+            setBeneficiaries([]);
+        }
+    }, [selectedCompany, selectedStaff]);
 
     const handleRequestSession = async (data: SessionRequestFormData) => {
         try {
@@ -100,10 +147,24 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             });
-            if (!res.ok) throw new Error('Failed to request session');
-            toast.success('Session request submitted!');
+
+            const responseData = await res.json();
+
+            if (!res.ok) {
+                throw new Error(responseData.message || 'Failed to request session');
+            }
+
+            toast.success('Session request submitted successfully!');
             setModalOpen(false);
+
+            // Refresh the session counts
+            const sessionsRes = await fetch('/api/services/sessions');
+            if (sessionsRes.ok) {
+                const sessionsData = await sessionsRes.json();
+                setCounts(sessionsData.data || sessionsData);
+            }
         } catch (err) {
+            console.error('Session request error:', err);
             toast.error('Failed to submit session request', {
                 description: err instanceof Error ? err.message : 'An unknown error occurred',
             });
@@ -147,9 +208,17 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                             {session?.user?.id ? (
                                 <SessionRequestForm
                                     companies={companies}
-                                    counselors={counselors}
+                                    beneficiaries={beneficiaries}
+                                    serviceProviders={serviceProviders}
+                                    providerStaff={providerStaff.map(staff => ({
+                                        id: staff.id,
+                                        name: staff.fullName,
+                                        email: staff.email || '',
+                                        companyId: staff.serviceProviderId
+                                    }))}
                                     staff={staff}
-                                    onSubmit={handleRequestSession}
+                                    interventions={interventions}
+                                    onSubmitAction={handleRequestSession}
                                     isSubmitting={isLoading}
                                     onCancel={() => setModalOpen(false)}
                                 />
@@ -174,15 +243,10 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                                         : `border-transparent text-gray-500 dark:text-gray-400 hover:text-${color}-600 dark:hover:text-${color}-400`
                                         }`}
                                 >
-                                    <Icon className={`w-4 h-4 ${isActive ? `text-${color}-500` : ''}`} aria-hidden="true" />
-                                    <span>{label}</span>
-                                    {count !== undefined && (
-                                        <span
-                                            className={`ml-1 text-xs rounded-full px-2 py-0.5 ${isActive
-                                                ? `bg-${color}-100 text-${color}-700 dark:bg-${color}-900/30 dark:text-${color}-400`
-                                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                                                }`}
-                                        >
+                                    <Icon className="w-4 h-4" />
+                                    {label}
+                                    {typeof count === 'number' && (
+                                        <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
                                             {count}
                                         </span>
                                     )}
@@ -191,7 +255,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         })}
                     </nav>
                 </div>
-                <div className="mt-6">{children}</div>
+                {children}
             </div>
         </div>
     );

@@ -29,9 +29,10 @@ interface ServiceTableProps {
     services?: Service[];
     onEdit?: (service: Service) => void;
     onDelete?: (service: Service) => void;
+    className?: string;
 }
 
-export function ServiceTable({ services = [], onEdit, onDelete }: ServiceTableProps) {
+export function ServiceTable({ services = [], onEdit, onDelete, className }: ServiceTableProps) {
     const [searchQuery] = React.useState('');
     const [sortField] = React.useState<keyof Service>('name');
     const [sortDirection] = React.useState<'asc' | 'desc'>('asc');
@@ -75,52 +76,46 @@ export function ServiceTable({ services = [], onEdit, onDelete }: ServiceTablePr
 
     return (
         <div className="flex gap-6 w-full">
-            <div className="flex-1 overflow-x-auto w-full">
-                <div className="min-w-[600px]">
-                    <Table className="w-full">
-                        <TableHeader>
+            <div className="flex-1 overflow-x-hidden w-full">
+                <Table className={`w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700 ${className}`}>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-60 whitespace-nowrap truncate">Name</TableHead>
+                            <TableHead className="w-auto whitespace-nowrap truncate">Description</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sortedServices.length === 0 ? (
                             <TableRow>
-                                <TableHead className="whitespace-nowrap min-w-[160px]">Name</TableHead>
-                                <TableHead className="whitespace-nowrap min-w-[280px]">Description</TableHead>
-                                <TableHead className="whitespace-nowrap min-w-[120px]">Interventions</TableHead>
+                                <TableCell colSpan={2} className="text-center py-6 text-muted-foreground whitespace-nowrap">
+                                    No services found
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedServices.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-6 text-muted-foreground whitespace-nowrap">
-                                        No services found
-                                    </TableCell>
+                        ) : (
+                            sortedServices.map((service) => (
+                                <TableRow
+                                    key={service.id}
+                                    className={`cursor-pointer hover:bg-muted/50 ${selectedService?.id === service.id ? 'bg-muted' : ''}`}
+                                    onClick={() => handleServiceClick(service)}
+                                >
+                                    <TableCell className="w-40 whitespace-nowrap truncate font-medium">{service.name}</TableCell>
+                                    <TableCell className="w-auto whitespace-nowrap truncate">{service.description || '-'}</TableCell>
                                 </TableRow>
-                            ) : (
-                                sortedServices.map((service) => (
-                                    <TableRow
-                                        key={service.id}
-                                        className={`cursor-pointer hover:bg-muted/50 ${selectedService?.id === service.id ? 'bg-muted' : ''}`}
-                                        onClick={() => handleServiceClick(service)}
-                                    >
-                                        <TableCell className="font-medium whitespace-nowrap min-w-[160px]">{service.name}</TableCell>
-                                        <TableCell className="max-w-md whitespace-nowrap min-w-[280px]">
-                                            <div className="truncate">
-                                                {service.description || '-'}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="whitespace-nowrap min-w-[120px]">{service.interventions?.length || 0}</TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </div>
 
             {selectedService && (
-                <ServiceDetailsCard
-                    service={selectedService}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onClose={() => setSelectedService(null)}
-                />
+                <div className="w-[400px]">
+                    <ServiceDetailsCard
+                        service={selectedService}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onClose={() => setSelectedService(null)}
+                    />
+                </div>
             )}
         </div>
     );

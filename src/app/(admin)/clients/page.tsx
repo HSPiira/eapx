@@ -97,8 +97,8 @@ export default function ClientsPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [filters, setFilters] = useState<ClientFiltersState>({
         search: '',
-        status: 'all',
-        industryId: 'all',
+        status: undefined,
+        industryId: undefined,
         isVerified: undefined,
         preferredContactMethod: undefined,
         createdAfter: undefined,

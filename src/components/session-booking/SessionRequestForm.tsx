@@ -1,102 +1,68 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
-import { AvailabilityPicker } from './AvailabilityPicker';
-import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ChevronsUpDown, Check } from 'lucide-react';
+    sessionRequestSchema,
+    SessionRequestFormData,
+    SESSION_TYPES,
+    SESSION_REQUEST_DEFAULTS,
+    Company,
+    Staff,
+    ServiceProvider,
+    Beneficiary,
+    Intervention
+} from './sessionRequestSchema';
+import { Button } from '@/components/ui';
+import { toast } from 'sonner';
+import { Resolver } from 'react-hook-form';
 
-const sessionRequestSchema = z.object({
-    companyId: z.string().min(1, 'Company is required'),
-    staffId: z.string().min(1, 'Staff member is required'),
-    counselorId: z.string().min(1, 'Counselor is required'),
-    sessionType: z.enum(['individual', 'group', 'couple'], {
-        required_error: 'Session type is required',
-    }),
-    sessionMethod: z.enum(['online', 'physical'], {
-        required_error: 'Session method is required',
-    }),
-    date: z.date({
-        required_error: 'Date is required',
-    }),
-    startTime: z.string().min(1, 'Start time is required'),
-    endTime: z.string().min(1, 'End time is required'),
-    location: z.string().optional(),
-    notes: z.string().optional(),
-});
-
-export type SessionRequestFormData = z.infer<typeof sessionRequestSchema>;
-
-interface Company {
-    id: string;
-    name: string;
-}
-
-interface Staff {
-    id: string;
-    name: string;
-    email: string;
-    companyId: string;
-}
-
-interface Counselor {
-    id: string;
-    name: string;
-    email: string;
-}
-
-interface Beneficiary {
-    id: string;
-    name: string;
-}
+// Form Step Components
+import SessionStep1 from './form/SessionStep1';
+import SessionStep2 from './form/SessionStep2';
+import SessionStep3 from './form/SessionStep3';
+import SessionStep4 from './form/SessionStep4';
 
 interface SessionRequestFormProps {
     companies: Company[];
-    counselors: Counselor[];
+    serviceProviders: ServiceProvider[];
+    providerStaff: Staff[];
     staff: Staff[];
-    onSubmit: (data: SessionRequestFormData) => Promise<void>;
+    beneficiaries: Beneficiary[];
+    interventions: Intervention[];
+    onSubmitAction: (data: SessionRequestFormData) => Promise<void>;
     isSubmitting?: boolean;
     onCancel?: () => void;
 }
 
-const sessionTypes = [
-    { id: 'individual', label: 'Individual' },
-    { id: 'group', label: 'Group' },
-    { id: 'couple', label: 'Couple' },
-];
-
+// Define company session types
 const companySessionTypes = [
     { id: 'talk', label: 'Talk' },
     { id: 'comedy', label: 'Comedy' },
     { id: 'training', label: 'Training' },
-];
+] as const;
+
+type CompanySessionType = typeof companySessionTypes[number]['id'];
+type SessionType = 'individual' | 'group' | 'couple' | CompanySessionType;
+
+// Define step titles
+const stepTitles = [
+    "Details",
+    "Counselor & Location",
+    "Date & Time",
+    "Summary"
+] as const;
 
 export function SessionRequestForm({
-    companies,
-    counselors,
-    staff,
-    onSubmit,
+    companies = [],
+    serviceProviders = [],
+    staff = [],
+    beneficiaries = [],
+    interventions = [],
+    onSubmitAction,
     isSubmitting = false,
-    onCancel,
+
 }: SessionRequestFormProps) {
     const [step, setStep] = React.useState(1);
     const [selectedCompany, setSelectedCompany] = React.useState<string>('');
@@ -114,29 +80,40 @@ export function SessionRequestForm({
     const [sessionLocation, setSessionLocation] = React.useState<string>("");
     const [physicalAddress, setPhysicalAddress] = React.useState<string>("");
     const [selectedTimeSlot, setSelectedTimeSlot] = React.useState<string | null>(null);
-    const [sessionType, setSessionType] = React.useState('');
+    const [sessionType, setSessionType] = React.useState<SessionType>('individual');
     const [sessionTypeOpen, setSessionTypeOpen] = React.useState(false);
-    const [companySessionType, setCompanySessionType] = React.useState('');
+    const [companySessionType, setCompanySessionType] = React.useState<CompanySessionType>('talk');
     const [companySessionTypeOpen, setCompanySessionTypeOpen] = React.useState(false);
-    const [selectedBeneficiary, setSelectedBeneficiary] = React.useState('');
+    const [selectedBeneficiary, setSelectedBeneficiary] = React.useState<string>('');
     const [beneficiaryOpen, setBeneficiaryOpen] = React.useState(false);
-    const [beneficiaries] = React.useState<Beneficiary[]>([]);
+    const [selectedInterventionId, setSelectedInterventionId] = React.useState<string>('');
+    const [interventionOpen, setInterventionOpen] = React.useState(false);
+    const [duration, setDuration] = React.useState<number>(60);
+    const [groupSize, setGroupSize] = React.useState<number>(1);
+    const [specialRequirements, setSpecialRequirements] = React.useState<string>('');
+    const [timeFormat, setTimeFormat] = React.useState<'12' | '24'>('12');
+    const [companyStaff, setCompanyStaff] = React.useState<Staff[]>([]);
+    const [selectedCompanyStaff, setSelectedCompanyStaff] = React.useState<string>('');
+    const [companyStaffOpen, setCompanyStaffOpen] = React.useState(false);
 
-    const {
-        handleSubmit,
-        setValue,
-    } = useForm<SessionRequestFormData>({
-        resolver: zodResolver(sessionRequestSchema),
+    const methods = useForm<SessionRequestFormData>({
+        resolver: zodResolver(sessionRequestSchema) as Resolver<SessionRequestFormData>,
+        defaultValues: SESSION_REQUEST_DEFAULTS,
+        mode: 'onChange'
     });
+    const { setValue, formState: { errors, touchedFields, isSubmitted }, watch } = methods;
 
-    const selectedCompanyObj = companies.find(c => c.id === selectedCompany);
+    // Watch all required fields
+    watch('companyId');
+    watch('staffId');
+    const counselorId = watch('counselorId');
+    const interventionId = watch('interventionId');
+    const watchedSessionType = watch('sessionType');
+    const sessionMethod = watch('sessionMethod');
+    const date = watch('date');
 
-    // Add step titles
-    const stepTitles = [
-        "Details",
-        "Counselor & Time",
-        "Summary"
-    ];
+    companies.find(c => c.id === selectedCompany);
+
     const totalSteps = stepTitles.length;
 
     const isStep1Valid = selectedCompany && (
@@ -148,473 +125,351 @@ export function SessionRequestForm({
     useEffect(() => {
         if (selectedCompany) {
             const companyStaff = staff.filter(s => s.companyId === selectedCompany);
-            console.log('Filtered staff:', companyStaff); // Debug log
             setFilteredStaff(companyStaff);
         } else {
             setFilteredStaff([]);
         }
     }, [selectedCompany, staff]);
 
-    return (
-        <form
-            className="space-y-4 w-full"
-            onSubmit={e => {
-                e.preventDefault();
-                if (step === 1) {
-                    if (!selectedCompany || (sessionFor === 'staff' && !selectedStaff)) return;
-                    setStep(2);
-                } else if (step === 2) {
-                    if (!selectedCounselor || !sessionLocation || (sessionLocation === 'physical' && !physicalAddress) || !selectedDate || !selectedTime) return;
-                    setStep(3);
-                } else if (step === 3) {
-                    handleSubmit((data) => {
-                        onSubmit({
-                            ...data,
-                            companyId: selectedCompany,
-                            staffId: selectedStaff,
-                            counselorId: selectedCounselor,
-                            notes,
-                            sessionType: sessionType as 'individual' | 'group' | 'couple',
-                            sessionMethod: sessionLocation === 'physical' ? 'physical' : 'online',
-                            location: sessionLocation === 'physical' ? physicalAddress : sessionLocation,
-                            date: selectedDate!,
-                            startTime: selectedTime!.start,
-                            endTime: selectedTime!.end,
-                        });
-                    })();
-                }
-            }}
-        >
-            {/* Step Indicator */}
-            <div className="mb-4 text-sm font-medium text-muted-foreground">
-                Step {step} of {totalSteps}: {stepTitles[step - 1]}
+    useEffect(() => {
+        const selectedProvider = serviceProviders.find(sp => sp.id === selectedCounselor);
+        if (selectedCounselor && selectedProvider?.entityType === "COMPANY") {
+            fetch(`/api/providers/${selectedCounselor}/staff`)
+                .then(res => res.json())
+                .then(data => {
+                    const filtered = data.data as Staff[];
+                    setCompanyStaff(filtered);
+                });
+        } else {
+            setCompanyStaff([]);
+            setSelectedCompanyStaff('');
+        }
+    }, [selectedCounselor, serviceProviders]);
+
+    // Add useEffect hooks to sync state with form values
+    useEffect(() => {
+        setValue('companyId', selectedCompany);
+    }, [selectedCompany, setValue]);
+
+    useEffect(() => {
+        setValue('staffId', selectedStaff);
+    }, [selectedStaff, setValue]);
+
+    useEffect(() => {
+        setValue('counselorId', selectedCounselor);
+    }, [selectedCounselor, setValue]);
+
+    useEffect(() => {
+        setValue('interventionId', selectedInterventionId);
+    }, [selectedInterventionId, setValue]);
+
+    useEffect(() => {
+        if (selectedDate) {
+            setValue('date', selectedDate);
+        }
+    }, [selectedDate, setValue]);
+
+    useEffect(() => {
+        if (selectedTime) {
+            setValue('startTime', selectedTime.start);
+            setValue('endTime', selectedTime.end);
+        }
+    }, [selectedTime, setValue]);
+
+    useEffect(() => {
+        setValue('sessionMethod', sessionLocation === 'physical' ? 'physical' : 'online');
+    }, [sessionLocation, setValue]);
+
+    useEffect(() => {
+        setValue('isGroupSession', sessionType === 'group');
+    }, [sessionType, setValue]);
+
+    useEffect(() => {
+        setValue('duration', duration);
+    }, [duration, setValue]);
+
+    useEffect(() => {
+        setValue('notes', notes);
+    }, [notes, setValue]);
+
+    // Add effect to sync sessionType
+    useEffect(() => {
+        if (sessionFor === 'company') {
+            setValue('sessionType', companySessionType);
+        } else {
+            setValue('sessionType', sessionType);
+        }
+    }, [sessionFor, companySessionType, sessionType, setValue]);
+
+    useEffect(() => {
+        setValue('metadata', {
+            requestMethod: sessionLocation,
+            requestNotes: notes,
+            groupSize: sessionType === 'group' ? groupSize : undefined,
+            specialRequirements,
+        });
+    }, [sessionLocation, notes, sessionType, groupSize, specialRequirements, setValue]);
+
+    // Add validation for required props
+    if (!companies || !serviceProviders || !staff || !interventions) {
+        return (
+            <div className="p-4 text-center text-red-500">
+                Missing required data. Please try again later.
             </div>
-            {step === 1 && (
-                <>
-                    {/* Select Company */}
-                    <div className="space-y-2">
-                        <Label htmlFor="company">Select Company</Label>
-                        <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={companyOpen}
-                                    className="w-full justify-between"
-                                    disabled={companies.length === 0}
-                                >
-                                    {selectedCompanyObj?.name || (companies.length === 0 ? "No companies available" : "Select company")}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search company..." />
-                                    <CommandList>
-                                        <CommandEmpty>No company found.</CommandEmpty>
-                                        {companies.map((company) => (
-                                            <CommandItem
-                                                key={company.id}
-                                                value={company.name}
-                                                onSelect={() => {
-                                                    setSelectedCompany(company.id);
-                                                    setCompanyOpen(false);
-                                                }}
-                                            >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedCompany === company.id ? "opacity-100" : "opacity-0")} />
-                                                {company.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
+        );
+    }
 
-                    {/* Session for? */}
-                    <div className="space-y-2">
-                        <Label>Session for?</Label>
-                        <RadioGroup value={sessionFor} onValueChange={value => setSessionFor(value as 'company' | 'staff')} className="flex flex-row items-center gap-6 mt-2">
-                            <div className="flex items-center gap-2">
-                                <RadioGroupItem value="company" id="session-for-company" />
-                                <Label htmlFor="session-for-company">Company</Label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <RadioGroupItem value="staff" id="session-for-staff" />
-                                <Label htmlFor="session-for-staff">Staff</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
+    // Add validation for current step
+    const validateCurrentStep = () => {
+        switch (step) {
+            case 1:
+                return isStep1Valid;
+            case 2:
+                return !!counselorId && !!interventionId && !!sessionLocation;
+            case 3:
+                return !!selectedDate && !!selectedTime && !!duration;
+            case 4:
+                return true; // All validations passed if we reached step 4
+            default:
+                return false;
+        }
+    };
 
-                    {/* If Staff: Select Staff Member */}
-                    {sessionFor === 'staff' && (
-                        <>
-                            <div className="space-y-2">
-                                <Label htmlFor="staff">Select Staff Member</Label>
-                                <Popover open={staffOpen} onOpenChange={setStaffOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={staffOpen}
-                                            className="w-full justify-between"
-                                            disabled={!selectedCompany || filteredStaff.length === 0}
-                                        >
-                                            {selectedStaff && filteredStaff.find(s => s.id === selectedStaff)?.name ||
-                                                (!selectedCompany ? "Select a company first" :
-                                                    filteredStaff.length === 0 ? "No staff available" :
-                                                        "Select staff member")}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search staff..." />
-                                            <CommandList>
-                                                <CommandEmpty>No staff found.</CommandEmpty>
-                                                {filteredStaff.map((member) => (
-                                                    <CommandItem
-                                                        key={member.id}
-                                                        value={member.name}
-                                                        onSelect={() => {
-                                                            setSelectedStaff(member.id);
-                                                            setStaffOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check className={cn("mr-2 h-4 w-4", selectedStaff === member.id ? "opacity-100" : "opacity-0")} />
-                                                        {member.name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            {/* Who is this for? */}
-                            <div className="space-y-2">
-                                <Label>Who is this for?</Label>
-                                <RadioGroup value={selfOrBeneficiary} onValueChange={value => setSelfOrBeneficiary(value as 'self' | 'beneficiary')} className="flex flex-row items-center gap-6 mt-2">
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem value="self" id="who-for-self" />
-                                        <Label htmlFor="who-for-self">Self</Label>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <RadioGroupItem value="beneficiary" id="who-for-beneficiary" />
-                                        <Label htmlFor="who-for-beneficiary">Beneficiary</Label>
-                                    </div>
-                                </RadioGroup>
-                            </div>
-                            {/* If Beneficiary: Choose Beneficiary and Session Type */}
-                            {selfOrBeneficiary === 'beneficiary' && (
-                                <>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="beneficiary">Choose Beneficiary</Label>
-                                        <Popover open={beneficiaryOpen} onOpenChange={setBeneficiaryOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={beneficiaryOpen}
-                                                    className="w-full justify-between"
-                                                    disabled={beneficiaries.length === 0}
-                                                >
-                                                    {selectedBeneficiary && beneficiaries.find(b => b.id === selectedBeneficiary)?.name || (beneficiaries.length === 0 ? "No beneficiaries available" : "Select beneficiary")}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-full p-0">
-                                                <Command>
-                                                    <CommandInput placeholder="Search beneficiary..." />
-                                                    <CommandList>
-                                                        <CommandEmpty>No beneficiary found.</CommandEmpty>
-                                                        {beneficiaries.map((b) => (
-                                                            <CommandItem
-                                                                key={b.id}
-                                                                value={b.name}
-                                                                onSelect={() => {
-                                                                    setSelectedBeneficiary(b.id);
-                                                                    setBeneficiaryOpen(false);
-                                                                }}
-                                                            >
-                                                                <Check className={cn("mr-2 h-4 w-4", selectedBeneficiary === b.id ? "opacity-100" : "opacity-0")} />
-                                                                {b.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </>
-                            )}
-                            {sessionFor === 'staff' && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="sessionType">Session Type</Label>
-                                    <Popover open={sessionTypeOpen} onOpenChange={setSessionTypeOpen}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={sessionTypeOpen}
-                                                className="w-full justify-between"
-                                            >
-                                                {sessionTypes.find(s => s.id === sessionType)?.label || "Select session type"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-full p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search session type..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No session type found.</CommandEmpty>
-                                                    {sessionTypes.map((s) => (
-                                                        <CommandItem
-                                                            key={s.id}
-                                                            value={s.label}
-                                                            onSelect={() => {
-                                                                setSessionType(s.id);
-                                                                setSessionTypeOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", sessionType === s.id ? "opacity-100" : "opacity-0")} />
-                                                            {s.label}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
-                            )}
-                        </>
-                    )}
+    const handleNextStep = (e: React.MouseEvent) => {
+        e.preventDefault(); // Prevent form submission
+        if (validateCurrentStep()) {
+            setStep(step + 1);
+        }
+    };
 
-                    {/* If Company: Add Session Type */}
-                    {sessionFor === 'company' && (
-                        <div className="space-y-2">
-                            <Label htmlFor="company-session-type">Session Type</Label>
-                            <Popover open={companySessionTypeOpen} onOpenChange={setCompanySessionTypeOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={companySessionTypeOpen}
-                                        className="w-full justify-between"
-                                    >
-                                        {companySessionTypes.find(s => s.id === companySessionType)?.label || "Select session type"}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search session type..." />
-                                        <CommandList>
-                                            <CommandEmpty>No session type found.</CommandEmpty>
-                                            {companySessionTypes.map((s) => (
-                                                <CommandItem
-                                                    key={s.id}
-                                                    value={s.label}
-                                                    onSelect={() => {
-                                                        setCompanySessionType(s.id);
-                                                        setCompanySessionTypeOpen(false);
-                                                    }}
-                                                >
-                                                    <Check className={cn("mr-2 h-4 w-4", companySessionType === s.id ? "opacity-100" : "opacity-0")} />
-                                                    {s.label}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    )}
+    return (
+        <FormProvider {...methods}>
+            <form
+                className="space-y-4 w-full min-h-[500px] flex flex-col"
+                onSubmit={methods.handleSubmit(
+                    async (data) => {
+                        console.log('Form submission started with data:', data);
+                        try {
+                            // Validate required fields
+                            if (!data.date) {
+                                toast.error('Date is required');
+                                return;
+                            }
 
-                    {/* Notes section for session details, optional */}
-                    <div className="space-y-2">
-                        <Label htmlFor="session-notes">Notes (optional)</Label>
-                        <Textarea
-                            id="session-notes"
-                            value={notes}
-                            onChange={e => setNotes(e.target.value)}
-                            placeholder="Enter any additional information or requirements"
-                            className="min-h-[80px] text-base"
+                            // Check if the selected provider is a company provider
+                            const selectedProvider = serviceProviders.find(sp => sp.id === data.counselorId);
+                            const isCompanyProvider = selectedProvider?.entityType === "COMPANY";
+
+                            // Validate provider staff selection for company providers
+                            if (isCompanyProvider && !selectedCompanyStaff) {
+                                toast.error('Please select a staff member from the provider company');
+                                return;
+                            }
+
+                            // Prepare the data for the API
+                            const selectedCompanyObj = companies.find(c => c.id === data.companyId);
+                            const selectedStaffObj = staff.find(s => s.id === data.staffId);
+                            const selectedCounselorObj = serviceProviders.find(sp => sp.id === data.counselorId);
+
+                            const apiData = {
+                                ...data,
+                                preferredDate: data.date,
+                                companyName: selectedCompanyObj?.name,
+                                staffName: selectedStaffObj?.name,
+                                counselorName: selectedCounselorObj?.name,
+                                staffEmail: selectedStaffObj?.email,
+                                counselorEmail: selectedCounselorObj?.email,
+                                adminEmail: 'admin@example.com', // TODO: Get real admin email
+                                adminName: 'Admin', // TODO: Get real admin name
+                            };
+
+                            // Call the onSubmit handler with the form data
+                            await onSubmitAction(apiData);
+                            console.log('Form submitted successfully');
+                        } catch (error) {
+                            console.error('Form submission error:', error);
+                            toast.error('Failed to submit form', {
+                                description: error instanceof Error ? error.message : 'An unknown error occurred',
+                            });
+                        }
+                    },
+                    (errors) => {
+                        console.log('Form validation failed with errors:', errors);
+                        // Log each field's error
+                        Object.entries(errors).forEach(([field, error]) => {
+                            console.log(`Field ${field} error:`, error);
+                        });
+                    }
+                )}
+            >
+                {/* Step Indicator */}
+                <div className="mb-4 text-sm font-medium text-muted-foreground">
+                    Step {step} of {totalSteps}: {stepTitles[step - 1]}
+                </div>
+
+                {/* Form Content */}
+                <div className="flex-1 overflow-y-auto">
+                    {step === 1 && (
+                        <SessionStep1
+                            companies={companies}
+                            selectedCompany={selectedCompany}
+                            setSelectedCompany={setSelectedCompany}
+                            companyOpen={companyOpen}
+                            setCompanyOpen={setCompanyOpen}
+                            sessionFor={sessionFor}
+                            setSessionFor={setSessionFor}
+                            sessionType={sessionType}
+                            setSessionType={(type: string) => setSessionType(type as SessionType)}
+                            sessionTypeOpen={sessionTypeOpen}
+                            setSessionTypeOpen={setSessionTypeOpen}
+                            SESSION_TYPES={[...SESSION_TYPES]}
+                            companySessionType={companySessionType}
+                            setCompanySessionType={(type: string) => setCompanySessionType(type as CompanySessionType)}
+                            companySessionTypeOpen={companySessionTypeOpen}
+                            setCompanySessionTypeOpen={setCompanySessionTypeOpen}
+                            companySessionTypes={companySessionTypes.map(type => ({ ...type }))}
+                            watchedSessionType={watchedSessionType}
+                            staff={staff}
+                            filteredStaff={filteredStaff}
+                            selectedStaff={selectedStaff}
+                            setSelectedStaff={setSelectedStaff}
+                            staffOpen={staffOpen}
+                            setStaffOpen={setStaffOpen}
+                            selfOrBeneficiary={selfOrBeneficiary}
+                            setSelfOrBeneficiary={setSelfOrBeneficiary}
+                            beneficiaries={beneficiaries}
+                            selectedBeneficiary={selectedBeneficiary}
+                            setSelectedBeneficiary={setSelectedBeneficiary}
+                            beneficiaryOpen={beneficiaryOpen}
+                            setBeneficiaryOpen={setBeneficiaryOpen}
+                            groupSize={groupSize}
+                            setGroupSize={setGroupSize}
+                            selectedInterventionId={selectedInterventionId}
+                            interventions={interventions}
+                            notes={notes}
+                            setNotes={setNotes}
+                            setValue={(field: string, value: string | number | boolean | Date | undefined) =>
+                                setValue(field as keyof SessionRequestFormData, value)}
+                            touchedFields={touchedFields as Record<string, boolean>}
+                            isSubmitted={isSubmitted}
+                            errors={errors as Record<string, { message?: string }>}
                         />
-                    </div>
+                    )}
+                    {step === 2 && (
+                        <SessionStep2
+                            serviceProviders={serviceProviders}
+                            interventions={interventions}
+                            selectedCounselor={selectedCounselor}
+                            setSelectedCounselor={setSelectedCounselor}
+                            counselorOpen={counselorOpen}
+                            setCounselorOpen={setCounselorOpen}
+                            selectedInterventionId={selectedInterventionId}
+                            setSelectedInterventionId={setSelectedInterventionId}
+                            interventionOpen={interventionOpen}
+                            setInterventionOpen={setInterventionOpen}
+                            sessionLocation={sessionLocation}
+                            setSessionLocation={setSessionLocation}
+                            physicalAddress={physicalAddress}
+                            setPhysicalAddress={setPhysicalAddress}
+                            companyStaff={companyStaff.map(staff => ({
+                                id: staff.id,
+                                fullName: staff.name || ''
+                            }))}
+                            selectedCompanyStaff={selectedCompanyStaff}
+                            setSelectedCompanyStaff={setSelectedCompanyStaff}
+                            companyStaffOpen={companyStaffOpen}
+                            setCompanyStaffOpen={setCompanyStaffOpen}
+                            setValue={(field: string, value: string | number | boolean | Date | undefined) =>
+                                setValue(field as keyof SessionRequestFormData, value)}
+                            touchedFields={touchedFields as Record<string, boolean>}
+                            isSubmitted={isSubmitted}
+                            errors={errors as Record<string, { message?: string }>}
+                            counselorId={counselorId}
+                            sessionMethod={sessionMethod}
+                        />
+                    )}
+                    {step === 3 && (
+                        <SessionStep3
+                            selectedDate={selectedDate}
+                            setSelectedDate={setSelectedDate}
+                            selectedTime={selectedTime}
+                            setSelectedTime={setSelectedTime}
+                            selectedTimeSlot={selectedTimeSlot}
+                            setSelectedTimeSlot={setSelectedTimeSlot}
+                            timeFormat={timeFormat}
+                            setTimeFormat={setTimeFormat}
+                            duration={duration}
+                            setDuration={setDuration}
+                            specialRequirements={specialRequirements}
+                            setSpecialRequirements={setSpecialRequirements}
+                            setValue={(field: string, value: string | number | boolean | Date | undefined) =>
+                                setValue(field as keyof SessionRequestFormData, value)}
+                            touchedFields={touchedFields as Record<string, boolean>}
+                            isSubmitted={isSubmitted}
+                            errors={errors as Record<string, string>}
+                            date={date}
+                        />
+                    )}
+                    {step === 4 && (
+                        <SessionStep4
+                            companies={companies}
+                            selectedCompany={selectedCompany}
+                            sessionFor={sessionFor}
+                            staff={staff}
+                            selectedStaff={selectedStaff}
+                            selfOrBeneficiary={selfOrBeneficiary}
+                            sessionType={sessionType}
+                            SESSION_TYPES={[...SESSION_TYPES]}
+                            companySessionType={companySessionType}
+                            companySessionTypes={companySessionTypes.map(type => ({ ...type })) as { id: string; label: string }[]}
+                            watchedSessionType={watchedSessionType}
+                            beneficiaries={beneficiaries}
+                            selectedBeneficiary={selectedBeneficiary}
+                            interventions={interventions}
+                            selectedInterventionId={selectedInterventionId}
+                            serviceProviders={serviceProviders}
+                            selectedCounselor={selectedCounselor}
+                            selectedCompanyStaff={selectedCompanyStaff}
+                            companyStaff={companyStaff.map(staff => ({
+                                id: staff.id,
+                                fullName: staff.name || `${staff.name ?? ''}`.trim()
+                            }))}
+                            sessionLocation={sessionLocation}
+                            physicalAddress={physicalAddress}
+                            selectedDate={selectedDate}
+                            selectedTime={selectedTime}
+                            duration={duration}
+                            groupSize={groupSize}
+                            specialRequirements={specialRequirements}
+                            notes={notes}
+                        />
+                    )}
+                </div>
 
-                    {/* Cancel and Next Buttons */}
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                        <Button type="submit" disabled={!isStep1Valid}>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-2 mt-auto pt-4 border-t">
+                    {step > 1 && (
+                        <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
+                            Back
+                        </Button>
+                    )}
+                    {step < totalSteps ? (
+                        <Button
+                            type="button"
+                            onClick={handleNextStep}
+                        >
                             Next
                         </Button>
-                    </div>
-                </>
-            )}
-            {step === 2 && (
-                <>
-                    <div className="space-y-2">
-                        <Label htmlFor="counselor">Choose a Counselor</Label>
-                        <Popover open={counselorOpen} onOpenChange={setCounselorOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={counselorOpen}
-                                    className="w-full justify-between"
-                                >
-                                    {selectedCounselor && counselors.find(c => c.id === selectedCounselor)?.name || "Select counselor"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search counselor..." />
-                                    <CommandList>
-                                        <CommandEmpty>No counselor found.</CommandEmpty>
-                                        {counselors.map((c) => (
-                                            <CommandItem
-                                                key={c.id}
-                                                value={c.name}
-                                                onSelect={() => {
-                                                    setSelectedCounselor(c.id);
-                                                    setCounselorOpen(false);
-                                                    setSelectedDate(undefined);
-                                                    setSelectedTime(undefined);
-                                                }}
-                                            >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedCounselor === c.id ? "opacity-100" : "opacity-0")} />
-                                                {c.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    {/* Session Location Picker */}
-                    <div className="space-y-2 mt-4">
-                        <Label htmlFor="session-location">Session Location</Label>
-                        <Select value={sessionLocation} onValueChange={setSessionLocation}>
-                            <SelectTrigger id="session-location" className="w-full">
-                                <SelectValue placeholder="Select location" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="virtual">Virtual</SelectItem>
-                                <SelectItem value="phone">Phone Call</SelectItem>
-                                <SelectItem value="physical">Physical</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {/* Physical address input if needed */}
-                    {sessionLocation === "physical" && (
-                        <div className="space-y-2">
-                            <Label htmlFor="physical-address">Location Address</Label>
-                            <Input
-                                id="physical-address"
-                                value={physicalAddress}
-                                onChange={e => setPhysicalAddress(e.target.value)}
-                                placeholder="Enter address or location details"
-                            />
-                        </div>
-                    )}
-                    {/* Date Picker for slot selection */}
-                    {selectedCounselor && (
-                        <div className="space-y-2 mt-4">
-                            <Label htmlFor="counselor-date">Choose a Date</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={cn(
-                                            "w-full justify-start text-left font-normal",
-                                            !selectedDate && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={selectedDate}
-                                        onSelect={(date) => {
-                                            if (date instanceof Date) {
-                                                setSelectedDate(date);
-                                                setSelectedTime(undefined);
-                                            }
-                                        }}
-                                        disabled={(date) => {
-                                            const today = new Date();
-                                            today.setHours(0, 0, 0, 0);
-                                            return date < today;
-                                        }}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    )}
-                    {/* Availability Picker for time slot selection */}
-                    {selectedCounselor && selectedDate && (
-                        <div className="mt-4">
-                            <AvailabilityPicker
-                                selectedDate={selectedDate}
-                                selectedTimeSlot={selectedTimeSlot}
-                                className="mt-4"
-                                onTimeSelect={(date, startTime) => {
-                                    setSelectedDate(date);
-                                    setSelectedTimeSlot(startTime);
-                                    // Calculate endTime as 1 hour after startTime
-                                    const [startHour, startMinute] = startTime.split(":").map(Number);
-                                    const end = new Date(date);
-                                    end.setHours(startHour);
-                                    end.setMinutes(startMinute + 60);
-                                    const endHour = end.getHours().toString().padStart(2, '0');
-                                    const endMinute = end.getMinutes().toString().padStart(2, '0');
-                                    const endTime = `${endHour}:${endMinute}`;
-                                    setSelectedTime({ start: startTime, end: endTime });
-                                    setValue('date', date);
-                                    setValue('startTime', startTime);
-                                    setValue('endTime', endTime);
-                                }}
-                            />
-                        </div>
-                    )}
-                    {/* Back and Submit Buttons */}
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button type="button" variant="outline" onClick={() => setStep(1)}>Back</Button>
-                        <Button type="submit" disabled={!selectedCounselor || !sessionLocation || (sessionLocation === 'physical' && !physicalAddress) || !selectedDate || !selectedTime}>
-                            Next
+                    ) : (
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? 'Submitting...' : 'Submit'}
                         </Button>
-                    </div>
-                </>
-            )}
-            {step === 3 && (
-                <>
-                    <div className="mb-4">
-                        <h3 className="text-lg font-semibold mb-2">Review your request</h3>
-                        <div className="space-y-2 text-sm">
-                            <div><span className="font-medium">Company:</span> {companies.find(c => c.id === selectedCompany)?.name}</div>
-                            {sessionFor === 'staff' && <div><span className="font-medium">Staff:</span> {staff.find(s => s.id === selectedStaff)?.name}</div>}
-                            {sessionFor === 'staff' && <div><span className="font-medium">Who is this for:</span> {selfOrBeneficiary === 'self' ? 'Self' : 'Beneficiary'}</div>}
-                            {sessionFor === 'staff' && <div><span className="font-medium">Session Type:</span> {sessionTypes.find(s => s.id === sessionType)?.label}</div>}
-                            {sessionFor === 'company' && <div><span className="font-medium">Session Type:</span> {companySessionTypes.find(s => s.id === companySessionType)?.label}</div>}
-                            {selfOrBeneficiary === 'beneficiary' && <div><span className="font-medium">Beneficiary:</span> {beneficiaries.find(b => b.id === selectedBeneficiary)?.name}</div>}
-                            <div><span className="font-medium">Counselor:</span> {counselors.find(c => c.id === selectedCounselor)?.name}</div>
-                            <div><span className="font-medium">Session Location:</span> {sessionLocation === 'physical' ? physicalAddress : sessionLocation.charAt(0).toUpperCase() + sessionLocation.slice(1)}</div>
-                            <div><span className="font-medium">Date:</span> {selectedDate ? format(selectedDate, 'PPP') : ''}</div>
-                            <div><span className="font-medium">Time:</span> {selectedTime ? `${selectedTime.start} - ${selectedTime.end}` : ''}</div>
-                            {notes && <div><span className="font-medium">Notes:</span> {notes}</div>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button type="button" variant="outline" onClick={() => setStep(2)}>Back</Button>
-                        <Button type="submit" disabled={isSubmitting}>Submit</Button>
-                    </div>
-                </>
-            )}
-        </form>
+                    )}
+                </div>
+            </form>
+        </FormProvider>
     );
 } 

@@ -9,6 +9,7 @@ import {
     Repeat,
     History,
     XCircle,
+    File,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { ServiceProvider } from '@/components/session-booking/sessionRequestSchema';
@@ -23,6 +24,7 @@ const tabs = [
     { label: 'Recurring', href: '/sessions/recurring', icon: Repeat, key: 'recurring', color: 'emerald' },
     { label: 'Past', href: '/sessions/past', icon: History, key: 'past', color: 'slate' },
     { label: 'Canceled', href: '/sessions/canceled', icon: XCircle, key: 'canceled', color: 'rose' },
+    { label: 'Drafts', href: '/sessions/drafts', icon: File, key: 'drafts', color: 'gray' },
 ];
 
 export default function SessionsLayout({ children }: { children: React.ReactNode }) {
@@ -52,7 +54,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
     useEffect(() => {
         async function loadData() {
             try {
-                const [clientsRes, serviceProvidersRes, staffRes, interventionsRes] = await Promise.all([
+                const [clientsRes, serviceProvidersRes, staffRes, interventionsRes, draftSessionsRes] = await Promise.all([
                     fetch('/api/clients').then(async (res) => {
                         if (!res.ok) {
                             const errorData = await res.json().catch(() => ({}));
@@ -84,6 +86,15 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         }
                         const data = await res.json();
                         return data?.data || data || [];
+                    }),
+                    fetch('/api/services/sessions?status=DRAFT').then(async (res) => {
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Draft sessions API failed: ${res.status}`);
+                        }
+                        const data = await res.json();
+                        console.log('Draft sessions response:', data);
+                        return data?.metadata?.total || 0;
                     })
                 ]);
 
@@ -92,7 +103,8 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                     unconfirmed: 0,
                     recurring: 0,
                     past: 0,
-                    canceled: 0
+                    canceled: 0,
+                    drafts: draftSessionsRes
                 });
                 setClients(clientsRes);
                 const mappedServiceProviders: ServiceProvider[] = (serviceProvidersRes || []).map((sp: ServiceProvider) => ({
@@ -109,7 +121,8 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                     unconfirmed: 0,
                     recurring: 0,
                     past: 0,
-                    canceled: 0
+                    canceled: 0,
+                    drafts: 0
                 });
                 toast.error(`Failed to load data: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
             }

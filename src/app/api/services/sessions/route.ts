@@ -60,7 +60,10 @@ export async function GET(request: NextRequest) {
                 );
             }
 
-            where.staffId = staff.id;
+            // Only require staffId for non-draft sessions
+            if (status !== 'DRAFT') {
+                where.staffId = staff.id;
+            }
 
             const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}:${staffId}`;
             const cached = await cache.get(cacheKey);

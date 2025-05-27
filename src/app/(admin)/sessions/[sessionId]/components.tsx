@@ -17,34 +17,34 @@ export function SessionDetails({ data, setData }: SessionDetailsProps) {
 
     return (
         <div className="w-full flex items-start justify-start mt-6">
-            <div className="w-full bg-white rounded-sm p-8 border space-y-8">
-                <h2 className="text-2xl font-bold mb-2 text-gray-900">Client Details</h2>
+            <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
+                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Client Details</h2>
                 {/* Company */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Company</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Company</Label>
                     <input
                         type="text"
                         value={company}
                         readOnly
                         disabled
-                        className="w-full border rounded-sm px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
+                        className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 bg-background text-gray-700 dark:text-gray-300 cursor-not-allowed"
                     />
                 </div>
                 {/* Session for? */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Session for?</Label>
-                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1 w-fit">
-                        <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${sessionFor === 'organization' ? 'bg-white border border-blue-400 text-blue-700' : 'text-gray-600 hover:bg-gray-200 border border-transparent'}`} onClick={() => setData({ ...data, sessionFor: 'organization' })}>Organization</button>
-                        <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${sessionFor === 'staff' ? 'bg-white border border-blue-400 text-blue-700' : 'text-gray-600 hover:bg-gray-200 border border-transparent'}`} onClick={() => setData({ ...data, sessionFor: 'staff' })}>Staff</button>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session for?</Label>
+                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
+                        <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${sessionFor === 'organization' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, sessionFor: 'organization' })}>Organization</button>
+                        <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${sessionFor === 'staff' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, sessionFor: 'staff' })}>Staff</button>
                     </div>
                 </div>
                 {/* Staff and Who is it for? (only if Staff) */}
                 {sessionFor === 'staff' && (
                     <>
                         <div className="space-y-1">
-                            <Label className="font-semibold text-sm text-gray-700">Staff</Label>
+                            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Staff</Label>
                             <Select value={staff} onValueChange={v => setData({ ...data, staff: v })}>
-                                <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                                <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                                     <SelectValue placeholder="Select staff" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -54,19 +54,19 @@ export function SessionDetails({ data, setData }: SessionDetailsProps) {
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <Label className="font-semibold text-sm text-gray-700">Who is it for?</Label>
-                            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1 w-fit">
-                                <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${whoFor === 'self' ? 'bg-white border border-blue-400 text-blue-700' : 'text-gray-600 hover:bg-gray-200 border border-transparent'}`} onClick={() => setData({ ...data, whoFor: 'self' })}>Self</button>
-                                <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${whoFor === 'dependant' ? 'bg-white border border-blue-400 text-blue-700' : 'text-gray-600 hover:bg-gray-200 border border-transparent'}`} onClick={() => setData({ ...data, whoFor: 'dependant' })}>Dependant</button>
+                            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Who is it for?</Label>
+                            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
+                                <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${whoFor === 'self' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, whoFor: 'self' })}>Self</button>
+                                <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${whoFor === 'dependant' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, whoFor: 'dependant' })}>Dependant</button>
                             </div>
                         </div>
                     </>
                 )}
                 {/* Session Type */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Session Type</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session Type</Label>
                     <Select value={sessionType} onValueChange={(v: 'individual' | 'group') => setData({ ...data, sessionType: v })}>
-                        <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -78,14 +78,14 @@ export function SessionDetails({ data, setData }: SessionDetailsProps) {
                 {/* Number of attendees (only if group) */}
                 {sessionType === 'group' && (
                     <div className="space-y-1">
-                        <Label className="font-semibold text-sm text-gray-700">Number of attendees</Label>
-                        <input type="number" min={1} className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" value={numAttendees} onChange={e => setData({ ...data, numAttendees: Number(e.target.value) })} />
+                        <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Number of attendees</Label>
+                        <input type="number" min={1} className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background text-gray-900 dark:text-white" value={numAttendees} onChange={e => setData({ ...data, numAttendees: Number(e.target.value) })} />
                     </div>
                 )}
                 {/* Notes */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Notes</Label>
-                    <Textarea className="w-full border rounded-sm px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" placeholder="Add notes..." value={data.notes || ''} onChange={e => setData({ ...data, notes: e.target.value })} />
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Notes</Label>
+                    <Textarea className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background text-gray-900 dark:text-white" placeholder="Add notes..." value={data.notes || ''} onChange={e => setData({ ...data, notes: e.target.value })} />
                 </div>
             </div>
         </div>
@@ -101,13 +101,13 @@ export function InterventionDetails({ data, setData }: InterventionDetailsProps)
     const { service = '', intervention = '', notes = '' } = data || {};
     return (
         <div className="w-full flex items-start justify-start mt-6">
-            <div className="w-full bg-white rounded-sm p-8 border space-y-8">
-                <h2 className="text-2xl font-bold mb-2 text-gray-900">Intervention Details</h2>
+            <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
+                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Intervention Details</h2>
                 {/* Service */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Service</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Service</Label>
                     <Select value={service} onValueChange={v => setData({ ...data, service: v })}>
-                        <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue placeholder="Select service" />
                         </SelectTrigger>
                         <SelectContent>
@@ -118,9 +118,9 @@ export function InterventionDetails({ data, setData }: InterventionDetailsProps)
                 </div>
                 {/* Intervention */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Intervention</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Intervention</Label>
                     <Select value={intervention} onValueChange={v => setData({ ...data, intervention: v })}>
-                        <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue placeholder="Select intervention" />
                         </SelectTrigger>
                         <SelectContent>
@@ -131,9 +131,9 @@ export function InterventionDetails({ data, setData }: InterventionDetailsProps)
                 </div>
                 {/* Notes */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Notes</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Notes</Label>
                     <Textarea
-                        className="w-full border rounded-sm px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                        className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background text-gray-900 dark:text-white"
                         placeholder="Add intervention notes..."
                         value={notes}
                         onChange={e => setData({ ...data, notes: e.target.value })}
@@ -182,13 +182,13 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
     ];
     return (
         <div className="w-full flex items-start justify-start mt-6">
-            <div className="w-full bg-white rounded-sm p-8 border space-y-8">
-                <h2 className="text-2xl font-bold mb-2 text-gray-900">Counselor & Availability</h2>
+            <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
+                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Counselor & Availability</h2>
                 {/* Provider Counselor */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Provider</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Provider</Label>
                     <Select value={provider} onValueChange={v => setData({ ...data, provider: v })}>
-                        <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue placeholder="Select provider" />
                         </SelectTrigger>
                         <SelectContent>
@@ -199,9 +199,9 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
                 </div>
                 {/* Staff Provider (always shown) */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Staff Provider</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Staff Provider</Label>
                     <Select value={staff} onValueChange={v => setData({ ...data, staff: v })}>
-                        <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue placeholder="Select staff provider" />
                         </SelectTrigger>
                         <SelectContent>
@@ -212,14 +212,14 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
                 </div>
                 {/* Date & Time */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Date & Time</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Date & Time</Label>
                     <DatePicker value={date} onChange={v => setData({ ...data, date: v })} />
                 </div>
                 {/* Time Format Toggle */}
                 <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                        <Label className="font-semibold text-sm text-gray-700">Available Time Slot</Label>
-                        <div className="flex bg-gray-100 rounded-full p-0.5 gap-1 shadow-inner h-7">
+                        <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Available Time Slot</Label>
+                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-full p-0.5 gap-1 shadow-inner h-7">
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -227,7 +227,7 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
                                     "rounded-full text-xs font-medium transition-all duration-200 h-6 px-2",
                                     timeFormat === '12hr'
                                         ? 'bg-blue-600 text-white shadow'
-                                        : 'text-gray-700 hover:bg-blue-100'
+                                        : 'text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900'
                                 )}
                                 onClick={() => setData({ ...data, timeFormat: '12hr' })}
                             >
@@ -240,7 +240,7 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
                                     "rounded-full text-xs font-medium transition-all duration-200 h-6 px-2",
                                     timeFormat === '24hr'
                                         ? 'bg-blue-600 text-white shadow'
-                                        : 'text-gray-700 hover:bg-blue-100'
+                                        : 'text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900'
                                 )}
                                 onClick={() => setData({ ...data, timeFormat: '24hr' })}
                             >
@@ -254,7 +254,9 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
                                 key={slot}
                                 type="button"
                                 className={`px-2 py-1 rounded border text-sm transition-all duration-200
-                                    ${selectedSlot === slot ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                                    ${selectedSlot === slot
+                                        ? 'bg-blue-100 dark:bg-blue-900 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300'
+                                        : 'bg-background border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                                 onClick={() => setData({ ...data, selectedSlot: slot })}
                             >
                                 {slot}
@@ -264,9 +266,9 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
                 </div>
                 {/* Duration */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Duration</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Duration</Label>
                     <Select value={duration} onValueChange={v => setData({ ...data, duration: v })}>
-                        <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                         <SelectContent>
@@ -290,24 +292,24 @@ export function LocationDetails({ data, setData }: LocationDetailsProps) {
     const { location = '', requirements = '' } = data || {};
     return (
         <div className="w-full flex items-start justify-start mt-6">
-            <div className="w-full bg-white rounded-sm p-8 border space-y-8">
-                <h2 className="text-2xl font-bold mb-2 text-gray-900">Location</h2>
+            <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
+                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Location</h2>
                 {/* Location Combobox */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Location</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Location</Label>
                     <Select value={location} onValueChange={v => setData({ ...data, location: v })}>
-                        <SelectTrigger className="w-full border rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition">
+                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue placeholder="Select location" />
                         </SelectTrigger>
                         <SelectContent>
-                            <div className="px-2 py-1 text-xs text-gray-500">Conferencing</div>
+                            <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">Conferencing</div>
                             <SelectItem value="teams">MS Teams</SelectItem>
                             <SelectItem value="zoom">Zoom</SelectItem>
                             <SelectItem value="google-meet">Google Meet</SelectItem>
-                            <div className="px-2 py-1 text-xs text-gray-500">In Person</div>
+                            <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">In Person</div>
                             <SelectItem value="minet-office">In Person (Minet Office)</SelectItem>
                             <SelectItem value="provider-office">In Person (Provider Offices)</SelectItem>
-                            <div className="px-2 py-1 text-xs text-gray-500">Other</div>
+                            <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">Other</div>
                             <SelectItem value="custom-location">Custom Attendee Location</SelectItem>
                             <SelectItem value="link-meeting">Link meeting</SelectItem>
                             <SelectItem value="phone-call">Phone Call</SelectItem>
@@ -316,9 +318,9 @@ export function LocationDetails({ data, setData }: LocationDetailsProps) {
                 </div>
                 {/* Special Requirements */}
                 <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700">Special Requirements</Label>
+                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Special Requirements</Label>
                     <Textarea
-                        className="w-full border rounded-sm px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                        className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background text-gray-900 dark:text-white"
                         placeholder="Any special requirements/accommodation needs."
                         value={requirements}
                         onChange={e => setData({ ...data, requirements: e.target.value })}

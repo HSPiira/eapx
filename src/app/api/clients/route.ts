@@ -136,32 +136,13 @@ export async function GET(request: NextRequest) {
             deletedAt: null,
         };
 
-        console.log('Client query where clause:', JSON.stringify(where, null, 2));
-        console.log('Query parameters:', {
-            page,
-            limit,
-            offset,
-            search,
-            status,
-            industryId,
-            isVerified,
-            preferredContactMethod,
-            createdAfter,
-            createdBefore,
-            hasContract,
-            hasStaff
-        });
-
         const cacheKey = `clients:${page}:${limit}:${search}:${status}:${industryId}:${isVerified}:${preferredContactMethod}:${createdAfter}:${createdBefore}:${hasContract}:${hasStaff}`;
-        console.log('Cache key:', cacheKey);
         const cached = await cache.get(cacheKey);
         if (cached) {
-            console.log('Returning cached response');
             return NextResponse.json(cached);
         }
 
         const totalCount = await prisma.client.count({ where });
-        console.log('Total count:', totalCount);
 
         const clients = await prisma.client.findMany({
             where,
@@ -170,17 +151,6 @@ export async function GET(request: NextRequest) {
             take: limit,
             orderBy: { createdAt: 'desc' },
         });
-
-        console.log('Found clients:', clients.map(c => ({
-            id: c.id,
-            name: c.name,
-            status: c.status,
-            deletedAt: c.deletedAt,
-            isVerified: c.isVerified,
-            industryId: c.industryId,
-            preferredContactMethod: c.preferredContactMethod,
-            createdAt: c.createdAt
-        })));
 
         const response = {
             data: clients,

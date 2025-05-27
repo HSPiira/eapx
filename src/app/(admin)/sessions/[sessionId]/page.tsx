@@ -121,20 +121,24 @@ function Header() {
         alert('Saved to staging!');
     };
 
-    const sessionTitle = error ? 'Error' : (sessionData ? `${sessionData.client?.name || 'New Session'}.${sessionData.id}` : 'Loading...');
+    const sessionTitle = error
+        ? 'Error'
+        : (sessionData
+            ? <><span>{sessionData.client?.name || 'New Session'}</span><span className="mx-1 text-gray-400">·</span><span className="text-xs font-normal text-gray-500 dark:text-gray-300 align-middle">{sessionData.id}</span></>
+            : 'Loading...');
 
     return (
-        <div className="flex items-center justify-between w-full px-0 mx-0 mt-0">
+        <div className="flex items-center justify-between w-full px-0 mx-0 mt-0 bg-background">
             {/* Left: Back + Title */}
             <div className="flex items-center gap-2 min-w-0">
                 <button
-                    className="p-1 rounded-sm text-gray-500 hover:bg-gray-100 hover:border focus:bg-gray-100 transition-colors"
-                    onClick={() => router.push('/sessions/upcoming')}
+                    className="p-1 rounded-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border focus:bg-gray-100 dark:focus:bg-gray-800 transition-colors"
+                    onClick={() => router.push('/sessions/drafts')}
                     aria-label="Back to Sessions"
                 >
                     <ArrowLeft className="w-4 h-4" />
                 </button>
-                <span className={`font-bold text-lg truncate ${error ? 'text-red-600' : ''}`}>{sessionTitle}</span>
+                <span className={`font-bold text-lg truncate ${error ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{sessionTitle}</span>
                 {error && (
                     <span className="text-sm text-red-600 ml-2">{error}</span>
                 )}
@@ -159,7 +163,7 @@ function Header() {
                     <button className="p-2 hover:bg-gray-100 rounded text-red-600" aria-label="Delete"><Trash2 className="w-4 h-4" /></button>
                 </div>
                 <span className="h-5 w-px bg-gray-200 mx-1" />
-                <button className="px-3 py-1.5 bg-gray-900 text-white rounded font-semibold hover:bg-gray-800 transition-colors ml-1 text-sm" aria-label="Save" onClick={handleSave}>Save</button>
+                <button className="px-3 py-1.5 rounded font-semibold hover:bg-gray-800 transition-colors ml-1 text-sm bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900" aria-label="Save" onClick={handleSave}>Save</button>
             </div>
         </div>
     );
@@ -176,15 +180,15 @@ function Sidebar({ selected, onSelect }: { selected: string; onSelect: (key: str
                         key={item.key}
                         className={
                             isSelected
-                                ? 'flex items-start px-2 py-1.5 mb-1 cursor-pointer rounded-sm bg-gray-100'
-                                : 'flex items-start px-2 py-1.5 mb-1 cursor-pointer rounded-sm hover:bg-gray-50'
+                                ? 'flex items-start px-2 py-1.5 mb-1 cursor-pointer rounded-sm bg-gray-100 dark:bg-gray-800'
+                                : 'flex items-start px-2 py-1.5 mb-1 cursor-pointer rounded-sm hover:bg-gray-50 dark:hover:bg-gray-800/50'
                         }
                         onClick={() => onSelect(item.key)}
                     >
-                        <SelectedIcon className="w-4 h-4 mr-3 text-gray-700 mt-0.5" />
+                        <SelectedIcon className="w-4 h-4 mr-3 text-gray-700 dark:text-gray-300 mt-0.5" />
                         <div className="flex-1">
-                            <div className={isSelected ? 'font-semibold text-sm text-gray-900' : 'font-semibold text-sm text-gray-900'}>{item.label}</div>
-                            <div className="text-xs text-gray-500">{item.description}</div>
+                            <div className={isSelected ? 'font-semibold text-sm text-gray-900 dark:text-white' : 'font-semibold text-sm text-gray-900 dark:text-gray-100'}>{item.label}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{item.description}</div>
                         </div>
                     </div>
                 );
@@ -218,28 +222,28 @@ function ReviewDetails({ formData, onConfirm }: { formData: FormData; onConfirm:
     return (
         <div className="w-full flex items-start justify-start mt-6">
             <form
-                className="w-full bg-white rounded-sm p-8 border space-y-8"
+                className="w-full bg-background rounded-sm p-8 border dark:border-gray-800 space-y-8"
                 onSubmit={e => {
                     e.preventDefault();
                     onConfirm();
                 }}
             >
-                <h2 className="text-2xl font-bold mb-2 text-gray-900">Review Details</h2>
+                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Review Details</h2>
                 <div>
-                    <h3 className="font-semibold text-lg mb-2">Client Details</h3>
-                    <pre className="bg-gray-50 p-2 rounded text-sm">{JSON.stringify(formData.client, null, 2)}</pre>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Client Details</h3>
+                    <pre className="bg-muted p-2 rounded text-sm text-gray-900 dark:text-gray-100">{JSON.stringify(formData.client, null, 2)}</pre>
                 </div>
                 <div>
-                    <h3 className="font-semibold text-lg mb-2">Intervention</h3>
-                    <pre className="bg-gray-50 p-2 rounded text-sm">{JSON.stringify(formData.intervention, null, 2)}</pre>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Intervention</h3>
+                    <pre className="bg-muted p-2 rounded text-sm text-gray-900 dark:text-gray-100">{JSON.stringify(formData.intervention, null, 2)}</pre>
                 </div>
                 <div>
-                    <h3 className="font-semibold text-lg mb-2">Counselor & Availability</h3>
-                    <pre className="bg-gray-50 p-2 rounded text-sm">{JSON.stringify(formData.counselor, null, 2)}</pre>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Counselor & Availability</h3>
+                    <pre className="bg-muted p-2 rounded text-sm text-gray-900 dark:text-gray-100">{JSON.stringify(formData.counselor, null, 2)}</pre>
                 </div>
                 <div>
-                    <h3 className="font-semibold text-lg mb-2">Location</h3>
-                    <pre className="bg-gray-50 p-2 rounded text-sm">{JSON.stringify(formData.location, null, 2)}</pre>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Location</h3>
+                    <pre className="bg-muted p-2 rounded text-sm text-gray-900 dark:text-gray-100">{JSON.stringify(formData.location, null, 2)}</pre>
                 </div>
                 <div className="flex gap-4 justify-end">
                     <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700">Confirm</button>

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     CalendarClock,
     Clock4,
@@ -10,13 +10,12 @@ import {
     History,
     XCircle,
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui';
-import { SessionRequestForm } from '@/components/session-booking/SessionRequestForm';
-import { SessionRequestFormData, ServiceProvider } from '@/components/session-booking/sessionRequestSchema';
+import { ServiceProvider } from '@/components/session-booking/sessionRequestSchema';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
-import { ServiceProviderType, RelationType, ProviderStaff, Beneficiary } from '@prisma/client';
+import { ServiceProviderType } from '@prisma/client';
+import { SessionRequestModal } from './[sessionId]/session-request';
 
 const tabs = [
     { label: 'Upcoming', href: '/sessions/upcoming', icon: CalendarClock, key: 'upcoming', color: 'blue' },
@@ -28,144 +27,116 @@ const tabs = [
 
 export default function SessionsLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const router = useRouter();
     const [counts, setCounts] = useState<Record<string, number>>({});
     const [modalOpen, setModalOpen] = useState(false);
-    const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([]);
-    const [beneficiaries, setBeneficiaries] = useState<Array<{ id: string; name: string; relation: RelationType }>>([]);
-    const [serviceProviders, setServiceProviders] = useState<Array<ServiceProvider>>([]);
-    const [providerStaff] = useState<Array<ProviderStaff>>([]);
-    const [staff, setStaff] = useState<Array<{ id: string; name: string; email: string; companyId: string }>>([]);
-    const [interventions, setInterventions] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const { data: session } = useSession();
-    const [selectedCompany] = useState<string>('');
-    const [selectedStaff] = useState<string>('');
+    const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
+    const [, setServiceProviders] = useState<Array<ServiceProvider>>([]);
+    const [, setStaff] = useState<Array<{ id: string; name: string; email: string; companyId: string }>>([]);
+    const [, setInterventions] = useState([]);
+    const [, setIsLoading] = useState(false);
+
+    useSession();
+
+    const sessionDetailRegex = /^\/sessions\/([^/]+)$/;
+    const knownTabs = [
+        '/sessions/upcoming',
+        '/sessions/unconfirmed',
+        '/sessions/recurring',
+        '/sessions/past',
+        '/sessions/canceled',
+        '/sessions/drafts',
+    ];
+    const isSessionDetail = sessionDetailRegex.test(pathname) && !knownTabs.includes(pathname);
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [sessionsRes, companiesRes, serviceProvidersRes, staffRes, interventionsRes] = await Promise.all([
-                    fetch('/api/services/sessions').then(async (res) => {
-                        if (!res.ok) throw new Error(`Sessions API failed: ${res.status}`);
-                        const text = await res.text();
-                        try {
-                            return { ok: true, data: JSON.parse(text) };
-                        } catch (e) {
-                            console.error('Failed to parse sessions response:', e);
-                            throw new Error('Invalid JSON from sessions API');
-                        }
-                    }),
+                const [clientsRes, serviceProvidersRes, staffRes, interventionsRes] = await Promise.all([
                     fetch('/api/clients').then(async (res) => {
-                        if (!res.ok) throw new Error(`Clients API failed: ${res.status}`);
-                        const text = await res.text();
-                        try {
-                            return { ok: true, data: JSON.parse(text) };
-                        } catch (e) {
-                            console.error('Failed to parse clients response:', e);
-                            throw new Error('Invalid JSON from clients API');
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Clients API failed: ${res.status}`);
                         }
+                        const data = await res.json();
+                        return data?.data || data || [];
                     }),
                     fetch('/api/providers').then(async (res) => {
-                        if (!res.ok) throw new Error(`Providers API failed: ${res.status}`);
-                        const text = await res.text();
-                        try {
-                            return { ok: true, data: JSON.parse(text) };
-                        } catch (e) {
-                            console.error('Failed to parse providers response:', e);
-                            throw new Error('Invalid JSON from providers API');
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Providers API failed: ${res.status}`);
                         }
+                        const data = await res.json();
+                        return data?.data || data || [];
                     }),
                     fetch('/api/staff').then(async (res) => {
-                        if (!res.ok) throw new Error(`Staff API failed: ${res.status}`);
-                        const text = await res.text();
-                        try {
-                            return { ok: true, data: JSON.parse(text) };
-                        } catch (e) {
-                            console.error('Failed to parse staff response:', e);
-                            throw new Error('Invalid JSON from staff API');
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Staff API failed: ${res.status}`);
                         }
+                        const data = await res.json();
+                        return data?.data || data || [];
                     }),
                     fetch('/api/services/interventions').then(async (res) => {
-                        if (!res.ok) throw new Error(`Interventions API failed: ${res.status}`);
-                        const text = await res.text();
-                        try {
-                            return { ok: true, data: JSON.parse(text) };
-                        } catch (e) {
-                            console.error('Failed to parse interventions response:', e);
-                            throw new Error('Invalid JSON from interventions API');
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Interventions API failed: ${res.status}`);
                         }
+                        const data = await res.json();
+                        return data?.data || data || [];
                     })
                 ]);
 
-                setCounts(sessionsRes.data.data || sessionsRes.data);
-                setCompanies(companiesRes.data.data || companiesRes.data);
-                const mappedServiceProviders: ServiceProvider[] = (serviceProvidersRes.data.data || serviceProvidersRes.data).map((sp: ServiceProvider) => ({
+                setCounts({
+                    upcoming: 0,
+                    unconfirmed: 0,
+                    recurring: 0,
+                    past: 0,
+                    canceled: 0
+                });
+                setClients(clientsRes);
+                const mappedServiceProviders: ServiceProvider[] = (serviceProvidersRes || []).map((sp: ServiceProvider) => ({
                     ...sp,
                     type: ServiceProviderType[sp.type as keyof typeof ServiceProviderType] ?? ServiceProviderType.COUNSELOR
                 }));
                 setServiceProviders(mappedServiceProviders);
-                setStaff(staffRes.data.data || staffRes.data);
-                const interventionsArr = interventionsRes.data.data || interventionsRes.data;
-                setInterventions(interventionsArr);
+                setStaff(staffRes);
+                setInterventions(interventionsRes);
             } catch (error) {
                 console.error('Failed to load data:', error);
+                setCounts({
+                    upcoming: 0,
+                    unconfirmed: 0,
+                    recurring: 0,
+                    past: 0,
+                    canceled: 0
+                });
                 toast.error(`Failed to load data: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
             }
         }
         loadData();
     }, []);
 
-    useEffect(() => {
-        if (selectedCompany && selectedStaff) {
-            fetch(`/api/clients/${selectedCompany}/staff/${selectedStaff}/beneficiaries`).then(async (res) => {
-                if (!res.ok) throw new Error(`Beneficiaries API failed: ${res.status}`);
-                const text = await res.text();
-                try {
-                    const json = JSON.parse(text);
-                    setBeneficiaries(
-                        (json.data || json).map((b: Beneficiary) => ({
-                            ...b,
-                            relation: RelationType[b.relation as keyof typeof RelationType]
-                        }))
-                    );
-                } catch (e) {
-                    console.error('Failed to parse beneficiaries response:', e);
-                }
-            }).catch(() => {
-                // Optionally handle error
-            });
-        } else {
-            setBeneficiaries([]);
-        }
-    }, [selectedCompany, selectedStaff]);
-
-    const handleRequestSession = async (data: SessionRequestFormData) => {
+    const handleCreateDraftSession = async (clientId: string) => {
         try {
             setIsLoading(true);
             const res = await fetch('/api/services/sessions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify({ clientId }),
             });
-
-            const responseData = await res.json();
-
             if (!res.ok) {
-                throw new Error(responseData.message || 'Failed to request session');
+                const responseData = await res.json();
+                console.log(responseData);
+                throw new Error(responseData.error || 'Failed to create draft session');
             }
-
-            toast.success('Session request submitted successfully!');
+            const { data: draft } = await res.json();
+            toast.success('Draft session created!');
             setModalOpen(false);
-
-            // Refresh the session counts
-            const sessionsRes = await fetch('/api/services/sessions');
-            if (sessionsRes.ok) {
-                const sessionsData = await sessionsRes.json();
-                setCounts(sessionsData.data || sessionsData);
-            }
+            router.push(`/sessions/${draft.id}`);
         } catch (err) {
-            console.error('Session request error:', err);
-            toast.error('Failed to submit session request', {
+            console.error('Draft session error:', err);
+            toast.error('Failed to create draft session', {
                 description: err instanceof Error ? err.message : 'An unknown error occurred',
             });
         } finally {
@@ -173,88 +144,55 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
         }
     };
 
-    const handlePointerDownOutside = (event: Event) => {
-        event.preventDefault();
-    };
-
-    const handleEscapeKeyDown = (event: KeyboardEvent) => {
-        event.preventDefault();
-    };
-
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="py-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Sessions</h1>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">
-                            See upcoming and past sessions booked through your event type links.
-                        </p>
-                    </div>
-                    <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                        <DialogTrigger asChild>
-                            <Button>Request Session</Button>
-                        </DialogTrigger>
-                        <DialogContent
-                            onPointerDownOutside={handlePointerDownOutside}
-                            onEscapeKeyDown={handleEscapeKeyDown}
-                        >
-                            <DialogHeader>
-                                <DialogTitle>Request a Session</DialogTitle>
-                                <DialogDescription>
-                                    Schedule a new counseling session with one of our professionals.
-                                </DialogDescription>
-                            </DialogHeader>
-                            {session?.user?.id ? (
-                                <SessionRequestForm
-                                    companies={companies}
-                                    beneficiaries={beneficiaries}
-                                    serviceProviders={serviceProviders}
-                                    providerStaff={providerStaff.map(staff => ({
-                                        id: staff.id,
-                                        name: staff.fullName,
-                                        email: staff.email || '',
-                                        companyId: staff.serviceProviderId
-                                    }))}
-                                    staff={staff}
-                                    interventions={interventions}
-                                    onSubmitAction={handleRequestSession}
-                                    isSubmitting={isLoading}
-                                    onCancel={() => setModalOpen(false)}
-                                />
-                            ) : (
-                                <div className="text-red-500">You must be logged in to request a session.</div>
-                            )}
-                        </DialogContent>
-                    </Dialog>
-                </div>
-                <div className="overflow-x-auto">
-                    <nav className="flex space-x-4 mb-6 border-b border-gray-200 dark:border-gray-800" aria-label="Sessions tabs">
-                        {tabs.map(({ label, href, icon: Icon, key, color }) => {
-                            const isActive = pathname === href;
-                            const count = counts[key];
-                            return (
-                                <Link
-                                    key={label}
-                                    href={href}
-                                    aria-current={isActive ? 'page' : undefined}
-                                    className={`flex items-center gap-2 px-4 py-2 -mb-px border-b-2 font-medium text-sm transition-colors duration-150 whitespace-nowrap ${isActive
-                                        ? `border-${color}-500 text-${color}-600 dark:text-${color}-400`
-                                        : `border-transparent text-gray-500 dark:text-gray-400 hover:text-${color}-600 dark:hover:text-${color}-400`
-                                        }`}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                    {label}
-                                    {typeof count === 'number' && (
-                                        <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
-                                            {count}
-                                        </span>
-                                    )}
-                                </Link>
-                            );
-                        })}
-                    </nav>
-                </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
+            <div className="py-3">
+                {!isSessionDetail && (
+                    <>
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Sessions</h1>
+                                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                    See upcoming and past sessions booked through your event type links.
+                                </p>
+                            </div>
+                            <Button onClick={() => setModalOpen(true)}>Request Session</Button>
+                            <SessionRequestModal
+                                open={modalOpen}
+                                onClose={() => setModalOpen(false)}
+                                onConfirm={handleCreateDraftSession}
+                                companies={clients}
+                            />
+                        </div>
+                        <div className="overflow-x-auto">
+                            <nav className="flex space-x-4 mb-6 border-b border-gray-200 dark:border-gray-800" aria-label="Sessions tabs">
+                                {tabs.map(({ label, href, icon: Icon, key, color }) => {
+                                    const isActive = pathname === href;
+                                    const count = counts[key];
+                                    return (
+                                        <Link
+                                            key={label}
+                                            href={href}
+                                            aria-current={isActive ? 'page' : undefined}
+                                            className={`flex items-center gap-2 px-4 py-2 -mb-px border-b-2 font-medium text-sm transition-colors duration-150 whitespace-nowrap ${isActive
+                                                ? `border-${color}-500 text-${color}-600 dark:text-${color}-400`
+                                                : `border-transparent text-gray-500 dark:text-gray-400 hover:text-${color}-600 dark:hover:text-${color}-400`
+                                                }`}
+                                        >
+                                            <Icon className="w-4 h-4" />
+                                            {label}
+                                            {typeof count === 'number' && (
+                                                <span className="ml-2 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
+                                                    {count}
+                                                </span>
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    </>
+                )}
                 {children}
             </div>
         </div>

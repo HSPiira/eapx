@@ -1,15 +1,15 @@
-import { PrismaClient, type ServiceSession, type Staff, type ServiceProvider, type Intervention } from '@prisma/client';
+import { PrismaClient, type CareSession, type Staff, type ServiceProvider, type Intervention } from '@prisma/client';
 import type { SessionNotification } from '@/types/session-booking';
 import nodemailer from 'nodemailer';
 
-type ServiceSessionWithRelations = ServiceSession & {
+type CareSessionWithRelations = CareSession & {
     staff?: (Staff & {
         profile: {
             fullName: string;
         };
     }) | null;
     provider?: ServiceProvider | null;
-    service?: Intervention | null;
+    intervention?: Intervention | null;
 };
 
 const prisma = new PrismaClient();
@@ -52,7 +52,7 @@ export class NotificationService {
             }
 
             // Get session details
-            const session = await prisma.serviceSession.findUnique({
+            const session = await prisma.careSession.findUnique({
                 where: { id: notification.sessionId },
                 include: {
                     staff: {
@@ -61,7 +61,7 @@ export class NotificationService {
                         }
                     },
                     provider: true,
-                    service: true
+                    intervention: true
                 }
             });
 
@@ -109,8 +109,8 @@ export class NotificationService {
         }
     }
 
-    private prepareEmailContent(type: SessionNotification['type'], session: ServiceSessionWithRelations) {
-        const sessionDate = new Date(session.scheduledAt).toLocaleString();
+    private prepareEmailContent(type: SessionNotification['type'], session: CareSessionWithRelations) {
+        const sessionDate = session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : 'No date set';
         const staffName = session.staff?.profile?.fullName || 'Staff member';
         const counselorName = session.provider?.name || 'Counselor';
 
@@ -123,7 +123,7 @@ export class NotificationService {
             
             Your counseling session has been confirmed for ${sessionDate}.
             Counselor: ${counselorName}
-            Service: ${session.service?.name || ''}
+            Service: ${session.intervention?.name || ''}
             
             Please arrive 5 minutes before your scheduled time.
             
@@ -140,7 +140,7 @@ export class NotificationService {
             
             This is a reminder that you have a counseling session scheduled for ${sessionDate}.
             Counselor: ${counselorName}
-            Service: ${session.service?.name || ''}
+            Service: ${session.intervention?.name || ''}
             
             Please arrive 5 minutes before your scheduled time.
             
@@ -157,7 +157,7 @@ export class NotificationService {
             
             A session form has been submitted for the session on ${sessionDate}.
             Staff: ${staffName}
-            Service: ${session.service?.name || ''}
+            Service: ${session.intervention?.name || ''}
             
             Please review the form at your earliest convenience.
             

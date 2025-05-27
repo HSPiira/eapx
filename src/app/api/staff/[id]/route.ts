@@ -50,9 +50,9 @@ export async function GET(
                         profile: true,
                     },
                 },
-                ServiceSession: {
+                CareSession: {
                     include: {
-                        service: true,
+                        intervention: true,
                         beneficiary: {
                             include: {
                                 profile: true,

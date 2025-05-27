@@ -6,7 +6,7 @@ type Params = Promise<{ id: string, sessionId: string }>;
 export async function GET(request: NextRequest, { params }: { params: Params }) {
     try {
         const { id: providerId, sessionId } = await params;
-        const session = await prisma.serviceSession.findFirst({
+        const session = await prisma.careSession.findFirst({
             where: {
                 id: sessionId,
                 providerId: providerId
@@ -32,10 +32,11 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
         if (!body.scheduledAt) {
             return NextResponse.json({ error: 'scheduledAt is required' }, { status: 400 });
         }
-        const updated = await prisma.serviceSession.update({
+        const updated = await prisma.careSession.update({
             where: { id: sessionId, providerId: providerId },
             data: {
-                serviceId: body.serviceId,
+                interventionId: body.interventionId,
+                clientId: body.clientId,
                 staffId: body.staffId,
                 beneficiaryId: body.beneficiaryId,
                 scheduledAt: body.scheduledAt,
@@ -69,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
 export async function DELETE(request: NextRequest, { params }: { params: Params }) {
     try {
         const { id: providerId, sessionId } = await params;
-        await prisma.serviceSession.update({
+        await prisma.careSession.update({
             where: { id: sessionId, providerId: providerId },
             data: { deletedAt: new Date() }
         });

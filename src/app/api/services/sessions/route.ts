@@ -13,80 +13,87 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search } = getPaginationParams(searchParams);
         const status = searchParams.get('status') as SessionStatus | undefined;
-        const serviceId = searchParams.get('serviceId') || undefined;
+        const interventionId = searchParams.get('interventionId') || undefined;
         const providerId = searchParams.get('providerId') || undefined;
         const beneficiaryId = searchParams.get('beneficiaryId') || undefined;
         const staffId = searchParams.get('staffId') || undefined;
-        request.headers.get('x-user-role');
-        if (status && !Object.values(SessionStatus).includes(status)) {
-            return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-        }
 
-        // Build the where clause based on user role and filters
-        const where: Prisma.ServiceSessionWhereInput = {
-            OR: search
-                ? [
-                    { service: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
-                    { provider: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
-                    { beneficiary: { profile: { fullName: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
-                ]
-                : undefined,
-            status: status || undefined,
-            serviceId: serviceId || undefined,
-            providerId: providerId || undefined,
-            beneficiaryId: beneficiaryId || undefined,
-            deletedAt: null,
-        };
+        try {
+            if (status && !Object.values(SessionStatus).includes(status)) {
+                return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+            }
 
-        // If not admin, only show sessions for the authenticated user's staff
-        // if (userRole !== 'ADMIN') {
-        const session = await auth();
-        if (!session?.user?.id) {
+            // Build the where clause based on user role and filters
+            const where: Prisma.CareSessionWhereInput = {
+                OR: search
+                    ? [
+                        { intervention: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+                        { provider: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+                        { beneficiary: { profile: { fullName: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
+                    ]
+                    : undefined,
+                status: status || undefined,
+                interventionId: interventionId || undefined,
+                providerId: providerId || undefined,
+                beneficiaryId: beneficiaryId || undefined,
+                deletedAt: null,
+            };
+
+            // Get authenticated user's session
+            const session = await auth();
+            if (!session?.user?.id) {
+                return NextResponse.json(
+                    { error: 'User ID not found in session' },
+                    { status: 401 }
+                );
+            }
+
+            const userId = session.user.id;
+            const staff = await prisma.staff.findFirst({
+                where: { userId }
+            });
+
+            if (!staff) {
+                return NextResponse.json(
+                    { error: 'Staff member not found' },
+                    { status: 404 }
+                );
+            }
+
+            where.staffId = staff.id;
+
+            const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}:${staffId}`;
+            const cached = await cache.get(cacheKey);
+            if (cached) return NextResponse.json(cached);
+
+            const totalCount = await prisma.careSession.count({ where });
+            const sessions = await prisma.careSession.findMany({
+                where,
+                select: sessionSelectFields,
+                skip: offset,
+                take: limit,
+                orderBy: { scheduledAt: 'desc' },
+            });
+
+            const response = {
+                data: sessions,
+                metadata: {
+                    total: totalCount,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(totalCount / limit),
+                },
+            };
+
+            await cache.set(cacheKey, response);
+            return NextResponse.json(response);
+        } catch (error) {
+            console.error('Error fetching sessions:', error);
             return NextResponse.json(
-                { error: 'User ID not found in session' },
-                { status: 401 }
+                { error: 'Failed to fetch sessions' },
+                { status: 500 }
             );
         }
-        const userId = session.user.id;
-        const staff = await prisma.staff.findFirst({
-            where: { userId }
-        });
-        if (!staff) {
-            return NextResponse.json(
-                { error: 'Staff member not found' },
-                { status: 404 }
-            );
-        }
-        where.staffId = staff.id;
-        // } else if (staffId) {
-        //     where.staffId = staffId;
-        // }
-
-        const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${serviceId}:${providerId}:${beneficiaryId}:${staffId}`;
-        const cached = await cache.get(cacheKey);
-        if (cached) return NextResponse.json(cached);
-
-        const totalCount = await prisma.serviceSession.count({ where });
-        const sessions = await prisma.serviceSession.findMany({
-            where,
-            select: sessionSelectFields,
-            skip: offset,
-            take: limit,
-            orderBy: { scheduledAt: 'desc' },
-        });
-
-        const response = {
-            data: sessions,
-            metadata: {
-                total: totalCount,
-                page,
-                limit,
-                totalPages: Math.ceil(totalCount / limit),
-            },
-        };
-
-        await cache.set(cacheKey, response);
-        return NextResponse.json(response);
     });
 }
 
@@ -95,127 +102,134 @@ export async function POST(request: NextRequest) {
         let body;
         try {
             body = await request.json();
-            console.log('body', body);
         } catch {
             return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
         }
 
-        // Use Auth.js v5 universal auth() to get session
-        const session = await auth();
-        if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: 'User ID not found in session' },
-                { status: 401 }
-            );
-        }
-        // Handle session request from staff
-        if (body.staffId) {
-            // Only check that the staff exists
-            const staff = await prisma.staff.findUnique({
-                where: { id: body.staffId }
-            });
-            if (!staff) {
+        try {
+            const session = await auth();
+            if (!session?.user?.id) {
                 return NextResponse.json(
-                    { error: 'Staff member not found' },
-                    { status: 404 }
+                    { error: 'User ID not found in session' },
+                    { status: 401 }
                 );
             }
 
-            // Validate counselor if specified
-            if (body.counselorId) {
-                console.log('body.counselorId', body.counselorId);
-                const counselor = await prisma.serviceProvider.findUnique({
-                    where: { id: body.counselorId }
+            // DRAFT CREATION: Only clientId provided
+            if (body.clientId && Object.keys(body).length === 1) {
+                const draft = await prisma.careSession.create({
+                    data: {
+                        clientId: body.clientId,
+                        status: 'DRAFT',
+                    },
                 });
-                console.log('counselor', counselor);
+                console.log('draft', draft);
+                return NextResponse.json({ data: draft }, { status: 201 });
+            }
 
-                if (!counselor) {
+            // Handle session request from staff
+            if (body.staffId) {
+                const staff = await prisma.staff.findUnique({
+                    where: { id: body.staffId }
+                });
+                if (!staff) {
                     return NextResponse.json(
-                        { error: 'Preferred counselor not found' },
+                        { error: 'Staff member not found' },
                         { status: 404 }
                     );
                 }
-            }
-            console.log('counselorId', body.counselorId);
 
-            // Get the default counseling intervention
-            const counselingIntervention = await prisma.intervention.findFirst({
-                where: { id: body.interventionId }
-            });
-            if (!counselingIntervention) {
-                return NextResponse.json(
-                    { error: 'Counseling intervention not found' },
-                    { status: 404 }
-                );
-            }
-            console.log('counselingIntervention', counselingIntervention);
-            // Create the session request
-            const sessionRequest = await prisma.serviceSession.create({
-                data: {
-                    staffId: body.staffId,
-                    providerId: body.counselorId || '',
-                    serviceId: counselingIntervention.id, // Use Intervention id
-                    scheduledAt: body.preferredDate || new Date(),
-                    status: SessionStatus.SCHEDULED,
-                    duration: 60, // Default 1-hour session
-                    metadata: {
-                        requestMethod: body.requestMethod,
-                        requestNotes: body.requestNotes
+                // Validate counselor if specified
+                if (body.counselorId) {
+                    const counselor = await prisma.serviceProvider.findUnique({
+                        where: { id: body.counselorId }
+                    });
+
+                    if (!counselor) {
+                        return NextResponse.json(
+                            { error: 'Preferred counselor not found' },
+                            { status: 404 }
+                        );
                     }
-                },
-                select: sessionSelectFields,
-            });
-            console.log('sessionRequest', sessionRequest);
+                }
 
-            // Send email notification (replace mock data with real mapping as needed)
-            try {
-                await sendSessionRequestEmail(
-                    {
-                        companyId: body.companyId,
+                // Get the default counseling intervention
+                const counselingIntervention = await prisma.intervention.findFirst({
+                    where: { id: body.interventionId }
+                });
+                if (!counselingIntervention) {
+                    return NextResponse.json(
+                        { error: 'Counseling intervention not found' },
+                        { status: 404 }
+                    );
+                }
+
+                // Create the session request
+                const sessionRequest = await prisma.careSession.create({
+                    data: {
+                        clientId: body.clientId,
                         staffId: body.staffId,
-                        counselorId: body.counselorId,
-                        interventionId: body.interventionId,
-                        sessionMethod: body.sessionMethod,
-                        date: new Date(sessionRequest.scheduledAt).toISOString(),
-                        startTime: body.startTime,
-                        endTime: body.endTime,
-                        sessionType: body.sessionType,
-                        companyName: body.companyName,
-                        staffName: body.staffName,
-                        counselorName: body.counselorName,
-                        notes: (typeof sessionRequest.metadata === 'object' && sessionRequest.metadata !== null && 'requestNotes' in sessionRequest.metadata && typeof sessionRequest.metadata.requestNotes === 'string') ? sessionRequest.metadata.requestNotes : '',
-                        duration: body.duration,
-                        isGroupSession: body.isGroupSession
+                        providerId: body.counselorId || '',
+                        interventionId: counselingIntervention.id,
+                        scheduledAt: body.preferredDate || new Date(),
+                        status: SessionStatus.SCHEDULED,
+                        duration: 60,
+                        metadata: {
+                            requestMethod: body.requestMethod,
+                            requestNotes: body.requestNotes
+                        }
                     },
-                    {
-                        staff: { email: body.staffEmail, name: body.staffName },
-                        counselor: { email: body.counselorEmail, name: body.counselorName },
-                        admin: { email: body.adminEmail, name: body.adminName }, // TODO: Map real admin
-                    }
-                );
-                console.log('email sent');
-            } catch (e) {
-                console.error('Failed to send session request email:', e);
+                    select: sessionSelectFields,
+                });
+
+                // Send email notification
+                try {
+                    await sendSessionRequestEmail(
+                        {
+                            companyId: body.companyId,
+                            staffId: body.staffId,
+                            counselorId: body.counselorId,
+                            interventionId: body.interventionId,
+                            sessionMethod: body.sessionMethod,
+                            date: sessionRequest.scheduledAt ? new Date(sessionRequest.scheduledAt).toISOString() : '',
+                            startTime: body.startTime,
+                            endTime: body.endTime,
+                            sessionType: body.sessionType,
+                            companyName: body.companyName,
+                            staffName: body.staffName,
+                            counselorName: body.counselorName,
+                            notes: (typeof sessionRequest.metadata === 'object' && sessionRequest.metadata !== null && 'requestNotes' in sessionRequest.metadata && typeof sessionRequest.metadata.requestNotes === 'string') ? sessionRequest.metadata.requestNotes : '',
+                            duration: body.duration,
+                            isGroupSession: body.isGroupSession
+                        },
+                        {
+                            staff: { email: body.staffEmail, name: body.staffName },
+                            counselor: { email: body.counselorEmail, name: body.counselorName },
+                            admin: { email: body.adminEmail, name: body.adminName },
+                        }
+                    );
+                } catch (e) {
+                    console.error('Failed to send session request email:', e);
+                }
+
+                await cache.deleteByPrefix('sessions:');
+                return NextResponse.json(sessionRequest);
             }
 
-            await cache.deleteByPrefix('sessions:');
-            return NextResponse.json(sessionRequest);
-        }
+            // Handle direct session creation
+            if (!body.interventionId || !body.providerId || !body.beneficiaryId || !body.scheduledAt) {
+                return NextResponse.json({ error: 'Intervention, provider, beneficiary, and scheduled date are required' }, { status: 400 });
+            }
 
-        // Handle direct session creation
-        if (!body.serviceId || !body.providerId || !body.beneficiaryId || !body.scheduledAt) {
-            return NextResponse.json({ error: 'Service, provider, beneficiary, and scheduled date are required' }, { status: 400 });
-        }
+            const scheduledAt = new Date(body.scheduledAt);
+            if (isNaN(scheduledAt.getTime())) {
+                return NextResponse.json({ error: 'Invalid scheduledAt' }, { status: 400 });
+            }
 
-        const scheduledAt = new Date(body.scheduledAt);
-        if (isNaN(scheduledAt.getTime())) {
-            return NextResponse.json({ error: 'Invalid scheduledAt' }, { status: 400 });
-        }
-
-        try {
-            const newSession = await prisma.serviceSession.create({
+            const newSession = await prisma.careSession.create({
                 data: {
-                    serviceId: body.serviceId,
+                    clientId: body.clientId,
+                    interventionId: body.interventionId,
                     providerId: body.providerId,
                     beneficiaryId: body.beneficiaryId,
                     scheduledAt,
@@ -234,7 +248,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(newSession, { status: 201 });
         } catch (error) {
             console.error('Error creating session:', error);
-            return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
+            return NextResponse.json(
+                { error: 'Failed to create session' },
+                { status: 500 }
+            );
         }
     });
 } 

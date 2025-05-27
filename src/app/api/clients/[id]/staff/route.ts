@@ -96,7 +96,7 @@ export async function GET(
                     }
                 },
                 beneficiaries: true,
-                ServiceSession: true,
+                CareSession: true,
             },
             skip: offset,
             take: limit,
@@ -200,7 +200,7 @@ export async function POST(
                     }
                 },
                 beneficiaries: true,
-                ServiceSession: true,
+                CareSession: true,
             },
         });
 

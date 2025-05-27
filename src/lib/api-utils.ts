@@ -39,7 +39,7 @@ interface ContractData {
 }
 
 interface SessionData {
-    serviceId: string;
+    interventionId: string;
     providerId: string;
     beneficiaryId: string;
     scheduledAt: Date | null;
@@ -297,7 +297,7 @@ export function validateSessionData(body: Record<string, unknown>): ValidationRe
     return {
         isValid: true,
         data: {
-            serviceId: body.serviceId as string,
+            interventionId: body.interventionId as string,
             providerId: body.providerId as string,
             beneficiaryId: body.beneficiaryId as string,
             scheduledAt: scheduledAtResult.date,

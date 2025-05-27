@@ -18,7 +18,7 @@ export async function GET(
         const cached = await cache.get(cacheKey);
         if (cached) return NextResponse.json(cached);
 
-        const serviceSession = await prisma.serviceSession.findUnique({
+        const serviceSession = await prisma.careSession.findUnique({
             where: { id, deletedAt: null },
             select: sessionSelectFields,
         });
@@ -50,7 +50,7 @@ export async function PUT(
         }
 
         try {
-            const updatedSession = await prisma.serviceSession.update({
+            const updatedSession = await prisma.careSession.update({
                 where: { id },
                 data: {
                     ...validationResult.data!,
@@ -86,7 +86,7 @@ export async function DELETE(
         const { id } = await params;
 
         try {
-            const deletedSession = await prisma.serviceSession.update({
+            const deletedSession = await prisma.careSession.update({
                 where: { id },
                 data: {
                     deletedAt: new Date(),

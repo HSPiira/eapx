@@ -43,7 +43,7 @@ function TimeSlot({ selectedSlot, onSelect, timeFormat, onFormatChange }: TimeSl
                 if (format === '12hr') {
                     const period = hour >= 12 ? 'pm' : 'am';
                     const displayHour = hour > 12 ? hour - 12 : hour;
-                    const time = `${displayHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${period}`;
+                    const time = `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
                     slots.push(time);
                 } else {
                     const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
@@ -54,7 +54,46 @@ function TimeSlot({ selectedSlot, onSelect, timeFormat, onFormatChange }: TimeSl
         return slots;
     };
 
-    const timeSlots = generateTimeSlots(timeFormat);
+    // Format the selected slot to match the generated slots format
+    const formatSelectedSlot = (slot: string, format: '12hr' | '24hr') => {
+        if (!slot) return '';
+        try {
+            const [time, period] = slot.split(' ');
+            const [hours, minutes] = time.split(':');
+            const hoursNum = String(Number(hours)); // remove leading zero
+            const periodLower = period ? period.toLowerCase() : '';
+
+            if (format === '12hr') {
+                return `${hoursNum}:${minutes} ${periodLower}`.trim();
+            } else {
+                // Convert 12hr slot to 24hr if needed
+                let h = Number(hours);
+                if (periodLower === 'pm' && h !== 12) h += 12;
+                if (periodLower === 'am' && h === 12) h = 0;
+                // If no period, assume already 24hr
+                const hour24 = h.toString().padStart(2, '0');
+                return `${hour24}:${minutes}`;
+            }
+        } catch (error) {
+            console.error('Error formatting time slot:', error);
+            return '';
+        }
+    };
+
+    const timeSlots = generateTimeSlots(timeFormat).map(slot => {
+        const [time, period] = slot.split(' ');
+        const [hours, minutes] = time.split(':');
+        const hoursNum = String(Number(hours));
+        const periodLower = period ? period.toLowerCase() : '';
+        if (timeFormat === '12hr') {
+            return `${hoursNum}:${minutes} ${periodLower}`.trim();
+        } else {
+            // 24hr: ensure leading zero
+            const hour24 = Number(hours).toString().padStart(2, '0');
+            return `${hour24}:${minutes}`;
+        }
+    });
+    const formattedSelectedSlot = formatSelectedSlot(selectedSlot, timeFormat);
 
     return (
         <div className="space-y-1">
@@ -95,7 +134,7 @@ function TimeSlot({ selectedSlot, onSelect, timeFormat, onFormatChange }: TimeSl
                         key={slot}
                         type="button"
                         className={`px-2 py-1 rounded border text-sm transition-all duration-200
-                            ${selectedSlot === slot
+                            ${formattedSelectedSlot === slot
                                 ? 'bg-blue-100 dark:bg-blue-900 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300'
                                 : 'bg-background border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                         onClick={() => onSelect(slot)}

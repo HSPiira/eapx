@@ -630,6 +630,22 @@ model CounselorAvailability {
   @@index([deletedAt])
 }
 
+/// Session type enum for care sessions
+enum SessionType {
+  // Organization session types
+  TALK       @map("Talk")
+  WEBINAR    @map("Webinar")
+  TRAINING   @map("Training")
+  WORKSHOP   @map("Workshop")
+  SEMINAR    @map("Seminar")
+  CONFERENCE @map("Conference")
+  // Staff session types
+  INDIVIDUAL @map("Individual")
+  COUPLE     @map("Couple")
+  FAMILY     @map("Family")
+  GROUP      @map("Group")
+}
+
 model CareSession {
   id                 String        @id @default(cuid())
   clientId           String
@@ -639,7 +655,7 @@ model CareSession {
   providerStaffId    String?
   scheduledAt        DateTime?
   completedAt        DateTime?
-  sessionType        String?
+  sessionType        SessionType?
   status             SessionStatus @default(UNCONFIRMED)
   notes              String?
   feedback           String?

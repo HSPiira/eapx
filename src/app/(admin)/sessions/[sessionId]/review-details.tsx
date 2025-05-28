@@ -1,7 +1,46 @@
 import { useEffect, useState } from "react";
 import { FormData } from "./types";
 import { locationGroups } from "./location-details";
-import { Building, User, Users, FileText, ClipboardList, Briefcase, MapPin, MessageCircle, Video, Camera, Link2, Phone, Calendar, Clock4 } from "lucide-react";
+import { Building, User, Users, FileText, ClipboardList, Briefcase, MapPin, Calendar, Clock4 } from "lucide-react";
+import { toast } from "sonner";
+import { useParams } from "next/navigation";
+
+interface StaffMember {
+    id: string;
+    name: string;
+    profile?: {
+        fullName: string;
+    };
+}
+
+interface Dependant {
+    id: string;
+    name: string;
+}
+
+interface Provider {
+    id: string;
+    name: string;
+}
+
+interface ProviderStaff {
+    id: string;
+    fullName: string;
+}
+
+interface Service {
+    id: string;
+    name: string;
+}
+
+interface Intervention {
+    id: string;
+    name: string;
+}
+
+interface DisplayObject {
+    [key: string]: string | number;
+}
 
 // Helper to map location value to label
 function getLocationLabel(value?: string) {
@@ -34,7 +73,7 @@ const keyIconMap: Record<string, { icon: React.ElementType; color: string }> = {
 };
 
 // Helper to pretty-print a section with colored keys and icons
-function prettyPrintSectionColored(obj: Record<string, any>, indent = 2) {
+function prettyPrintSectionColored(obj: DisplayObject, indent = 2) {
     return Object.entries(obj)
         .map(([key, value]) => {
             const Icon = keyIconMap[key]?.icon;
@@ -50,7 +89,7 @@ function prettyPrintSectionColored(obj: Record<string, any>, indent = 2) {
 }
 
 // Minimalist: no icons, no color, just bold keys
-function prettyPrintMinimalist(obj: Record<string, any>, indent = 2) {
+function prettyPrintMinimalist(obj: DisplayObject, indent = 2) {
     return Object.entries(obj).map(([key, value]) => (
         <span key={key} className="block">
             {" ".repeat(indent)}
@@ -65,13 +104,14 @@ const styleOptions = [
 ];
 
 export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onConfirm: () => void }) {
+    const params = useParams();
     // State for fetched lists
-    const [staffList, setStaffList] = useState<any[]>([]);
-    const [dependants, setDependants] = useState<any[]>([]);
-    const [providers, setProviders] = useState<any[]>([]);
-    const [providerStaff, setProviderStaff] = useState<any[]>([]);
-    const [services, setServices] = useState<any[]>([]);
-    const [interventions, setInterventions] = useState<any[]>([]);
+    const [staffList, setStaffList] = useState<StaffMember[]>([]);
+    const [dependants, setDependants] = useState<Dependant[]>([]);
+    const [providers, setProviders] = useState<Provider[]>([]);
+    const [providerStaff, setProviderStaff] = useState<ProviderStaff[]>([]);
+    const [services, setServices] = useState<Service[]>([]);
+    const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [isConfirming, setIsConfirming] = useState(false);
 
     // Style toggle state
@@ -86,7 +126,7 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
                 fetch(`/api/clients/${clientId}/staff/${staff}/beneficiaries`).then(res => res.json()).then(data => setDependants(data.data || []));
             }
         }
-    }, [formData.client.clientId, formData.client.staff]);
+    }, [formData.client]);
 
     // Fetch providers and provider staff if needed
     useEffect(() => {
@@ -114,7 +154,7 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
     const locationLabel = getLocationLabel(formData.location.location);
 
     // Build display objects for each section
-    const clientDisplay = {
+    const clientDisplay: DisplayObject = {
         company: formData.client.company || "-",
         sessionFor: formData.client.sessionFor || "-",
         whoFor: formData.client.whoFor || "-",
@@ -124,25 +164,25 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
         dependant: dependantName,
         notes: formData.client.notes || "-",
     };
-    const interventionDisplay = {
+    const interventionDisplay: DisplayObject = {
         service: serviceName,
         intervention: interventionName,
         notes: formData.intervention.notes || "-",
     };
-    const counselorDisplay = {
+    const counselorDisplay: DisplayObject = {
         provider: providerName,
         providerStaff: providerStaffName,
         date: formData.counselor.date ? new Date(formData.counselor.date).toLocaleDateString() : "-",
         selectedSlot: formData.counselor.selectedSlot || "-",
         duration: formData.counselor.duration ? `${formData.counselor.duration} min` : "-",
     };
-    const locationDisplay = {
+    const locationDisplay: DisplayObject = {
         location: locationLabel,
         requirements: formData.location.requirements || "-",
     };
 
     // Choose pretty print function
-    function renderSection(obj: Record<string, any>) {
+    function renderSection(obj: DisplayObject) {
         if (style === 'classic') return <>{prettyPrintSectionColored(obj)}</>;
         if (style === 'minimalist') return <>{prettyPrintMinimalist(obj)}</>;
         return <></>;
@@ -156,10 +196,24 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
                     e.preventDefault();
                     setIsConfirming(true);
                     try {
+                        // Update session status to SCHEDULED
+                        const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ status: 'SCHEDULED' }),
+                        });
+
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Failed to confirm session: ${res.status}`);
+                        }
+
                         await onConfirm();
+                        toast.success('Session confirmed successfully!');
                     } catch (error) {
-                        console.error('Error confirming session:', error);
-                        alert(error instanceof Error ? error.message : 'Failed to confirm session');
+                        toast.error(error instanceof Error ? error.message : 'Failed to confirm session');
                     } finally {
                         setIsConfirming(false);
                     }

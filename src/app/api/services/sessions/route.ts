@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
         const interventionId = searchParams.get('interventionId') || undefined;
         const providerId = searchParams.get('providerId') || undefined;
         const beneficiaryId = searchParams.get('beneficiaryId') || undefined;
-        const staffId = searchParams.get('staffId') || undefined;
 
         try {
             if (status && !Object.values(SessionStatus).includes(status)) {

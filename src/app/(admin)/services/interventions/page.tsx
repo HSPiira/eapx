@@ -20,24 +20,36 @@ interface Intervention {
     id: string;
     name: string;
     description: string | null;
+    serviceId: string;
     service: {
         id: string;
         name: string;
     };
-    status: string;
+    status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'ARCHIVED' | 'DELETED';
     duration: number | null;
     capacity: number | null;
     prerequisites: string | null;
     isPublic: boolean;
     price: number | null;
     metadata: Record<string, unknown>;
+    deletedAt: string | null;
     createdAt: string;
     updatedAt: string;
+    serviceProviderId: string | null;
+    ServiceProvider?: {
+        id: string;
+        name: string;
+        type: string;
+    } | null;
 }
 
 interface Category {
     id: string;
     name: string;
+}
+
+interface InterventionsResponse {
+    data: Intervention[];
 }
 
 async function fetchCategories(): Promise<{ data: Category[] }> {
@@ -108,7 +120,7 @@ export default function InterventionsPage() {
     }, [queryClient]);
 
     // Main interventions query with stale-while-revalidate and pagination
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error } = useQuery<InterventionsResponse>({
         queryKey: ['interventions'],
         queryFn: async () => {
             const res = await fetch('/api/services/interventions?limit=50&page=1');
@@ -117,14 +129,14 @@ export default function InterventionsPage() {
             }
             return res.json();
         },
-        staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-        gcTime: 30 * 60 * 1000, // Keep data in cache for 30 minutes
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
         retry: 2,
         retryDelay: 1000,
     });
 
     // Prefetch services data with error handling
-    const { data: servicesData, error: servicesError } = useQuery({
+    const { error: servicesError } = useQuery({
         queryKey: ['services'],
         queryFn: async () => {
             const res = await fetch('/api/services?limit=50');
@@ -149,43 +161,22 @@ export default function InterventionsPage() {
         retryDelay: 1000,
     });
 
-    // Show error states
-    if (error || servicesError || categoriesError) {
-        return (
-            <div className="text-center text-red-500 p-4">
-                <p>Error loading data. Please try again later.</p>
-                <Button
-                    onClick={() => {
-                        queryClient.invalidateQueries({ queryKey: ['interventions'] });
-                        queryClient.invalidateQueries({ queryKey: ['services'] });
-                        queryClient.invalidateQueries({ queryKey: ['categories'] });
-                    }}
-                    className="mt-4"
-                >
-                    Retry
-                </Button>
-            </div>
-        );
-    }
-
     // Optimistic updates for mutations with error handling
     const createInterventionMutation = useMutation({
         mutationFn: createIntervention,
         onMutate: async (newIntervention) => {
-            try {
-                await queryClient.cancelQueries({ queryKey: ['interventions'] });
-                const previousInterventions = queryClient.getQueryData(['interventions']);
+            await queryClient.cancelQueries({ queryKey: ['interventions'] });
+            const previousInterventions = queryClient.getQueryData<InterventionsResponse>(['interventions']);
 
-                queryClient.setQueryData(['interventions'], (old: any) => ({
+            queryClient.setQueryData<InterventionsResponse>(['interventions'], (old) => {
+                if (!old) return { data: [newIntervention as Intervention] };
+                return {
                     ...old,
-                    data: [...(old?.data || []), newIntervention],
-                }));
+                    data: [...old.data, newIntervention as Intervention],
+                };
+            });
 
-                return { previousInterventions };
-            } catch (error) {
-                console.error('Error in optimistic update:', error);
-                throw error;
-            }
+            return { previousInterventions };
         },
         onError: (err, newIntervention, context) => {
             queryClient.setQueryData(['interventions'], context?.previousInterventions);
@@ -200,23 +191,21 @@ export default function InterventionsPage() {
 
     const updateInterventionMutation = useMutation({
         mutationFn: updateIntervention,
-        onMutate: async (updatedIntervention: { id: string } & Record<string, any>) => {
-            try {
-                await queryClient.cancelQueries({ queryKey: ['interventions'] });
-                const previousInterventions = queryClient.getQueryData(['interventions']);
+        onMutate: async (updatedIntervention: { id: string } & Record<string, unknown>) => {
+            await queryClient.cancelQueries({ queryKey: ['interventions'] });
+            const previousInterventions = queryClient.getQueryData<InterventionsResponse>(['interventions']);
 
-                queryClient.setQueryData(['interventions'], (old: any) => ({
+            queryClient.setQueryData<InterventionsResponse>(['interventions'], (old) => {
+                if (!old) return { data: [] };
+                return {
                     ...old,
-                    data: old?.data.map((item: any) =>
+                    data: old.data.map((item) =>
                         item.id === updatedIntervention.id ? { ...item, ...updatedIntervention } : item
                     ),
-                }));
+                };
+            });
 
-                return { previousInterventions };
-            } catch (error) {
-                console.error('Error in optimistic update:', error);
-                throw error;
-            }
+            return { previousInterventions };
         },
         onError: (err, newIntervention, context) => {
             queryClient.setQueryData(['interventions'], context?.previousInterventions);
@@ -231,20 +220,18 @@ export default function InterventionsPage() {
     const deleteInterventionMutation = useMutation({
         mutationFn: deleteIntervention,
         onMutate: async (interventionId: string) => {
-            try {
-                await queryClient.cancelQueries({ queryKey: ['interventions'] });
-                const previousInterventions = queryClient.getQueryData(['interventions']);
+            await queryClient.cancelQueries({ queryKey: ['interventions'] });
+            const previousInterventions = queryClient.getQueryData<InterventionsResponse>(['interventions']);
 
-                queryClient.setQueryData(['interventions'], (old: any) => ({
+            queryClient.setQueryData<InterventionsResponse>(['interventions'], (old) => {
+                if (!old) return { data: [] };
+                return {
                     ...old,
-                    data: old?.data.filter((item: any) => item.id !== interventionId),
-                }));
+                    data: old.data.filter((item) => item.id !== interventionId),
+                };
+            });
 
-                return { previousInterventions };
-            } catch (error) {
-                console.error('Error in optimistic update:', error);
-                throw error;
-            }
+            return { previousInterventions };
         },
         onError: (err, interventionId, context) => {
             queryClient.setQueryData(['interventions'], context?.previousInterventions);
@@ -281,6 +268,25 @@ export default function InterventionsPage() {
             deleteInterventionMutation.mutate(intervention.id);
         }
     }, [deleteInterventionMutation]);
+
+    // Show error states
+    if (error || servicesError || categoriesError) {
+        return (
+            <div className="text-center text-red-500 p-4">
+                <p>Error loading data. Please try again later.</p>
+                <Button
+                    onClick={() => {
+                        queryClient.invalidateQueries({ queryKey: ['interventions'] });
+                        queryClient.invalidateQueries({ queryKey: ['services'] });
+                        queryClient.invalidateQueries({ queryKey: ['categories'] });
+                    }}
+                    className="mt-4"
+                >
+                    Retry
+                </Button>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -324,7 +330,7 @@ export default function InterventionsPage() {
             </div>
 
             <InterventionsTable
-                interventions={data?.data || []}
+                interventions={data.data}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
             />

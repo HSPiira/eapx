@@ -3,20 +3,9 @@ import { InterventionDetails } from "./intervention-details";
 import { ClientDetails } from "./client-details";
 import { CounselorAvailabilityDetails } from "./counselor-availability";
 import { LocationDetails } from "./location-details";
+import { SessionType as PrismaSessionType } from "@prisma/client";
 
-export type SessionType =
-    // Organization session types
-    | 'talk'
-    | 'webinar'
-    | 'training'
-    | 'workshop'
-    | 'seminar'
-    | 'conference'
-    // Staff session types
-    | 'individual'
-    | 'couple'
-    | 'family'
-    | 'group';
+export type SessionType = PrismaSessionType;
 
 export interface ClientDetailsData {
     clientId?: string;

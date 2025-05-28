@@ -9,7 +9,6 @@ import {
     Repeat,
     History,
     XCircle,
-    File,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { ServiceProvider } from '@/components/session-booking/sessionRequestSchema';

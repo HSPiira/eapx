@@ -4,6 +4,7 @@ import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { sessionSelectFields } from '@/lib/select-fields';
 import { parseRequestBody, validateSessionData } from '@/lib/api-utils';
+import { SessionType } from '@prisma/client';
 
 type Params = Promise<{ id: string }>;
 
@@ -66,7 +67,7 @@ export async function PUT(
                     location: validationResult.data!.location || undefined,
                     cancellationReason: validationResult.data!.cancellationReason || undefined,
                     isGroupSession: validationResult.data!.isGroupSession || undefined,
-                    sessionType: validationResult.data!.sessionType || undefined,
+                    sessionType: validationResult.data!.sessionType as SessionType || undefined,
                     metadata: validationResult.data!.metadata ? JSON.parse(JSON.stringify(validationResult.data!.metadata)) : undefined,
                 },
                 select: sessionSelectFields,

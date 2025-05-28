@@ -1,6 +1,6 @@
 import { NextApiRequest } from "next";
 import { NextRequest } from 'next/server';
-import { ServiceProviderType, WorkStatus, PaymentStatus, ContractStatus, SessionStatus } from '@prisma/client';
+import { ServiceProviderType, WorkStatus, PaymentStatus, ContractStatus, SessionStatus, SessionType } from '@prisma/client';
 
 interface PaginationParams {
     page: number;
@@ -55,7 +55,7 @@ interface SessionData {
     cancellationReason?: string | null;
     rescheduleCount?: number | null;
     isGroupSession?: boolean | null;
-    sessionType?: string | null;
+    sessionType?: SessionType | null;
     metadata?: Record<string, unknown> | null;
 }
 
@@ -317,7 +317,7 @@ export function validateSessionData(body: Record<string, unknown>): ValidationRe
             cancellationReason: body.cancellationReason as string | null,
             rescheduleCount: body.rescheduleCount as number | null,
             isGroupSession: body.isGroupSession as boolean | null,
-            sessionType: body.sessionType as string | null,
+            sessionType: body.sessionType as SessionType | null,
             metadata: body.metadata as Record<string, unknown> | null,
         }
     };

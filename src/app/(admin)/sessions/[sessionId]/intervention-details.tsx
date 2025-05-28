@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { InterventionData } from "./types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface Service {
     id: string;
@@ -70,12 +71,12 @@ export function InterventionDetails({ data, setData }: InterventionDetailsProps)
                     if (interventionData?.service?.id) {
                         setData({ ...data, service: interventionData.service.id, intervention });
                     }
-                } catch (err) {
-                    // Optionally show a toast or error
+                } catch (error) {
+                    toast.error(error instanceof Error ? error.message : 'Failed to fetch intervention details');
                 }
             })();
         }
-    }, [intervention, service, setData]);
+    }, [intervention, service, setData, data]);
 
     // Fetch services with caching and error handling
     const { data: servicesData, isLoading: loadingServices, error: servicesError } = useQuery({

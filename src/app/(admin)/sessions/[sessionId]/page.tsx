@@ -7,6 +7,7 @@ import { SessionHeader } from './session-header';
 import { FormData, SectionKey, sectionComponents, SessionData } from './types';
 import { ReviewDetails } from './review-details';
 import { Sidebar, TabBar } from './session-sidebar';
+import { toast } from 'sonner';
 
 function Content({
     selected,
@@ -67,8 +68,8 @@ export default function SessionEditPage() {
         counselor: {},
         location: {},
     });
-    const [sessionData, setSessionData] = useState<SessionData | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [, setSessionData] = useState<SessionData | null>(null);
+    const [, setError] = useState<string | null>(null);
     const params = useParams();
     const router = useRouter();
     const { status } = useSession();
@@ -109,21 +110,21 @@ export default function SessionEditPage() {
                 // Update form data with session data
                 setFormData(prev => {
                     // Determine timeFormat (default to 12hr if not set)
-                    const timeFormat = prev.counselor.timeFormat || '12hr';
-                    let selectedSlot = '';
-                    if (data.scheduledAt) {
-                        const dateObj = new Date(data.scheduledAt);
-                        let hours = dateObj.getHours();
-                        const minutes = dateObj.getMinutes();
-                        if (timeFormat === '12hr') {
-                            const period = hours >= 12 ? 'pm' : 'am';
-                            let displayHour = hours % 12;
-                            if (displayHour === 0) displayHour = 12;
-                            selectedSlot = `${displayHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
-                        } else {
-                            selectedSlot = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                        }
-                    }
+                    const timeFormat = '12hr';
+
+                    // Format the time slot from scheduledAt
+                    const selectedSlot = data.scheduledAt ? new Date(data.scheduledAt).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: timeFormat === '12hr'
+                    }) : '';
+
+                    // Determine sessionFor based on metadata and client
+                    const sessionFor = data.metadata?.sessionFor || (data.client?.id ? 'organization' : 'staff');
+
+                    // Use sessionType directly from the database
+                    const sessionType = data.sessionType;
+
                     return ({
                         ...prev,
                         client: {
@@ -132,9 +133,9 @@ export default function SessionEditPage() {
                             clientId: data.client?.id || '',
                             staff: data.staffId || '',
                             dependant: data.beneficiaryId || '',
-                            sessionType: data.isGroupSession ? 'group' : 'individual',
+                            sessionType: sessionType,
                             numAttendees: data.metadata?.numAttendees || 1,
-                            sessionFor: data.metadata?.sessionFor || 'organization',
+                            sessionFor,
                             whoFor: data.metadata?.whoFor || 'self',
                             notes: data.metadata?.clientNotes || '',
                         },
@@ -150,6 +151,7 @@ export default function SessionEditPage() {
                             date: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
                             duration: data.duration ? data.duration.toString() : '30',
                             selectedSlot,
+                            timeFormat,
                         },
                         location: {
                             ...prev.location,
@@ -183,7 +185,9 @@ export default function SessionEditPage() {
 
             // Convert time slot to DateTime
             const [time, period] = selectedSlot.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
+            let hours;
+            const [, minutes] = time.split(':').map(Number);
+            [hours] = time.split(':').map(Number);
 
             // Adjust hours for PM
             if (period === 'pm' && hours !== 12) {
@@ -242,12 +246,11 @@ export default function SessionEditPage() {
                 throw new Error(errorData.error || `Failed to confirm session: ${res.status}`);
             }
 
-            const updatedSession = await res.json();
-            alert('Session confirmed successfully!');
+            toast.success('Session confirmed successfully!');
             router.push('/sessions/upcoming');
         } catch (error) {
             console.error('Error confirming session:', error);
-            alert(error instanceof Error ? error.message : 'Failed to confirm session');
+            toast.error(error instanceof Error ? error.message : 'Failed to confirm session');
         }
     };
 

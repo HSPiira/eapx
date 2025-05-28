@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { ArrowLeft, ExternalLink, Link2, Code2, Trash2 } from 'lucide-react';
 import { SessionData, FormData, SessionMetadata } from './types';
+import React from 'react';
 
 interface SessionHeaderProps {
     formData: FormData;
@@ -33,105 +34,48 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
     const [hidden, setHidden] = useState(false);
     const [sessionData, setSessionData] = useState<SessionData | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [staffData, setStaffData] = useState<any>(null);
-    const [dependantData, setDependantData] = useState<any>(null);
 
-    useEffect(() => {
-        const fetchSessionData = async () => {
-            try {
-                if (status === 'loading') return;
-                if (status === 'unauthenticated') {
-                    router.push('/auth/login');
-                    return;
-                }
-
-                setError(null);
-                const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    throw new Error(errorData.error || `Failed to fetch session: ${res.status}`);
-                }
-
-                const data = await res.json();
-                setSessionData(data);
-
-                // Fetch staff data if staff ID is present
-                if (data.staffId) {
-                    const staffRes = await fetch(`/api/clients/${data.clientId}/staff/${data.staffId}`, {
-                        credentials: 'include',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    });
-                    if (staffRes.ok) {
-                        const staffData = await staffRes.json();
-                        setStaffData(staffData);
-                    }
-                }
-
-                // Fetch dependant data if beneficiary ID is present
-                if (data.beneficiaryId) {
-                    const dependantRes = await fetch(`/api/clients/${data.clientId}/staff/${data.staffId}/beneficiaries/${data.beneficiaryId}`, {
-                        credentials: 'include',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    });
-                    if (dependantRes.ok) {
-                        const dependantData = await dependantRes.json();
-                        setDependantData(dependantData);
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching session:', error);
-                setError(error instanceof Error ? error.message : 'Failed to fetch session');
+    // Move the fetchSessionData function outside useEffect to avoid dependency issues
+    const fetchSessionData = React.useCallback(async () => {
+        try {
+            if (status === 'loading') return;
+            if (status === 'unauthenticated') {
+                router.push('/auth/login');
+                return;
             }
-        };
 
+            setError(null);
+            const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to fetch session: ${res.status}`);
+            }
+
+            const data = await res.json();
+            setSessionData(data);
+        } catch (error) {
+            console.error('Error fetching session:', error);
+            setError(error instanceof Error ? error.message : 'Failed to fetch session');
+        }
+    }, [params.sessionId, status, router]);
+
+    // Use useEffect with proper dependencies
+    useEffect(() => {
         if (params.sessionId) {
             fetchSessionData();
         }
-    }, [params.sessionId, status, router]);
+    }, [params.sessionId, fetchSessionData]);
 
     const handleSave = async () => {
         try {
             if (!sessionData?.id) {
                 throw new Error('No session ID found');
-            }
-
-            // Parse the selected time slot and date
-            const { date, selectedSlot, duration } = formData.counselor;
-            if (!date || !selectedSlot || !duration) {
-                throw new Error('Please select a date, time slot, and duration');
-            }
-
-            // Convert time slot to DateTime
-            const [time, period] = selectedSlot.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
-
-            // Adjust hours for PM
-            if (period === 'pm' && hours !== 12) {
-                hours += 12;
-            }
-            // Adjust hours for AM
-            if (period === 'am' && hours === 12) {
-                hours = 0;
-            }
-
-            // Create scheduledAt DateTime
-            const scheduledAt = new Date(date);
-            scheduledAt.setHours(hours, minutes, 0, 0);
-
-            // Validate that the scheduled time is not in the past
-            const now = new Date();
-            if (scheduledAt < now) {
-                throw new Error('Session cannot be scheduled in the past');
             }
 
             // Create a partial update object with only the fields we know have changed
@@ -166,11 +110,6 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
                 sessionUpdate.providerStaffId = formData.counselor.staff || null;
             }
 
-            // Always include these fields as they're required for the current operation
-            sessionUpdate.scheduledAt = scheduledAt.toISOString();
-            sessionUpdate.duration = parseInt(duration);
-            sessionUpdate.status = 'SCHEDULED'; // Set status to SCHEDULED when confirming
-
             // Only update metadata if we have new values
             if (formData.client.numAttendees || formData.client.sessionFor || formData.client.whoFor ||
                 formData.client.notes || formData.intervention.notes || formData.location.requirements) {
@@ -192,9 +131,9 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
 
             console.log('sessionUpdate', sessionUpdate);
 
-            // Using PUT but only sending modified fields
+            // Using PATCH but only sending modified fields
             const res = await fetch(`/api/services/sessions/${sessionData.id}`, {
-                method: 'PUT',
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -208,8 +147,7 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
 
             const updatedSession = await res.json();
             setSessionData(updatedSession);
-            alert('Session confirmed and saved successfully!');
-            router.push('/sessions/upcoming'); // Redirect to upcoming sessions after confirmation
+            alert('Session saved successfully!');
         } catch (error) {
             console.error('Error saving session:', error);
             alert(error instanceof Error ? error.message : 'Failed to save session');
@@ -221,6 +159,8 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
         : (sessionData
             ? <><span>{sessionData.client?.name || 'New Session'}</span><span className="mx-1 text-gray-400">·</span><span className="text-xs font-normal text-gray-500 dark:text-gray-300 align-middle">{sessionData.id}</span></>
             : 'Loading...');
+
+    const isScheduled = sessionData?.status === 'SCHEDULED';
 
     return (
         <div className="flex items-center justify-between w-full px-0 mx-0 mt-0 bg-white dark:bg-black">
@@ -258,7 +198,17 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
                     <button className="p-2 hover:bg-gray-100 rounded text-red-600" aria-label="Delete"><Trash2 className="w-4 h-4" /></button>
                 </div>
                 <span className="h-5 w-px bg-gray-200 mx-1" />
-                <button className="px-3 py-1.5 rounded font-semibold hover:bg-gray-800 transition-colors ml-1 text-sm bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900" aria-label="Save" onClick={handleSave}>Save</button>
+                <button
+                    className={`px-3 py-1.5 rounded font-semibold transition-colors ml-1 text-sm ${isScheduled
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 hover:bg-gray-800'
+                        }`}
+                    aria-label="Save"
+                    onClick={handleSave}
+                    disabled={isScheduled}
+                >
+                    Save
+                </button>
             </div>
         </div>
     );

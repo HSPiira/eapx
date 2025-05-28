@@ -16,6 +16,7 @@ export const sessionSelectFields = {
     cancellationReason: true,
     rescheduleCount: true,
     isGroupSession: true,
+    sessionType: true,
     metadata: true,
     createdAt: true,
     updatedAt: true,

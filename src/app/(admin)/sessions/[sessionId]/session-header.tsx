@@ -20,10 +20,12 @@ interface SessionUpdate {
     providerStaffId?: string | null;
     scheduledAt?: string;
     duration?: number;
+    location?: string;
     metadata?: {
         numAttendees?: number;
         sessionFor?: string;
         whoFor?: string;
+        requirements?: string;
         [key: string]: any;
     };
 }
@@ -170,13 +172,19 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
             sessionUpdate.duration = parseInt(duration);
 
             // Only update metadata if we have new values
-            if (formData.client.numAttendees || formData.client.sessionFor || formData.client.whoFor) {
+            if (formData.client.numAttendees || formData.client.sessionFor || formData.client.whoFor || formData.location.requirements) {
                 sessionUpdate.metadata = {
                     ...(sessionData.metadata || {}),
                     ...(formData.client.numAttendees && { numAttendees: formData.client.numAttendees }),
                     ...(formData.client.sessionFor && { sessionFor: formData.client.sessionFor }),
                     ...(formData.client.whoFor && { whoFor: formData.client.whoFor }),
+                    ...(formData.location.requirements && { requirements: formData.location.requirements }),
                 };
+            }
+
+            // Add location data if present
+            if (formData.location.location) {
+                sessionUpdate.location = formData.location.location;
             }
 
             console.log('sessionUpdate', sessionUpdate);

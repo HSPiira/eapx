@@ -8,8 +8,9 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { CounselorAvailabilityData } from "./types";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ServiceProviderType } from "@prisma/client";
+import { useEffect } from "react";
 
 interface Provider {
     id: string;
@@ -119,8 +120,30 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
         date = undefined,
         timeFormat = '12hr',
         selectedSlot = '',
-        duration = '15',
+        duration = '30',
     } = data || {};
+
+    const queryClient = useQueryClient();
+
+    // Prefetch providers and duration data on mount
+    useEffect(() => {
+        // Prefetch providers
+        queryClient.prefetchQuery({
+            queryKey: ['providers'],
+            queryFn: async () => {
+                const res = await fetch('/api/providers');
+                if (!res.ok) throw new Error('Failed to fetch providers');
+                return res.json();
+            },
+            staleTime: 5 * 60 * 1000,
+            gcTime: 30 * 60 * 1000,
+        });
+
+        // Initialize duration if not set
+        if (!data.duration) {
+            setData({ ...data, duration: '30' });
+        }
+    }, [queryClient, data, setData]);
 
     // Fetch providers
     const { data: providersData, isLoading: loadingProviders } = useQuery({

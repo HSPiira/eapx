@@ -2,7 +2,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { ArrowLeft, ExternalLink, Link2, Code2, Trash2 } from 'lucide-react';
-import { SessionData, FormData } from './types';
+import { SessionData, FormData, SessionMetadata } from './types';
 
 interface SessionHeaderProps {
     formData: FormData;
@@ -21,13 +21,7 @@ interface SessionUpdate {
     scheduledAt?: string;
     duration?: number;
     location?: string;
-    metadata?: {
-        numAttendees?: number;
-        sessionFor?: string;
-        whoFor?: string;
-        requirements?: string;
-        [key: string]: any;
-    };
+    metadata?: SessionMetadata;
 }
 
 export function SessionHeader({ formData }: SessionHeaderProps) {
@@ -172,12 +166,15 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
             sessionUpdate.duration = parseInt(duration);
 
             // Only update metadata if we have new values
-            if (formData.client.numAttendees || formData.client.sessionFor || formData.client.whoFor || formData.location.requirements) {
+            if (formData.client.numAttendees || formData.client.sessionFor || formData.client.whoFor ||
+                formData.client.notes || formData.intervention.notes || formData.location.requirements) {
                 sessionUpdate.metadata = {
                     ...(sessionData.metadata || {}),
                     ...(formData.client.numAttendees && { numAttendees: formData.client.numAttendees }),
                     ...(formData.client.sessionFor && { sessionFor: formData.client.sessionFor }),
                     ...(formData.client.whoFor && { whoFor: formData.client.whoFor }),
+                    ...(formData.client.notes && { clientNotes: formData.client.notes }),
+                    ...(formData.intervention.notes && { interventionNotes: formData.intervention.notes }),
                     ...(formData.location.requirements && { requirements: formData.location.requirements }),
                 };
             }

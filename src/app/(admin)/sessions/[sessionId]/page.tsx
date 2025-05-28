@@ -136,7 +136,7 @@ export default function SessionEditPage() {
                             numAttendees: data.metadata?.numAttendees || 1,
                             sessionFor: data.metadata?.sessionFor || 'organization',
                             whoFor: data.metadata?.whoFor || 'self',
-                            notes: data.notes || '',
+                            notes: data.metadata?.clientNotes || '',
                         },
                         intervention: {
                             ...prev.intervention,
@@ -148,7 +148,7 @@ export default function SessionEditPage() {
                             provider: data.providerId || '',
                             staff: data.providerStaffId || '',
                             date: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
-                            duration: data.duration || '',
+                            duration: data.duration ? data.duration.toString() : '30',
                             selectedSlot,
                         },
                         location: {

@@ -14,7 +14,7 @@ interface LocationDetailsProps {
     setData: (d: LocationData) => void;
 }
 
-const locationGroups = [
+export const locationGroups = [
     {
         label: "Conferencing",
         options: [

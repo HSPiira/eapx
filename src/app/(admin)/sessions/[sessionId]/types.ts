@@ -57,40 +57,32 @@ export const sectionComponents = {
     location: LocationDetails as FC<SectionComponentProps<'location'>>,
 } as const;
 
+export interface SessionMetadata {
+    numAttendees?: number;
+    sessionFor?: 'organization' | 'individual' | 'staff';
+    whoFor?: 'self' | 'dependant' | 'other';
+    requirements?: string;
+    clientNotes?: string;
+    interventionNotes?: string;
+}
+
 export interface SessionData {
+    id: string;
+    clientId: string;
     client?: {
         id: string;
         name: string;
     };
-    staff?: {
-        id: string;
-        name: string;
-        profile?: {
-            fullName: string;
-        };
-    };
-    beneficiary?: {
-        id: string;
-        name: string;
-        profile?: {
-            fullName: string;
-        };
-    };
-    id: string;
     staffId?: string;
-    clientId?: string;
+    beneficiaryId?: string;
+    isGroupSession: boolean;
+    notes?: string;
     interventionId?: string;
     providerId?: string;
-    beneficiaryId?: string;
+    providerStaffId?: string;
     scheduledAt?: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-    completedAt?: string | null;
-    feedback?: string | null;
-    cancellationReason?: string | null;
-    rescheduleCount: number;
     duration?: number;
     location?: string;
-    metadata?: Record<string, any>;
+    metadata?: SessionMetadata;
+    status: string;
 }

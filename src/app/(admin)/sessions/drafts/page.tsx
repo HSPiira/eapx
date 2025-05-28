@@ -9,13 +9,23 @@ interface DraftSession {
     client?: { name?: string };
     scheduledAt?: string;
     createdAt?: string;
+    creator?: {
+        id: string;
+        email: string;
+        name: string;
+    };
     // Add more fields as needed
 }
 
-const fetcher = (url: string) => fetch(url).then(res => {  
-    if (!res.ok) throw new Error(`Failed to fetch draft sessions: ${res.status} ${res.statusText}`);  
-    return res.json();  
-}); 
+const fetcher = (url: string) => fetch(url, {
+    credentials: 'include',
+    headers: {
+        'Content-Type': 'application/json',
+    }
+}).then(res => {
+    if (!res.ok) throw new Error(`Failed to fetch draft sessions: ${res.status} ${res.statusText}`);
+    return res.json();
+});
 
 export default function DraftSessionsPage() {
     const { data, error, isLoading } = useSWR('/api/services/sessions?status=DRAFT', fetcher, { revalidateOnFocus: false });
@@ -74,7 +84,13 @@ export default function DraftSessionsPage() {
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                                 <Clock className="w-4 h-4 text-gray-400 mr-1" />
-                                Created: {draft.createdAt ? new Date(draft.createdAt).toLocaleString() : 'N/A'}
+                                Created: {draft.createdAt ? new Date(draft.createdAt).toLocaleString() : 'Not set'}
+                                {draft.creator && (
+                                    <>
+                                        <span className="mx-1 text-gray-400">·</span>
+                                        <span>By: {draft.creator.name || draft.creator.email || 'Unknown user'}</span>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">Draft</span>

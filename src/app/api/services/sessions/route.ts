@@ -77,8 +77,45 @@ export async function GET(request: NextRequest) {
                 orderBy: { scheduledAt: 'desc' },
             });
 
+            // Get creator information from audit logs
+            const sessionIds = sessions.map(s => s.id);
+            const auditLogs = await prisma.auditLog.findMany({
+                where: {
+                    entityType: 'CareSession',
+                    entityId: { in: sessionIds },
+                    action: 'CREATE'
+                },
+                select: {
+                    entityId: true,
+                    userId: true,
+                    User: {
+                        select: {
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullName: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Map creator information to sessions
+            const sessionsWithCreator = sessions.map(session => {
+                const auditLog = auditLogs.find(log => log.entityId === session.id);
+                return {
+                    ...session,
+                    creator: auditLog ? {
+                        id: auditLog.userId,
+                        email: auditLog.User?.email,
+                        name: auditLog.User?.profile?.fullName
+                    } : null
+                };
+            });
+
             const response = {
-                data: sessions,
+                data: sessionsWithCreator,
                 metadata: {
                     total: totalCount,
                     page,
@@ -125,7 +162,18 @@ export async function POST(request: NextRequest) {
                         status: 'DRAFT',
                     },
                 });
-                console.log('draft', draft);
+
+                // Create audit log for draft creation
+                await prisma.auditLog.create({
+                    data: {
+                        action: 'CREATE',
+                        entityType: 'CareSession',
+                        entityId: draft.id,
+                        userId: session.user.id,
+                        data: { status: 'DRAFT' }
+                    }
+                });
+
                 return NextResponse.json({ data: draft }, { status: 201 });
             }
 
@@ -182,6 +230,21 @@ export async function POST(request: NextRequest) {
                         }
                     },
                     select: sessionSelectFields,
+                });
+
+                // Create audit log for session request
+                await prisma.auditLog.create({
+                    data: {
+                        action: 'CREATE',
+                        entityType: 'CareSession',
+                        entityId: sessionRequest.id,
+                        userId: session.user.id,
+                        data: {
+                            status: SessionStatus.SCHEDULED,
+                            requestMethod: body.requestMethod,
+                            requestNotes: body.requestNotes
+                        }
+                    }
                 });
 
                 // Send email notification
@@ -244,6 +307,22 @@ export async function POST(request: NextRequest) {
                     metadata: body.metadata,
                 },
                 select: sessionSelectFields,
+            });
+
+            // Create audit log for direct session creation
+            await prisma.auditLog.create({
+                data: {
+                    action: 'CREATE',
+                    entityType: 'CareSession',
+                    entityId: newSession.id,
+                    userId: session.user.id,
+                    data: {
+                        status: SessionStatus.SCHEDULED,
+                        interventionId: body.interventionId,
+                        providerId: body.providerId,
+                        beneficiaryId: body.beneficiaryId
+                    }
+                }
             });
 
             await cache.deleteByPrefix('sessions:');

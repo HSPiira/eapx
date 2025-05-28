@@ -1,6 +1,6 @@
 'use client'
 import React from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Clock } from 'lucide-react';
 import Link from 'next/link';
 import useSWR from 'swr';
 
@@ -12,10 +12,10 @@ interface DraftSession {
     // Add more fields as needed
 }
 
-const fetcher = (url: string) => fetch(url).then(res => {
-    if (!res.ok) throw new Error('Failed to fetch draft sessions');
-    return res.json();
-});
+const fetcher = (url: string) => fetch(url).then(res => {  
+    if (!res.ok) throw new Error(`Failed to fetch draft sessions: ${res.status} ${res.statusText}`);  
+    return res.json();  
+}); 
 
 export default function DraftSessionsPage() {
     const { data, error, isLoading } = useSWR('/api/services/sessions?status=DRAFT', fetcher, { revalidateOnFocus: false });
@@ -58,22 +58,22 @@ export default function DraftSessionsPage() {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-1">
             {drafts.map((draft) => (
                 <Link
                     key={draft.id}
                     href={`/sessions/${draft.id}`}
-                    className="block border rounded-lg p-4 bg-white dark:bg-gray-900 hover:shadow-md transition"
+                    className="block border rounded-sm p-4 bg-white dark:bg-gray-900 hover:shadow-md transition"
                 >
-                    <div className="flex items-center gap-4">
-                        <Calendar className="w-6 h-6 text-gray-400" />
+                    <div className="flex items-center">
                         <div className="flex-1">
-                            <div className="font-semibold text-lg text-gray-900 dark:text-white">
+                            <div className="text-sm text-gray-900 dark:text-white">
                                 {draft.client?.name || 'Draft Session'}
                                 <span className="mx-1 text-gray-400">·</span>
                                 <span className="text-xs text-gray-500 dark:text-gray-400 align-middle">{draft.id}</span>
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <Clock className="w-4 h-4 text-gray-400 mr-1" />
                                 Created: {draft.createdAt ? new Date(draft.createdAt).toLocaleString() : 'N/A'}
                             </div>
                         </div>

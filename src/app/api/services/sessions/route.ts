@@ -53,15 +53,14 @@ export async function GET(request: NextRequest) {
                 where: { userId }
             });
 
-            if (!staff) {
-                return NextResponse.json(
-                    { error: 'Staff member not found' },
-                    { status: 404 }
-                );
-            }
-
             // Only require staffId for non-draft sessions
             if (status !== 'DRAFT') {
+                if (!staff) {
+                    return NextResponse.json(
+                        { error: 'Staff member not found' },
+                        { status: 404 }
+                    );
+                }
                 where.staffId = staff.id;
             }
 

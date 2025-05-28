@@ -53,18 +53,15 @@ export async function GET(request: NextRequest) {
                 where: { userId }
             });
 
-            // Only require staffId for non-draft and non-unconfirmed sessions
-            if (status !== 'DRAFT' && status !== 'UNCONFIRMED') {
-                if (!staff) {
-                    return NextResponse.json(
-                        { error: 'Staff member not found' },
-                        { status: 404 }
-                    );
-                }
-                where.staffId = staff.id;
-            }
+            console.log('Auth debug:', {
+                userId,
+                hasStaff: !!staff,
+                staffId: staff?.id,
+                status,
+                isAuthenticated: !!session?.user?.id
+            });
 
-            const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}${status !== 'DRAFT' && status !== 'UNCONFIRMED' ? `:${staffId}` : ''}`;
+            const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}`;
             const cached = await cache.get(cacheKey);
             if (cached) return NextResponse.json(cached);
 

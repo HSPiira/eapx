@@ -66,6 +66,7 @@ export async function PUT(
                     location: validationResult.data!.location || undefined,
                     cancellationReason: validationResult.data!.cancellationReason || undefined,
                     isGroupSession: validationResult.data!.isGroupSession || undefined,
+                    sessionType: validationResult.data!.sessionType || undefined,
                     metadata: validationResult.data!.metadata ? JSON.parse(JSON.stringify(validationResult.data!.metadata)) : undefined,
                 },
                 select: sessionSelectFields,
@@ -107,6 +108,38 @@ export async function DELETE(
         } catch (error) {
             console.error('Error deleting session:', error);
             return NextResponse.json({ error: 'Failed to delete session' }, { status: 500 });
+        }
+    });
+}
+
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Params }
+) {
+    return withRouteMiddleware(request, async () => {
+        const { id } = await params;
+
+        const { body, error: parseError } = await parseRequestBody(request);
+        if (parseError) {
+            return NextResponse.json({ error: parseError }, { status: 400 });
+        }
+
+        try {
+            const updatedSession = await prisma.careSession.update({
+                where: { id },
+                data: {
+                    ...body,
+                    metadata: body.metadata ? JSON.parse(JSON.stringify(body.metadata)) : undefined,
+                },
+                select: sessionSelectFields,
+            });
+
+            await cache.delete(`session:${id}`);
+            await cache.deleteByPrefix('sessions:');
+            return NextResponse.json(updatedSession);
+        } catch (error) {
+            console.error('Error updating session:', error);
+            return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
         }
     });
 } 

@@ -639,6 +639,7 @@ model CareSession {
   providerStaffId    String?
   scheduledAt        DateTime?
   completedAt        DateTime?
+  sessionType        String?
   status             SessionStatus @default(UNCONFIRMED)
   notes              String?
   feedback           String?

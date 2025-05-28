@@ -4,16 +4,30 @@ import { ClientDetails } from "./client-details";
 import { CounselorAvailabilityDetails } from "./counselor-availability";
 import { LocationDetails } from "./location-details";
 
+export type SessionType =
+    // Organization session types
+    | 'talk'
+    | 'webinar'
+    | 'training'
+    | 'workshop'
+    | 'seminar'
+    | 'conference'
+    // Staff session types
+    | 'individual'
+    | 'couple'
+    | 'family'
+    | 'group';
+
 export interface ClientDetailsData {
+    clientId?: string;
+    company?: string;
     sessionFor?: 'organization' | 'staff';
     whoFor?: 'self' | 'dependant';
-    sessionType?: 'individual' | 'group';
+    sessionType?: SessionType;
     numAttendees?: number;
-    company?: string;
     staff?: string;
-    notes?: string;
     dependant?: string;
-    clientId?: string;
+    notes?: string;
 }
 
 export interface InterventionData {

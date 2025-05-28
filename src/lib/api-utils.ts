@@ -55,6 +55,7 @@ interface SessionData {
     cancellationReason?: string | null;
     rescheduleCount?: number | null;
     isGroupSession?: boolean | null;
+    sessionType?: string | null;
     metadata?: Record<string, unknown> | null;
 }
 
@@ -316,6 +317,7 @@ export function validateSessionData(body: Record<string, unknown>): ValidationRe
             cancellationReason: body.cancellationReason as string | null,
             rescheduleCount: body.rescheduleCount as number | null,
             isGroupSession: body.isGroupSession as boolean | null,
+            sessionType: body.sessionType as string | null,
             metadata: body.metadata as Record<string, unknown> | null,
         }
     };

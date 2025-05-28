@@ -14,6 +14,7 @@ interface SessionUpdate {
     staffId?: string | null;
     beneficiaryId?: string | null;
     isGroupSession?: boolean;
+    sessionType?: string;
     notes?: string;
     interventionId?: string;
     providerId?: string;
@@ -22,6 +23,7 @@ interface SessionUpdate {
     duration?: number;
     location?: string;
     metadata?: SessionMetadata;
+    status?: string;
 }
 
 export function SessionHeader({ formData }: SessionHeaderProps) {
@@ -146,7 +148,10 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
                 sessionUpdate.beneficiaryId = formData.client.dependant || null;
             }
             if (formData.client.sessionType !== undefined) {
-                sessionUpdate.isGroupSession = formData.client.sessionType === 'group';
+                // Set isGroupSession based on session type
+                const isGroupSession = ['group', 'family', 'couple'].includes(formData.client.sessionType);
+                sessionUpdate.isGroupSession = isGroupSession;
+                sessionUpdate.sessionType = formData.client.sessionType;
             }
             if (formData.client.notes !== undefined) {
                 sessionUpdate.notes = formData.client.notes;
@@ -164,6 +169,7 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
             // Always include these fields as they're required for the current operation
             sessionUpdate.scheduledAt = scheduledAt.toISOString();
             sessionUpdate.duration = parseInt(duration);
+            sessionUpdate.status = 'SCHEDULED'; // Set status to SCHEDULED when confirming
 
             // Only update metadata if we have new values
             if (formData.client.numAttendees || formData.client.sessionFor || formData.client.whoFor ||
@@ -202,7 +208,8 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
 
             const updatedSession = await res.json();
             setSessionData(updatedSession);
-            alert('Session saved successfully!');
+            alert('Session confirmed and saved successfully!');
+            router.push('/sessions/upcoming'); // Redirect to upcoming sessions after confirmation
         } catch (error) {
             console.error('Error saving session:', error);
             alert(error instanceof Error ? error.message : 'Failed to save session');

@@ -169,9 +169,86 @@ export default function SessionEditPage() {
         }
     }, [params.sessionId, status, router]);
 
-    const handleConfirm = () => {
-        // TODO: Call your session creation API
-        alert('Session confirmed!');
+    const handleConfirm = async () => {
+        try {
+            if (!params.sessionId) {
+                throw new Error('No session ID found');
+            }
+
+            // Parse the selected time slot and date
+            const { date, selectedSlot, duration } = formData.counselor;
+            if (!date || !selectedSlot || !duration) {
+                throw new Error('Please select a date, time slot, and duration');
+            }
+
+            // Convert time slot to DateTime
+            const [time, period] = selectedSlot.split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
+
+            // Adjust hours for PM
+            if (period === 'pm' && hours !== 12) {
+                hours += 12;
+            }
+            // Adjust hours for AM
+            if (period === 'am' && hours === 12) {
+                hours = 0;
+            }
+
+            // Create scheduledAt DateTime
+            const scheduledAt = new Date(date);
+            scheduledAt.setHours(hours, minutes, 0, 0);
+
+            // Validate that the scheduled time is not in the past
+            const now = new Date();
+            if (scheduledAt < now) {
+                throw new Error('Session cannot be scheduled in the past');
+            }
+
+            // Create a complete update object with all required fields
+            const sessionUpdate = {
+                clientId: formData.client.clientId,
+                staffId: formData.client.staff || null,
+                beneficiaryId: formData.client.dependant || null,
+                isGroupSession: ['group', 'family', 'couple'].includes(formData.client.sessionType || ''),
+                sessionType: formData.client.sessionType,
+                notes: formData.client.notes,
+                interventionId: formData.intervention.intervention,
+                providerId: formData.counselor.provider,
+                providerStaffId: formData.counselor.staff || null,
+                scheduledAt: scheduledAt.toISOString(),
+                duration: parseInt(duration),
+                location: formData.location.location,
+                status: 'SCHEDULED',
+                metadata: {
+                    numAttendees: formData.client.numAttendees,
+                    sessionFor: formData.client.sessionFor,
+                    whoFor: formData.client.whoFor,
+                    clientNotes: formData.client.notes,
+                    interventionNotes: formData.intervention.notes,
+                    requirements: formData.location.requirements,
+                }
+            };
+
+            const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(sessionUpdate),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to confirm session: ${res.status}`);
+            }
+
+            const updatedSession = await res.json();
+            alert('Session confirmed successfully!');
+            router.push('/sessions/upcoming');
+        } catch (error) {
+            console.error('Error confirming session:', error);
+            alert(error instanceof Error ? error.message : 'Failed to confirm session');
+        }
     };
 
     return (

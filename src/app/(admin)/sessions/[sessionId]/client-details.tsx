@@ -6,7 +6,7 @@ import { SelectItem } from "@/components/ui/select";
 import { SelectTrigger } from "@/components/ui/select";
 import { SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ClientDetailsData } from "./types";
+import { ClientDetailsData, SessionType } from "./types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 
@@ -28,9 +28,74 @@ interface ClientDetailsProps {
     setData: (d: ClientDetailsData) => void;
 }
 
+// Organization session types component
+function OrganizationSessionTypes({ value, onChange }: { value: SessionType; onChange: (value: SessionType) => void }) {
+    const orgSessionTypes = [
+        { value: 'talk' as SessionType, label: 'Talk' },
+        { value: 'webinar' as SessionType, label: 'Webinar' },
+        { value: 'training' as SessionType, label: 'Training' },
+        { value: 'workshop' as SessionType, label: 'Workshop' },
+        { value: 'seminar' as SessionType, label: 'Seminar' },
+        { value: 'conference' as SessionType, label: 'Conference' }
+    ];
+
+    return (
+        <div className="space-y-1">
+            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session Type</Label>
+            <Select value={value} onValueChange={onChange}>
+                <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
+                    <SelectValue placeholder="Select session type" />
+                </SelectTrigger>
+                <SelectContent>
+                    {orgSessionTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
+
+// Staff session types component
+function StaffSessionTypes({ value, onChange }: { value: SessionType; onChange: (value: SessionType) => void }) {
+    const staffSessionTypes = [
+        { value: 'individual' as SessionType, label: 'Individual' },
+        { value: 'couple' as SessionType, label: 'Couple' },
+        { value: 'family' as SessionType, label: 'Family' },
+        { value: 'group' as SessionType, label: 'Group' }
+    ];
+
+    return (
+        <div className="space-y-1">
+            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session Type</Label>
+            <Select value={value} onValueChange={onChange}>
+                <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
+                    <SelectValue placeholder="Select session type" />
+                </SelectTrigger>
+                <SelectContent>
+                    {staffSessionTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
+
 export function ClientDetails({ data, setData }: ClientDetailsProps) {
     const { sessionFor = 'organization', whoFor = 'self', sessionType = 'individual', numAttendees = 1, company = '', staff = '', dependant = '', clientId = '' } = data || {};
     const queryClient = useQueryClient();
+
+    // Update numAttendees when sessionType changes
+    React.useEffect(() => {
+        if (sessionType === 'couple') {
+            setData({ ...data, numAttendees: 2 });
+        } else if (sessionType === 'group' || sessionType === 'family') {
+            setData({ ...data, numAttendees: Math.max(2, numAttendees) });
+        } else if (sessionType === 'individual') {
+            setData({ ...data, numAttendees: 1 });
+        }
+    }, [sessionType]);
 
     // Prefetch staff data when clientId is available
     React.useEffect(() => {
@@ -200,24 +265,41 @@ export function ClientDetails({ data, setData }: ClientDetailsProps) {
                         )}
                     </>
                 )}
-                {/* Session Type */}
-                <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session Type</Label>
-                    <Select value={sessionType} onValueChange={(v: 'individual' | 'group') => setData({ ...data, sessionType: v })}>
-                        <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="individual">Individual</SelectItem>
-                            <SelectItem value="group">Group</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                {/* Number of attendees (only if group) */}
-                {sessionType === 'group' && (
+                {/* Session Type - Now using the new components */}
+                {sessionFor === 'organization' ? (
+                    <OrganizationSessionTypes
+                        value={sessionType}
+                        onChange={(v) => setData({ ...data, sessionType: v })}
+                    />
+                ) : (
+                    <StaffSessionTypes
+                        value={sessionType}
+                        onChange={(v) => setData({ ...data, sessionType: v })}
+                    />
+                )}
+                {/* Number of attendees (only if group, family, or couple) */}
+                {(sessionType === 'group' || sessionType === 'family' || sessionType === 'couple') && (
                     <div className="space-y-1">
-                        <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Number of attendees</Label>
-                        <input type="number" min={1} className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background text-gray-900 dark:text-white" value={numAttendees} onChange={e => setData({ ...data, numAttendees: Number(e.target.value) })} />
+                        <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">
+                            Number of attendees
+                            {sessionType === 'couple' && <span className="text-gray-500 dark:text-gray-400 ml-1">(Fixed at 2)</span>}
+                        </Label>
+                        <input
+                            type="number"
+                            min={sessionType === 'couple' ? 2 : 2}
+                            max={sessionType === 'couple' ? 2 : undefined}
+                            className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background text-gray-900 dark:text-white"
+                            value={numAttendees}
+                            onChange={e => {
+                                const value = Number(e.target.value);
+                                if (sessionType === 'couple') {
+                                    setData({ ...data, numAttendees: 2 });
+                                } else {
+                                    setData({ ...data, numAttendees: Math.max(2, value) });
+                                }
+                            }}
+                            disabled={sessionType === 'couple'}
+                        />
                     </div>
                 )}
                 {/* Notes */}

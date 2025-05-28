@@ -80,7 +80,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
     useEffect(() => {
         async function loadData() {
             try {
-                const [clientsRes, serviceProvidersRes, staffRes, interventionsRes, draftSessionsRes, unconfirmedSessionsRes] = await Promise.all([
+                const [clientsRes, serviceProvidersRes, staffRes, interventionsRes, draftSessionsRes, unconfirmedSessionsRes, scheduledSessionsRes] = await Promise.all([
                     fetch('/api/clients').then(async (res) => {
                         if (!res.ok) {
                             const errorData = await res.json().catch(() => ({}));
@@ -128,11 +128,19 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                         }
                         const data = await res.json();
                         return data?.metadata?.total || 0;
+                    }),
+                    fetch('/api/services/sessions?status=SCHEDULED').then(async (res) => {
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Scheduled sessions API failed: ${res.status}`);
+                        }
+                        const data = await res.json();
+                        return data?.metadata?.total || 0;
                     })
                 ]);
 
                 setCounts({
-                    upcoming: draftSessionsRes,
+                    upcoming: scheduledSessionsRes,
                     unconfirmed: unconfirmedSessionsRes,
                     recurring: draftSessionsRes,
                     past: draftSessionsRes,

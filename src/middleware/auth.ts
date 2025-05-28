@@ -4,6 +4,9 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import type { NextAuthConfig } from "next-auth"
 import type { DefaultSession } from "next-auth"
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -128,7 +131,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
                 // Create new user
                 const newUser = await prismaClient.user.create({
                     data: {
-                        id: user.id,
+                        // id: user.id,
                         email: user.email,
                         status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
                         emailVerified: new Date(),
@@ -212,13 +215,27 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
         authorized({ auth, request }) {
             try {
                 const isLoggedIn = !!auth?.user
-                const isOnDashboard = request.nextUrl.pathname.startsWith('/admin')
+                const { pathname } = request.nextUrl
 
-                if (isOnDashboard) {
-                    return isLoggedIn
+                // Allow access to public paths
+                if (pathname === '/' ||
+                    pathname.startsWith('/auth/') ||
+                    pathname === '/404' ||
+                    pathname === '/not-found' ||
+                    pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/)) {
+                    return true
                 }
 
-                // For non-dashboard routes, allow public access
+                // Require authentication for all other routes
+                if (!isLoggedIn) {
+                    return false
+                }
+
+                // Check if user is active
+                if (auth.user?.status !== 'ACTIVE') {
+                    return false
+                }
+
                 return true
             } catch (error) {
                 console.error('Error in authorized callback:', error)
@@ -277,3 +294,37 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
 })
 
 export const { auth, handlers, signIn, signOut } = NextAuth(createConfig())
+
+export async function authMiddleware(request: NextRequest) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+
+    if (!token) {
+        return NextResponse.json(
+            { error: 'Authentication required' },
+            { status: 401 }
+        );
+    }
+
+    // Add user info to request headers for downstream use
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-user-id', token.sub as string);
+    requestHeaders.set('x-user-role', token.role as string);
+
+    return NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
+}
+
+type RequestHandler = (request: NextRequest, ...args: unknown[]) => Promise<NextResponse>;
+
+export function withAuth(handler: RequestHandler) {
+    return async function (request: NextRequest, ...args: unknown[]) {
+        const authResponse = await authMiddleware(request);
+        if (authResponse.status !== 200) {
+            return authResponse;
+        }
+        return handler(request, ...args);
+    };
+}

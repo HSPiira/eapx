@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
                 where: { userId }
             });
 
-            // Only require staffId for non-draft sessions
-            if (status !== 'DRAFT') {
+            // Only require staffId for non-draft and non-unconfirmed sessions
+            if (status !== 'DRAFT' && status !== 'UNCONFIRMED') {
                 if (!staff) {
                     return NextResponse.json(
                         { error: 'Staff member not found' },
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
                 where.staffId = staff.id;
             }
 
-            const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}:${staffId}`;
+            const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}${status !== 'DRAFT' && status !== 'UNCONFIRMED' ? `:${staffId}` : ''}`;
             const cached = await cache.get(cacheKey);
             if (cached) return NextResponse.json(cached);
 
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
                 const draft = await prisma.careSession.create({
                     data: {
                         clientId: body.clientId,
-                        status: 'DRAFT',
+                        status: 'UNCONFIRMED',
                     },
                 });
 
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
                         entityType: 'CareSession',
                         entityId: draft.id,
                         userId: session.user.id,
-                        data: { status: 'DRAFT' }
+                        data: { status: 'UNCONFIRMED' }
                     }
                 });
 

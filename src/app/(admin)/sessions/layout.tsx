@@ -24,8 +24,35 @@ const tabs = [
     { label: 'Recurring', href: '/sessions/recurring', icon: Repeat, key: 'recurring', color: 'emerald' },
     { label: 'Past', href: '/sessions/past', icon: History, key: 'past', color: 'slate' },
     { label: 'Canceled', href: '/sessions/canceled', icon: XCircle, key: 'canceled', color: 'rose' },
-    { label: 'Drafts', href: '/sessions/drafts', icon: File, key: 'drafts', color: 'gray' },
+    // { label: 'Drafts', href: '/sessions/drafts', icon: File, key: 'drafts', color: 'gray' },
 ];
+
+const tabColorClasses = {
+    blue: {
+        active: 'border-blue-500 text-blue-600 dark:text-blue-400',
+        hover: 'hover:text-blue-600 dark:hover:text-blue-400'
+    },
+    amber: {
+        active: 'border-amber-500 text-amber-600 dark:text-amber-400',
+        hover: 'hover:text-amber-600 dark:hover:text-amber-400'
+    },
+    emerald: {
+        active: 'border-emerald-500 text-emerald-600 dark:text-emerald-400',
+        hover: 'hover:text-emerald-600 dark:hover:text-emerald-400'
+    },
+    slate: {
+        active: 'border-slate-500 text-slate-600 dark:text-slate-400',
+        hover: 'hover:text-slate-600 dark:hover:text-slate-400'
+    },
+    rose: {
+        active: 'border-rose-500 text-rose-600 dark:text-rose-400',
+        hover: 'hover:text-rose-600 dark:hover:text-rose-400'
+    },
+    gray: {
+        active: 'border-gray-500 text-gray-600 dark:text-gray-400',
+        hover: 'hover:text-gray-600 dark:hover:text-gray-400'
+    }
+};
 
 export default function SessionsLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -47,14 +74,13 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
         '/sessions/recurring',
         '/sessions/past',
         '/sessions/canceled',
-        '/sessions/drafts',
     ];
     const isSessionDetail = sessionDetailRegex.test(pathname) && !knownTabs.includes(pathname);
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [clientsRes, serviceProvidersRes, staffRes, interventionsRes, draftSessionsRes] = await Promise.all([
+                const [clientsRes, serviceProvidersRes, staffRes, interventionsRes, draftSessionsRes, unconfirmedSessionsRes] = await Promise.all([
                     fetch('/api/clients').then(async (res) => {
                         if (!res.ok) {
                             const errorData = await res.json().catch(() => ({}));
@@ -93,17 +119,24 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                             throw new Error(errorData.error || `Draft sessions API failed: ${res.status}`);
                         }
                         const data = await res.json();
-                        console.log('Draft sessions response:', data);
+                        return data?.metadata?.total || 0;
+                    }),
+                    fetch('/api/services/sessions?status=UNCONFIRMED').then(async (res) => {
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({}));
+                            throw new Error(errorData.error || `Unconfirmed sessions API failed: ${res.status}`);
+                        }
+                        const data = await res.json();
                         return data?.metadata?.total || 0;
                     })
                 ]);
 
                 setCounts({
-                    upcoming: 0,
-                    unconfirmed: 0,
-                    recurring: 0,
-                    past: 0,
-                    canceled: 0,
+                    upcoming: draftSessionsRes,
+                    unconfirmed: unconfirmedSessionsRes,
+                    recurring: draftSessionsRes,
+                    past: draftSessionsRes,
+                    canceled: draftSessionsRes,
                     drafts: draftSessionsRes
                 });
                 setClients(clientsRes);
@@ -187,10 +220,12 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
                                             key={label}
                                             href={href}
                                             aria-current={isActive ? 'page' : undefined}
-                                            className={`flex items-center gap-2 px-4 py-2 -mb-px border-b-2 font-medium text-sm transition-colors duration-150 whitespace-nowrap ${isActive
-                                                ? `border-${color}-500 text-${color}-600 dark:text-${color}-400`
-                                                : `border-transparent text-gray-500 dark:text-gray-400 hover:text-${color}-600 dark:hover:text-${color}-400`
-                                                }`}
+                                            className={`flex items-center gap-2 px-4 py-2 -mb-px border-b-2 font-medium text-sm transition-colors duration-150 whitespace-nowrap
+                                                ${isActive
+                                                    ? tabColorClasses[color as keyof typeof tabColorClasses].active
+                                                    : `border-transparent text-gray-500 dark:text-gray-400 ${tabColorClasses[color as keyof typeof tabColorClasses].hover}`
+                                                }
+                                            `}
                                         >
                                             <Icon className="w-4 h-4" />
                                             {label}

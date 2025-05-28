@@ -93,57 +93,167 @@ async function deleteIntervention(id: unknown): Promise<unknown> {
 export default function InterventionsPage() {
     const [open, setOpen] = React.useState(false);
     const queryClient = useQueryClient();
-    const { data, isLoading } = useQuery({
+
+    // Prefetch categories data with error handling
+    React.useEffect(() => {
+        queryClient.prefetchQuery({
+            queryKey: ['categories'],
+            queryFn: fetchCategories,
+            retry: 2,
+            retryDelay: 1000,
+        }).catch(error => {
+            console.error('Error prefetching categories:', error);
+            toast.error("Failed to load categories. Please refresh the page.");
+        });
+    }, [queryClient]);
+
+    // Main interventions query with stale-while-revalidate and pagination
+    const { data, isLoading, error } = useQuery({
         queryKey: ['interventions'],
         queryFn: async () => {
-            const res = await fetch('/api/services/interventions');
+            const res = await fetch('/api/services/interventions?limit=50&page=1');
             if (!res.ok) {
                 throw new Error('Failed to fetch interventions');
             }
             return res.json();
         },
+        staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+        gcTime: 30 * 60 * 1000, // Keep data in cache for 30 minutes
+        retry: 2,
+        retryDelay: 1000,
     });
 
-    const { data: categoriesData } = useQuery({
+    // Prefetch services data with error handling
+    const { data: servicesData, error: servicesError } = useQuery({
+        queryKey: ['services'],
+        queryFn: async () => {
+            const res = await fetch('/api/services?limit=50');
+            if (!res.ok) {
+                throw new Error('Failed to fetch services');
+            }
+            return res.json();
+        },
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        retry: 2,
+        retryDelay: 1000,
+    });
+
+    // Categories query with stale-while-revalidate and error handling
+    const { data: categoriesData, error: categoriesError } = useQuery({
         queryKey: ['categories'],
         queryFn: fetchCategories,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        retry: 2,
+        retryDelay: 1000,
     });
 
+    // Show error states
+    if (error || servicesError || categoriesError) {
+        return (
+            <div className="text-center text-red-500 p-4">
+                <p>Error loading data. Please try again later.</p>
+                <Button
+                    onClick={() => {
+                        queryClient.invalidateQueries({ queryKey: ['interventions'] });
+                        queryClient.invalidateQueries({ queryKey: ['services'] });
+                        queryClient.invalidateQueries({ queryKey: ['categories'] });
+                    }}
+                    className="mt-4"
+                >
+                    Retry
+                </Button>
+            </div>
+        );
+    }
+
+    // Optimistic updates for mutations with error handling
     const createInterventionMutation = useMutation({
         mutationFn: createIntervention,
+        onMutate: async (newIntervention) => {
+            try {
+                await queryClient.cancelQueries({ queryKey: ['interventions'] });
+                const previousInterventions = queryClient.getQueryData(['interventions']);
+
+                queryClient.setQueryData(['interventions'], (old: any) => ({
+                    ...old,
+                    data: [...(old?.data || []), newIntervention],
+                }));
+
+                return { previousInterventions };
+            } catch (error) {
+                console.error('Error in optimistic update:', error);
+                throw error;
+            }
+        },
+        onError: (err, newIntervention, context) => {
+            queryClient.setQueryData(['interventions'], context?.previousInterventions);
+            toast.error("Failed to create intervention. Please try again.");
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['interventions'] });
             setOpen(false);
-            toast.success("Intervention created successfully!")
+            toast.success("Intervention created successfully!");
         },
-        onError: (error) => {
-            console.error('Error creating intervention:', error);
-            toast.error("Failed to create intervention.")
-        }
     });
 
     const updateInterventionMutation = useMutation({
         mutationFn: updateIntervention,
+        onMutate: async (updatedIntervention: { id: string } & Record<string, any>) => {
+            try {
+                await queryClient.cancelQueries({ queryKey: ['interventions'] });
+                const previousInterventions = queryClient.getQueryData(['interventions']);
+
+                queryClient.setQueryData(['interventions'], (old: any) => ({
+                    ...old,
+                    data: old?.data.map((item: any) =>
+                        item.id === updatedIntervention.id ? { ...item, ...updatedIntervention } : item
+                    ),
+                }));
+
+                return { previousInterventions };
+            } catch (error) {
+                console.error('Error in optimistic update:', error);
+                throw error;
+            }
+        },
+        onError: (err, newIntervention, context) => {
+            queryClient.setQueryData(['interventions'], context?.previousInterventions);
+            toast.error("Failed to update intervention. Please try again.");
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['interventions'] });
-            toast.success("Intervention updated successfully!")
+            toast.success("Intervention updated successfully!");
         },
-        onError: (error) => {
-            console.error('Error updating intervention:', error);
-            toast.error("Failed to update intervention.")
-        }
     });
 
     const deleteInterventionMutation = useMutation({
         mutationFn: deleteIntervention,
+        onMutate: async (interventionId: string) => {
+            try {
+                await queryClient.cancelQueries({ queryKey: ['interventions'] });
+                const previousInterventions = queryClient.getQueryData(['interventions']);
+
+                queryClient.setQueryData(['interventions'], (old: any) => ({
+                    ...old,
+                    data: old?.data.filter((item: any) => item.id !== interventionId),
+                }));
+
+                return { previousInterventions };
+            } catch (error) {
+                console.error('Error in optimistic update:', error);
+                throw error;
+            }
+        },
+        onError: (err, interventionId, context) => {
+            queryClient.setQueryData(['interventions'], context?.previousInterventions);
+            toast.error("Failed to delete intervention. Please try again.");
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['interventions'] });
-            toast.success("Intervention deleted successfully!")
+            toast.success("Intervention deleted successfully!");
         },
-        onError: (error) => {
-            console.error('Error deleting intervention:', error);
-            toast.error("Failed to delete intervention.")
-        }
     });
 
     const handleSubmit = React.useCallback(async (data: InterventionFormData) => {

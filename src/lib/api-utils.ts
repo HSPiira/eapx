@@ -42,6 +42,8 @@ interface SessionData {
     interventionId: string;
     providerId: string;
     beneficiaryId: string;
+    clientId: string;
+    staffId?: string;
     scheduledAt: Date | null;
     completedAt: Date | null;
     status?: SessionStatus;
@@ -300,6 +302,8 @@ export function validateSessionData(body: Record<string, unknown>): ValidationRe
             interventionId: body.interventionId as string,
             providerId: body.providerId as string,
             beneficiaryId: body.beneficiaryId as string,
+            clientId: body.clientId as string,
+            staffId: body.staffId as string | undefined,
             scheduledAt: scheduledAtResult.date,
             completedAt: completedAtResult.date,
             status: body.status as SessionStatus | undefined,

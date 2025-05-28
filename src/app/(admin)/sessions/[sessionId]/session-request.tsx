@@ -8,7 +8,7 @@ import { SearchableCombobox } from '@/components/session-booking/form/Searchable
 interface SessionRequestModalProps {
     open: boolean;
     onClose: () => void;
-    onConfirm: (company: string) => void;
+    onConfirm: (company: string) => Promise<void>;
     companies: { id: string; name: string }[];
 }
 

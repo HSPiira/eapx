@@ -1,6 +1,5 @@
-"use client";
 import React from "react";
 
 export default function SessionIdLayout({ children }: { children: React.ReactNode }) {
-    return <>{children}</>
+    return <div className="flex flex-col w-full">{children}</div>
 } 

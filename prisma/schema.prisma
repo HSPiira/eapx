@@ -637,7 +637,7 @@ model CareSession {
   providerId         String?
   scheduledAt        DateTime?
   completedAt        DateTime?
-  status             SessionStatus @default(DRAFT)
+  status             SessionStatus @default(UNCONFIRMED)
   notes              String?
   feedback           String?
   duration           Int?
@@ -1051,6 +1051,7 @@ enum ContractStatus {
 /// Status enum for service sessions
 enum SessionStatus {
   DRAFT       @map("Draft") // Session is in draft
+  UNCONFIRMED @map("Unconfirmed") // Session is unconfirmed
   SCHEDULED   @map("Scheduled") // Session is scheduled
   RESCHEDULED @map("Rescheduled") // Session was rescheduled
   COMPLETED   @map("Completed") // Session was completed

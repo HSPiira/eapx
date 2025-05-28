@@ -8,6 +8,26 @@ interface SessionHeaderProps {
     formData: FormData;
 }
 
+// Define the type for session updates
+interface SessionUpdate {
+    clientId?: string;
+    staffId?: string | null;
+    beneficiaryId?: string | null;
+    isGroupSession?: boolean;
+    notes?: string;
+    interventionId?: string;
+    providerId?: string;
+    providerStaffId?: string | null;
+    scheduledAt?: string;
+    duration?: number;
+    metadata?: {
+        numAttendees?: number;
+        sessionFor?: string;
+        whoFor?: string;
+        [key: string]: any;
+    };
+}
+
 export function SessionHeader({ formData }: SessionHeaderProps) {
     const router = useRouter();
     const params = useParams();
@@ -87,35 +107,81 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
                 throw new Error('No session ID found');
             }
 
-            // Transform formData into the format expected by the API
-            const sessionUpdate = {
-                id: sessionData.id,
-                clientId: formData.client.clientId,
-                staffId: formData.client.staff,
-                beneficiaryId: formData.client.dependant || null,
-                isGroupSession: formData.client.sessionType === 'group',
-                notes: formData.client.notes,
-                metadata: {
-                    ...sessionData.metadata,
-                    numAttendees: formData.client.numAttendees,
-                    sessionFor: formData.client.sessionFor,
-                    whoFor: formData.client.whoFor,
-                },
-                // Use the selected intervention from the form
-                interventionId: formData.intervention.intervention,
-                providerId: sessionData.providerId,
-                scheduledAt: sessionData.scheduledAt,
-                status: sessionData.status,
-                duration: sessionData.duration,
-                location: sessionData.location,
-                completedAt: sessionData.completedAt,
-                feedback: sessionData.feedback,
-                cancellationReason: sessionData.cancellationReason,
-                rescheduleCount: sessionData.rescheduleCount
-            };
+            // Parse the selected time slot and date
+            const { date, selectedSlot, duration } = formData.counselor;
+            if (!date || !selectedSlot || !duration) {
+                throw new Error('Please select a date, time slot, and duration');
+            }
+
+            // Convert time slot to DateTime
+            const [time, period] = selectedSlot.split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
+
+            // Adjust hours for PM
+            if (period === 'pm' && hours !== 12) {
+                hours += 12;
+            }
+            // Adjust hours for AM
+            if (period === 'am' && hours === 12) {
+                hours = 0;
+            }
+
+            // Create scheduledAt DateTime
+            const scheduledAt = new Date(date);
+            scheduledAt.setHours(hours, minutes, 0, 0);
+
+            // Validate that the scheduled time is not in the past
+            const now = new Date();
+            if (scheduledAt < now) {
+                throw new Error('Session cannot be scheduled in the past');
+            }
+
+            // Create a partial update object with only the fields we know have changed
+            const sessionUpdate: SessionUpdate = {};
+
+            // Only include fields that we know have been modified
+            if (formData.client.clientId) {
+                sessionUpdate.clientId = formData.client.clientId;
+            }
+            if (formData.client.staff !== undefined) {
+                sessionUpdate.staffId = formData.client.staff || null;
+            }
+            if (formData.client.dependant !== undefined) {
+                sessionUpdate.beneficiaryId = formData.client.dependant || null;
+            }
+            if (formData.client.sessionType !== undefined) {
+                sessionUpdate.isGroupSession = formData.client.sessionType === 'group';
+            }
+            if (formData.client.notes !== undefined) {
+                sessionUpdate.notes = formData.client.notes;
+            }
+            if (formData.intervention.intervention) {
+                sessionUpdate.interventionId = formData.intervention.intervention;
+            }
+            if (formData.counselor.provider) {
+                sessionUpdate.providerId = formData.counselor.provider;
+            }
+            if (formData.counselor.staff !== undefined) {
+                sessionUpdate.providerStaffId = formData.counselor.staff || null;
+            }
+
+            // Always include these fields as they're required for the current operation
+            sessionUpdate.scheduledAt = scheduledAt.toISOString();
+            sessionUpdate.duration = parseInt(duration);
+
+            // Only update metadata if we have new values
+            if (formData.client.numAttendees || formData.client.sessionFor || formData.client.whoFor) {
+                sessionUpdate.metadata = {
+                    ...(sessionData.metadata || {}),
+                    ...(formData.client.numAttendees && { numAttendees: formData.client.numAttendees }),
+                    ...(formData.client.sessionFor && { sessionFor: formData.client.sessionFor }),
+                    ...(formData.client.whoFor && { whoFor: formData.client.whoFor }),
+                };
+            }
 
             console.log('sessionUpdate', sessionUpdate);
 
+            // Using PUT but only sending modified fields
             const res = await fetch(`/api/services/sessions/${sessionData.id}`, {
                 method: 'PUT',
                 headers: {
@@ -145,7 +211,7 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
             : 'Loading...');
 
     return (
-        <div className="flex items-center justify-between w-full px-0 mx-0 mt-0 bg-background">
+        <div className="flex items-center justify-between w-full px-0 mx-0 mt-0 bg-white dark:bg-black">
             {/* Left: Back + Title */}
             <div className="flex items-center gap-2 min-w-0">
                 <button

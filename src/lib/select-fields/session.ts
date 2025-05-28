@@ -3,6 +3,7 @@ export const sessionSelectFields = {
     id: true,
     interventionId: true,
     providerId: true,
+    providerStaffId: true,
     beneficiaryId: true,
     clientId: true,
     scheduledAt: true,
@@ -36,6 +37,16 @@ export const sessionSelectFields = {
             id: true,
             name: true,
             type: true,
+            entityType: true,
+        },
+    },
+    providerStaff: {
+        select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            role: true,
         },
     },
     beneficiary: {

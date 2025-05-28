@@ -55,6 +55,8 @@ export async function PUT(
                 data: {
                     ...validationResult.data!,
                     interventionId: validationResult.data!.interventionId,
+                    providerId: validationResult.data!.providerId,
+                    providerStaffId: validationResult.data!.providerStaffId,
                     scheduledAt: validationResult.data!.scheduledAt || undefined,
                     completedAt: validationResult.data!.completedAt || undefined,
                     rescheduleCount: validationResult.data!.rescheduleCount || undefined,

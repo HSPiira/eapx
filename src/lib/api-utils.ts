@@ -41,6 +41,7 @@ interface ContractData {
 interface SessionData {
     interventionId: string;
     providerId: string;
+    providerStaffId?: string | null;
     beneficiaryId: string;
     clientId: string;
     staffId?: string;
@@ -301,6 +302,7 @@ export function validateSessionData(body: Record<string, unknown>): ValidationRe
         data: {
             interventionId: body.interventionId as string,
             providerId: body.providerId as string,
+            providerStaffId: body.providerStaffId as string | null | undefined,
             beneficiaryId: body.beneficiaryId as string,
             clientId: body.clientId as string,
             staffId: body.staffId as string | undefined,

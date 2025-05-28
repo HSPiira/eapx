@@ -59,14 +59,14 @@ export function TabBar({ selected, onSelect }: { selected: string; onSelect: (ke
     };
 
     return (
-        <nav className="flex lg:hidden border-b bg-white px-2 overflow-x-auto">
+        <nav className="flex lg:hidden border-b bg-white dark:bg-black px-2 overflow-x-auto">
             {sidebarItems.map((item) => {
                 const SelectedIcon = item.icon;
                 const isSelected = selected === item.key;
                 return (
                     <button
                         key={item.key}
-                        className={`flex items-center px-3 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${isSelected ? 'border-blue-500 text-blue-700 bg-gray-100' : 'border-transparent text-gray-600 hover:bg-gray-50'}`}
+                        className={`flex items-center px-3 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${isSelected ? 'border-blue-500 text-blue-700 dark:text-blue-400 bg-white dark:bg-black' : 'border-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900'}`}
                         onClick={() => handleSelect(item.key)}
                     >
                         <SelectedIcon className="w-4 h-4 mr-1" />

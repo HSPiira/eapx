@@ -107,37 +107,57 @@ export default function SessionEditPage() {
                 setSessionData(data);
 
                 // Update form data with session data
-                setFormData(prev => ({
-                    ...prev,
-                    client: {
-                        ...prev.client,
-                        company: data.client?.name || '',
-                        clientId: data.client?.id || '',
-                        staff: data.staffId || '',
-                        dependant: data.beneficiaryId || '',
-                        sessionType: data.isGroupSession ? 'group' : 'individual',
-                        numAttendees: data.metadata?.numAttendees || 1,
-                        sessionFor: data.metadata?.sessionFor || 'organization',
-                        whoFor: data.metadata?.whoFor || 'self',
-                        notes: data.notes || '',
-                    },
-                    intervention: {
-                        ...prev.intervention,
-                        intervention: data.interventionId || '',
-                        notes: data.metadata?.interventionNotes || '',
-                    },
-                    counselor: {
-                        ...prev.counselor,
-                        provider: data.providerId || '',
-                        date: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
-                        duration: data.duration || '',
-                    },
-                    location: {
-                        ...prev.location,
-                        location: data.location || '',
-                        requirements: data.metadata?.requirements || '',
+                setFormData(prev => {
+                    // Determine timeFormat (default to 12hr if not set)
+                    const timeFormat = prev.counselor.timeFormat || '12hr';
+                    let selectedSlot = '';
+                    if (data.scheduledAt) {
+                        const dateObj = new Date(data.scheduledAt);
+                        let hours = dateObj.getHours();
+                        const minutes = dateObj.getMinutes();
+                        if (timeFormat === '12hr') {
+                            const period = hours >= 12 ? 'pm' : 'am';
+                            let displayHour = hours % 12;
+                            if (displayHour === 0) displayHour = 12;
+                            selectedSlot = `${displayHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+                        } else {
+                            selectedSlot = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                        }
                     }
-                }));
+                    return ({
+                        ...prev,
+                        client: {
+                            ...prev.client,
+                            company: data.client?.name || '',
+                            clientId: data.client?.id || '',
+                            staff: data.staffId || '',
+                            dependant: data.beneficiaryId || '',
+                            sessionType: data.isGroupSession ? 'group' : 'individual',
+                            numAttendees: data.metadata?.numAttendees || 1,
+                            sessionFor: data.metadata?.sessionFor || 'organization',
+                            whoFor: data.metadata?.whoFor || 'self',
+                            notes: data.notes || '',
+                        },
+                        intervention: {
+                            ...prev.intervention,
+                            intervention: data.interventionId || '',
+                            notes: data.metadata?.interventionNotes || '',
+                        },
+                        counselor: {
+                            ...prev.counselor,
+                            provider: data.providerId || '',
+                            staff: data.providerStaffId || '',
+                            date: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
+                            duration: data.duration || '',
+                            selectedSlot,
+                        },
+                        location: {
+                            ...prev.location,
+                            location: data.location || '',
+                            requirements: data.metadata?.requirements || '',
+                        }
+                    });
+                });
             } catch (error) {
                 console.error('Error fetching session:', error);
                 setError(error instanceof Error ? error.message : 'Failed to fetch session');

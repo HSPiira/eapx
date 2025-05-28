@@ -23,11 +23,10 @@ export function SessionDetails({ data, setData }: SessionDetailsProps) {
                 <div className="space-y-1">
                     <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Company</Label>
                     <input
-                        type="text"
                         value={company}
                         readOnly
                         disabled
-                        className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 bg-background text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                        className="w-full border dark:border-gray-700 text-sm rounded-sm px-3 py-2 bg-background text-gray-700 dark:text-gray-300"
                     />
                 </div>
                 {/* Session for? */}

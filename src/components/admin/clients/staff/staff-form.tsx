@@ -212,7 +212,12 @@ export function StaffForm({ staff, onSubmit, onCancel }: StaffFormProps) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={(e) => {
+                e.preventDefault();
+                if (step === 5) {
+                    form.handleSubmit(onSubmit)(e);
+                }
+            }} className="space-y-4">
                 {/* Step Indicator */}
                 <div className="mb-4 text-sm font-medium text-muted-foreground">
                     Step {step} of {stepTitles.length}: {stepTitles[step - 1]}

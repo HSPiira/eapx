@@ -10,11 +10,11 @@ import {
     DialogDescription,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { StaffForm } from '@/app/(admin)/staff/_components/StaffForm';
+import { StaffForm } from '@/components/admin/clients/staff/staff-form';
 import { UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { StaffFormValues } from '@/app/(admin)/staff/_components/StaffForm';
+import { StaffFormValues } from '@/components/admin/clients/staff/staff-form';
 
 interface StaffFormModalProps {
     clientId: string;
@@ -61,7 +61,22 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
                         email: data.email,
                         fullName: data.fullName,
                         phone: data.phone,
-                        // ...other user/profile fields as needed
+                        preferredName: data.fullName,
+                        dob: data.dob,
+                        gender: data.gender,
+                        emergencyContactName: data.emergencyContactName,
+                        emergencyContactPhone: data.emergencyContactPhone,
+                        nationality: data.nationality,
+                        idNumber: data.idNumber,
+                        passportNumber: data.passportNumber,
+                        idType: data.idType,
+                        allergies: data.allergies,
+                        medicalConditions: data.medicalConditions,
+                        dietaryRestrictions: data.dietaryRestrictions,
+                        accessibilityNeeds: data.accessibilityNeeds,
+                        metadata: {
+                            clientId: clientId,
+                        },
                     }),
                 });
                 const newUser = await userRes.json();
@@ -75,18 +90,21 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    profileId,
                     jobTitle: data.jobTitle,
                     managementLevel: data.managementLevel,
                     maritalStatus: data.maritalStatus,
-                    startDate: data.startDate,
+                    startDate: data.startDate || new Date().toISOString(), // Default to current date if not provided
                     endDate: data.endDate,
                     status: data.status,
                     qualifications: data.qualifications,
                     specializations: data.specializations,
                     preferredWorkingHours: data.preferredWorkingHours,
-                    profileId,
                     userId: user.id,
-                    // ...other staff fields as needed
+                    clientId: clientId,
+                    companyId: clientId,
+                    employmentType: data.employmentType,
+                    educationLevel: data.educationLevel,
                 }),
             });
 
@@ -125,6 +143,7 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
                 </DialogHeader>
                 <div className="py-4">
                     <StaffForm
+                        staff={{ companyId: clientId }}
                         onSubmit={handleSubmit}
                         onCancel={() => setOpen(false)}
                     />

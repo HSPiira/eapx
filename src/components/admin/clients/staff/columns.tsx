@@ -39,6 +39,8 @@ export type Staff = {
         preferredContactMethod: string | null;
         metadata: Record<string, unknown>;
     };
+    employmentType: 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'TEMPORARY' | 'INTERN' | 'VOLUNTEER' | 'OTHER';
+    educationLevel: 'PRIMARY' | 'SECONDARY' | 'UNDERGRADUATE' | 'POSTGRADUATE' | 'OTHER';
     jobTitle: string;
     companyId: string;
     managementLevel: 'JUNIOR' | 'MID' | 'SENIOR' | 'EXECUTIVE' | 'OTHER';

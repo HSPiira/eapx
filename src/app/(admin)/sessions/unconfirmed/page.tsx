@@ -75,25 +75,27 @@ export default function UnconfirmedSessionsPage() {
                     href={`/sessions/${session.id}`}
                     className="block border rounded-sm p-4 bg-white dark:bg-gray-900 hover:shadow-md transition"
                 >
-                    <div className="flex items-center">
-                        <div className="flex-1">
-                            <div className="text-sm text-gray-900 dark:text-white">
+                    {/* Top row: company name, session id, badge */}
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center flex-wrap min-w-0">
+                            <span className="text-sm text-gray-900 dark:text-white truncate">
                                 {session.client?.name || 'Unconfirmed Session'}
-                                <span className="mx-1 text-gray-400">·</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 align-middle">{session.id}</span>
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                                <Clock className="w-4 h-4 text-gray-400 mr-1" />
-                                Created: {session.createdAt ? new Date(session.createdAt).toLocaleString() : 'Not set'}
-                                {session.creator && (
-                                    <>
-                                        <span className="mx-1 text-gray-400">·</span>
-                                        <span>By: {session.creator.name || session.creator.email || 'Unknown user'}</span>
-                                    </>
-                                )}
-                            </div>
+                            </span>
+                            <span className="mx-1 text-gray-400">·</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{session.id}</span>
                         </div>
-                        <span className="text-xs px-2 py-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">Unconfirmed</span>
+                        <span className="text-xs px-2 py-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 ml-2">Unconfirmed</span>
+                    </div>
+                    {/* Second row: created and by info */}
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center flex-wrap">
+                        <Clock className="w-4 h-4 text-gray-400 mr-1" />
+                        Created: {session.createdAt ? new Date(session.createdAt).toLocaleString() : 'Not set'}
+                        {session.creator && (
+                            <>
+                                <span className="mx-1 text-gray-400">·</span>
+                                <span>By: {session.creator.name || session.creator.email || 'Unknown user'}</span>
+                            </>
+                        )}
                     </div>
                 </Link>
             ))}

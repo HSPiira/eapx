@@ -40,7 +40,7 @@ export function ClientList({ clients }: ClientListProps) {
     };
 
     return (
-        <div className="w-full overflow-x-auto rounded-lg border border-border bg-background shadow-md">
+        <div className="w-full overflow-x-auto rounded-sm border border-border bg-background">
             <table className="min-w-full text-sm text-left whitespace-nowrap">
                 <thead className="bg-muted">
                     <tr>

@@ -25,6 +25,8 @@ const createStaffSchema = z.object({
     specializations: z.array(z.string()).optional(),
     preferredWorkingHours: z.any().optional(),
     metadata: z.any().optional(),
+    employmentType: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'TEMPORARY', 'CONSULTANT']).optional(),
+    educationLevel: z.enum(['HIGH_SCHOOL', 'DIPLOMA', 'BACHELORS', 'MASTERS', 'PHD']).optional(),
 });
 
 export async function GET(
@@ -165,6 +167,8 @@ export async function POST(
                 jobTitle: validationResult.data.jobTitle,
                 companyId: validationResult.data.companyId || id,
                 managementLevel: validationResult.data.managementLevel || 'JUNIOR',
+                employmentType: validationResult.data.employmentType || 'FULL_TIME',
+                educationLevel: validationResult.data.educationLevel || 'HIGH_SCHOOL',
                 maritalStatus: validationResult.data.maritalStatus || 'SINGLE',
                 startDate: validationResult.data.startDate,
                 endDate: validationResult.data.endDate,
@@ -203,6 +207,7 @@ export async function POST(
                 CareSession: true,
             },
         });
+        console.log(newStaff);
 
         await cache.deleteByPrefix(`clients:${id}:staff:`);
         return NextResponse.json(newStaff, { status: 201 });

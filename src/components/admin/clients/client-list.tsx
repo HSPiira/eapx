@@ -2,8 +2,7 @@
 'use client';
 
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -20,12 +19,14 @@ interface Client {
     } | null;
     status: string;
     isVerified: boolean;
-    activeContracts: number;
     totalStaff: number;
     contactPerson: string | null;
     preferredContactMethod: string | null;
     timezone: string | null;
     updatedAt: Date;
+    _count?: {
+        staff: number;
+    };
 }
 
 interface ClientListProps {
@@ -62,29 +63,39 @@ export function ClientList({ clients }: ClientListProps) {
                             )}
                             onClick={() => handleRowClick(client.id)}
                         >
-                            <td className="px-6 py-3 font-medium max-w-[180px] truncate">{client.name}</td>
+                            <td className="px-6 py-3 font-medium max-w-[200px] truncate">{client.name}</td>
                             <td className="px-6 py-3 max-w-[200px] truncate">{client.email || '-'}</td>
                             <td className="px-6 py-3 max-w-[140px] truncate">{client.phone || '-'}</td>
-                            <td className="px-6 py-3 max-w-[140px] truncate">{client.industry?.name || '-'}</td>
+                            <td className="px-6 py-3 max-w-[200px] truncate">{client.industry?.name || '-'}</td>
                             <td className="px-6 py-3">
-                                <Badge variant={client.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                                    {client.status}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                    {client.status === 'ACTIVE' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                    <span className={cn(
+                                        client.status === 'ACTIVE' ? 'text-green-500' : 'text-gray-500'
+                                    )}>
+                                        {client.status.charAt(0) + client.status.slice(1).toLowerCase()}
+                                    </span>
+                                </div>
                             </td>
                             <td className="px-6 py-3">
-                                {client.isVerified ? (
-                                    <Badge variant="default" className="flex items-center gap-1">
-                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                        Verified
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        Not Verified
-                                    </Badge>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    {client.isVerified ? (
+                                        <ShieldCheck className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                        <ShieldAlert className="h-4 w-4 text-yellow-500" />
+                                    )}
+                                    <span className={cn(
+                                        client.isVerified ? "text-green-500" : "text-yellow-500"
+                                    )}>
+                                        {client.isVerified ? "Verified" : "Pending"}
+                                    </span>
+                                </div>
                             </td>
-                            <td className="px-6 py-3 text-right">{client.totalStaff}</td>
+                            <td className="px-6 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    <span className="font-medium">{client.totalStaff}</span>
+                                </div>
+                            </td>
                         </tr>
                     ))}
                 </tbody>

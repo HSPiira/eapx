@@ -28,87 +28,51 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
 
     const handleSubmit = async (data: StaffFormValues) => {
         try {
-            // 1. Check if user exists by email
-            const email = data.email as string; // Type assertion since we know it's a string from the Zod schema
-            const userCheckRes = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
-            let user, profileId;
-
-            if (userCheckRes.ok) {
-                const existing = await userCheckRes.json();
-                if (existing && existing.id && existing.profileId) {
-                    // User exists, update profile
-                    user = existing;
-                    profileId = existing.profileId;
-
-                    await fetch(`/api/profiles/${profileId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            fullName: data.fullName,
-                            phone: data.phone,
-                            // ...other profile fields as needed
-                        }),
-                    });
-                }
-            }
-
-            // 2. If user does not exist, create user (and profile)
-            if (!user || !profileId) {
-                const userRes = await fetch('/api/users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: data.email,
-                        fullName: data.fullName,
-                        phone: data.phone,
-                        preferredName: data.fullName,
-                        dob: data.dob,
-                        gender: data.gender,
-                        emergencyContactName: data.emergencyContactName,
-                        emergencyContactPhone: data.emergencyContactPhone,
-                        nationality: data.nationality,
-                        idNumber: data.idNumber,
-                        passportNumber: data.passportNumber,
-                        idType: data.idType,
-                        allergies: data.allergies,
-                        medicalConditions: data.medicalConditions,
-                        dietaryRestrictions: data.dietaryRestrictions,
-                        accessibilityNeeds: data.accessibilityNeeds,
-                        metadata: {
-                            clientId: clientId,
-                        },
-                    }),
-                });
-                const newUser = await userRes.json();
-                if (!newUser.id || !newUser.profileId) throw new Error('User/Profile creation failed');
-                user = newUser;
-                profileId = newUser.profileId;
-            }
-
-            // 3. Create staff
+            // Create staff directly with user/profile creation
             const staffRes = await fetch(`/api/clients/${clientId}/staff`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    profileId,
+                    // User/Profile fields
+                    email: data.email,
+                    fullName: data.fullName,
+                    phone: data.phone,
+                    preferredName: data.fullName,
+                    dob: data.dob,
+                    gender: data.gender,
+                    emergencyContactName: data.emergencyContactName,
+                    emergencyContactPhone: data.emergencyContactPhone,
+                    nationality: data.nationality,
+                    idNumber: data.idNumber,
+                    passportNumber: data.passportNumber,
+                    idType: data.idType,
+                    allergies: data.allergies,
+                    medicalConditions: data.medicalConditions,
+                    dietaryRestrictions: data.dietaryRestrictions,
+                    accessibilityNeeds: data.accessibilityNeeds,
+                    metadata: {
+                        clientId: clientId,
+                    },
+
+                    // Staff fields
                     jobTitle: data.jobTitle,
                     managementLevel: data.managementLevel,
                     maritalStatus: data.maritalStatus,
-                    startDate: data.startDate || new Date().toISOString(), // Default to current date if not provided
+                    startDate: data.startDate || new Date().toISOString(),
                     endDate: data.endDate,
                     status: data.status,
                     qualifications: data.qualifications,
                     specializations: data.specializations,
                     preferredWorkingHours: data.preferredWorkingHours,
-                    userId: user.id,
-                    clientId: clientId,
-                    companyId: clientId,
                     employmentType: data.employmentType,
                     educationLevel: data.educationLevel,
                 }),
             });
 
-            if (!staffRes.ok) throw new Error('Staff creation failed');
+            if (!staffRes.ok) {
+                const error = await staffRes.json();
+                throw new Error(error.error || 'Failed to create staff member');
+            }
 
             toast({
                 title: "Success",
@@ -129,7 +93,7 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Add Staff
                 </Button>

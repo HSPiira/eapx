@@ -1,14 +1,15 @@
 import { StaffFormModal } from '@/components/admin/clients/staff/staff-form-modal';
 import { Staff } from '@/components/admin/clients/staff/columns';
 import React from 'react';
+import { CheckCircle2 } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
-    Active: 'text-green-500 dark:text-green-400',
-    Inactive: 'text-gray-400',
-    'On Leave': 'text-yellow-500 dark:text-yellow-400',
-    Terminated: 'text-red-500 dark:text-red-400',
-    Suspended: 'text-orange-500 dark:text-orange-400',
-    Resigned: 'text-blue-500 dark:text-blue-400',
+    ACTIVE: 'text-green-500 dark:text-green-400',
+    INACTIVE: 'text-gray-400',
+    ON_LEAVE: 'text-yellow-500 dark:text-yellow-400',
+    TERMINATED: 'text-red-500 dark:text-red-400',
+    SUSPENDED: 'text-orange-500 dark:text-orange-400',
+    RESIGNED: 'text-blue-500 dark:text-blue-400',
 };
 
 export default function StaffList({ clientId, data }: { clientId: string, data: Staff[] }) {
@@ -47,7 +48,10 @@ export default function StaffList({ clientId, data }: { clientId: string, data: 
                                     <td className="py-3 px-4 whitespace-nowrap">{staff.managementLevel}</td>
                                     <td className="py-3 px-4 whitespace-nowrap">{staff.employmentType}</td>
                                     <td className="py-3 px-4 whitespace-nowrap">
-                                        <span className={`font-semibold ${statusColors[staff.status.toString()] || 'text-gray-400'}`}>{staff.status}</span>
+                                        <div className="flex items-center gap-2">
+                                            {staff.status === 'ACTIVE' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                                            <span className={statusColors[staff.status] || 'text-gray-400'}>{staff.status}</span>
+                                        </div>
                                     </td>
                                     <td className="py-3 px-4 whitespace-nowrap">{new Date(staff.startDate).toLocaleDateString()}</td>
                                     <td className="py-3 px-4 whitespace-nowrap">{staff.endDate ? new Date(staff.endDate).toLocaleDateString() : <span className="text-green-500 dark:text-green-400">Active</span>}</td>

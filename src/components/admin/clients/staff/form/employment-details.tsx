@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { StaffFormValues } from '../staff-form';
+import { StaffFormValues } from '@/components/admin/clients/staff/staff-form';
 import {
     FormControl,
     FormField,
@@ -44,12 +44,6 @@ const maritalStatusLabels = {
     WIDOWED: "Widowed"
 };
 
-const workStatusLabels = {
-    ACTIVE: "Active",
-    INACTIVE: "Inactive",
-    ON_LEAVE: "On Leave",
-    TERMINATED: "Terminated"
-};
 
 interface EmploymentDetailsStepProps {
     form: UseFormReturn<StaffFormValues>;
@@ -71,31 +65,51 @@ export function EmploymentDetailsStep({ form }: EmploymentDetailsStepProps) {
                     </FormItem>
                 )}
             />
-            <FormField
-                control={form.control}
-                name="managementLevel"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Management Level <span className="text-red-500 ml-1">*</span></FormLabel>
-                        <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                        >
+            <div className="grid grid-cols-2 gap-4 w-full">
+                <FormField
+                    control={form.control}
+                    name="companyStaffId"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Company Staff ID</FormLabel>
                             <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select level" />
-                                </SelectTrigger>
+                                <Input
+                                    className="w-full"
+                                    placeholder="Enter company staff id"
+                                    {...field}
+                                    value={field.value || ''}
+                                />
                             </FormControl>
-                            <SelectContent>
-                                {Object.entries(managementLevelLabels).map(([value, label]) => (
-                                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="managementLevel"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Management Level <span className="text-red-500 ml-1">*</span></FormLabel>
+                            <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                            >
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select level" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {Object.entries(managementLevelLabels).map(([value, label]) => (
+                                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
             <FormField
                 control={form.control}
                 name="employmentType"
@@ -176,31 +190,6 @@ export function EmploymentDetailsStep({ form }: EmploymentDetailsStepProps) {
                             </FormControl>
                             <SelectContent>
                                 {Object.entries(maritalStatusLabels).map(([value, label]) => (
-                                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Status <span className="text-red-500 ml-1">*</span></FormLabel>
-                        <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                        >
-                            <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {Object.entries(workStatusLabels).map(([value, label]) => (
                                     <SelectItem key={value} value={value}>{label}</SelectItem>
                                 ))}
                             </SelectContent>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { StaffFormValues } from '../staff-form';
+import { StaffFormValues } from '@/components/admin/clients/staff/staff-form';
 import {
     FormControl,
     FormField,
@@ -27,6 +27,7 @@ export function HealthInformationStep({ form }: HealthInformationStepProps) {
                         <FormLabel>Allergies</FormLabel>
                         <FormControl>
                             <Textarea className="w-full"
+                                aria-describedby="allergies-description"
                                 placeholder="Enter allergies (one per line)"
                                 value={field.value?.join('\n') || ''}
                                 onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}
@@ -44,6 +45,7 @@ export function HealthInformationStep({ form }: HealthInformationStepProps) {
                         <FormLabel>Medical Conditions</FormLabel>
                         <FormControl>
                             <Textarea className="w-full"
+                                aria-describedby="medical-conditions-description"
                                 placeholder="Enter medical conditions (one per line)"
                                 value={field.value?.join('\n') || ''}
                                 onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}
@@ -61,6 +63,7 @@ export function HealthInformationStep({ form }: HealthInformationStepProps) {
                         <FormLabel>Dietary Restrictions</FormLabel>
                         <FormControl>
                             <Textarea className="w-full"
+                                aria-describedby="dietary-restrictions-description"
                                 placeholder="Enter dietary restrictions (one per line)"
                                 value={field.value?.join('\n') || ''}
                                 onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}
@@ -78,6 +81,7 @@ export function HealthInformationStep({ form }: HealthInformationStepProps) {
                         <FormLabel>Accessibility Needs</FormLabel>
                         <FormControl>
                             <Textarea className="w-full"
+                                aria-describedby="accessibility-needs-description"
                                 placeholder="Enter accessibility needs (one per line)"
                                 value={field.value?.join('\n') || ''}
                                 onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}

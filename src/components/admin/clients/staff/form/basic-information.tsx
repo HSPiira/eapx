@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { StaffFormValues } from '../staff-form';
+import { StaffFormValues } from '@/components/admin/clients/staff/staff-form';
 import {
     FormControl,
     FormField,

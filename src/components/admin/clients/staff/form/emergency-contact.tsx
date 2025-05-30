@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { StaffFormValues } from '../staff-form';
+import { StaffFormValues } from '@/components/admin/clients/staff/staff-form';
 import {
     FormControl,
     FormField,
@@ -46,7 +46,12 @@ export function EmergencyContactStep({ form }: EmergencyContactStepProps) {
                     <FormItem>
                         <FormLabel>Emergency Contact Name <span className="text-red-500 ml-1">*</span></FormLabel>
                         <FormControl>
-                            <Input className="w-full" placeholder="Enter emergency contact name" {...field} />
+                            <Input
+                                className="w-full"
+                                placeholder="Enter emergency contact name"
+                                {...field}
+                                value={field.value || ''}
+                            />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -57,9 +62,14 @@ export function EmergencyContactStep({ form }: EmergencyContactStepProps) {
                 name="emergencyContactPhone"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Emergency Contact Phone <span className="text-red-500 ml-1">*</span></FormLabel>
+                        <FormLabel>Emergency Contact Phone</FormLabel>
                         <FormControl>
-                            <Input className="w-full" placeholder="Enter emergency contact phone" {...field} />
+                            <Input
+                                className="w-full"
+                                placeholder="Enter emergency contact phone"
+                                {...field}
+                                value={field.value || ''}
+                            />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -70,9 +80,15 @@ export function EmergencyContactStep({ form }: EmergencyContactStepProps) {
                 name="emergencyContactEmail"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Emergency Contact Email</FormLabel>
+                        <FormLabel>Emergency Contact Email <span className="text-red-500 ml-1">*</span></FormLabel>
                         <FormControl>
-                            <Input className="w-full" type="email" placeholder="Enter emergency contact email" {...field} />
+                            <Input
+                                className="w-full"
+                                type="email"
+                                placeholder="Enter emergency contact email"
+                                {...field}
+                                value={field.value || ''}
+                            />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

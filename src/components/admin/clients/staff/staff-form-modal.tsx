@@ -14,7 +14,8 @@ import { StaffForm } from '@/components/admin/clients/staff/staff-form';
 import { UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { StaffFormValues } from '@/components/admin/clients/staff/staff-form';
+import { StaffFormValues } from './staff-form';
+import { buildCreateStaffBody } from '@/lib/staff';
 
 interface StaffFormModalProps {
     clientId: string;
@@ -32,41 +33,7 @@ export function StaffFormModal({ clientId }: StaffFormModalProps) {
             const staffRes = await fetch(`/api/clients/${clientId}/staff`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    // User/Profile fields
-                    email: data.email,
-                    fullName: data.fullName,
-                    phone: data.phone,
-                    preferredName: data.fullName,
-                    dob: data.dob,
-                    gender: data.gender,
-                    emergencyContactName: data.emergencyContactName,
-                    emergencyContactPhone: data.emergencyContactPhone,
-                    nationality: data.nationality,
-                    idNumber: data.idNumber,
-                    passportNumber: data.passportNumber,
-                    idType: data.idType,
-                    allergies: data.allergies,
-                    medicalConditions: data.medicalConditions,
-                    dietaryRestrictions: data.dietaryRestrictions,
-                    accessibilityNeeds: data.accessibilityNeeds,
-                    metadata: {
-                        clientId: clientId,
-                    },
-
-                    // Staff fields
-                    jobTitle: data.jobTitle,
-                    managementLevel: data.managementLevel,
-                    maritalStatus: data.maritalStatus,
-                    startDate: data.startDate || new Date().toISOString(),
-                    endDate: data.endDate,
-                    status: data.status,
-                    qualifications: data.qualifications,
-                    specializations: data.specializations,
-                    preferredWorkingHours: data.preferredWorkingHours,
-                    employmentType: data.employmentType,
-                    educationLevel: data.educationLevel,
-                }),
+                body: JSON.stringify(buildCreateStaffBody({ clientId, data })),
             });
 
             if (!staffRes.ok) {

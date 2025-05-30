@@ -10,7 +10,6 @@ import { Gender, IdType, Language, ContactMethod, ManagementLevel, EmploymentTyp
 import { BasicInformationStep } from './form/basic-information';
 import { EmergencyContactStep } from './form/emergency-contact';
 import { EmploymentDetailsStep } from './form/employment-details';
-import { HealthInformationStep } from './form/health-information';
 import { QualificationsStep } from './form/qualifications';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -20,12 +19,12 @@ const basicInformationSchema = z.object({
     email: z.string().email('Invalid email address'),
     phone: z.string().min(1, 'Phone number is required'),
     dob: z.date().optional(),
-    gender: z.nativeEnum(Gender).optional(),
+    gender: z.nativeEnum(Gender),
     nationality: z.string().optional(),
     address: z.string().optional(),
     idNumber: z.string().optional(),
     passportNumber: z.string().optional(),
-    idType: z.nativeEnum(IdType).optional(),
+    idType: z.nativeEnum(IdType),
 });
 
 const emergencyContactSchema = z.object({
@@ -39,6 +38,7 @@ const emergencyContactSchema = z.object({
 const employmentDetailsSchema = z.object({
     companyId: z.string().min(1, 'Company ID is required'),
     jobTitle: z.string().optional(),
+    companyStaffId: z.string().optional(),
     managementLevel: z.nativeEnum(ManagementLevel),
     employmentType: z.nativeEnum(EmploymentType).optional(),
     maritalStatus: z.nativeEnum(MaritalStatus),
@@ -142,18 +142,28 @@ export function StaffForm({ staff, onSubmit, onCancel }: StaffFormProps) {
         "Basic Information",
         "Emergency Contact",
         "Employment Details",
-        "Health Information",
-        "Qualifications & Preferences"
+        "Qualifications"
     ];
 
     const isStep1Valid = !!form.watch('fullName') && !!form.watch('email') && !!form.watch('phone');
     const isStep2Valid = !!form.watch('emergencyContactName') && !!form.watch('emergencyContactPhone');
     const isStep3Valid = !!form.watch('managementLevel') && !!form.watch('employmentType') &&
         !!form.watch('maritalStatus') && !!form.watch('status');
-    const isStep4Valid = true; // Optional step
-    const isStep5Valid = isStep1Valid && isStep2Valid && isStep3Valid;
+
+    // Add form-level validation for submission
+    const isFormValid = isStep1Valid && isStep2Valid && isStep3Valid;
 
     const handleSubmit = async (data: StaffFormValues) => {
+        if (!isFormValid) {
+            toast({
+                title: "Form Incomplete",
+                description: "Please complete all required fields before submitting.",
+                variant: "destructive",
+                duration: 5000,
+            });
+            return;
+        }
+
         try {
             await onSubmit(data);
 
@@ -198,8 +208,6 @@ export function StaffForm({ staff, onSubmit, onCancel }: StaffFormProps) {
             case 3:
                 return <EmploymentDetailsStep form={form} />;
             case 4:
-                return <HealthInformationStep form={form} />;
-            case 5:
                 return <QualificationsStep form={form} />;
             default:
                 return null;
@@ -208,7 +216,7 @@ export function StaffForm({ staff, onSubmit, onCancel }: StaffFormProps) {
 
     const renderNavigationButtons = () => {
         const backStep = step > 1 ? step - 1 : null;
-        const nextStep = step < 5 ? step + 1 : null;
+        const nextStep = step < 4 ? step + 1 : null;
 
         const buttons = [];
 
@@ -231,31 +239,23 @@ export function StaffForm({ staff, onSubmit, onCancel }: StaffFormProps) {
             );
         }
 
-        if (step === 5) {
+        if (step === 4) {
             buttons.push(
                 <Button
                     key="submit"
                     type="submit"
                     variant="default"
-                    disabled={!isStep5Valid}
+                    disabled={!isFormValid}
                 >
-                    Add Staff Member
+                    Add Staff
                 </Button>
             );
         } else if (nextStep) {
-            const isStepValid = {
-                1: isStep1Valid,
-                2: isStep2Valid,
-                3: isStep3Valid,
-                4: isStep4Valid
-            }[step];
-
             buttons.push(
                 <Button
                     key="next"
                     type="button"
                     onClick={() => setStep(nextStep)}
-                    disabled={!isStepValid}
                 >
                     Next
                 </Button>

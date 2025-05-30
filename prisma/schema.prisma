@@ -747,6 +747,7 @@ model Staff {
   clientId              String
   jobTitle              String
   companyId             String
+  companyStaffId        String?
   managementLevel       ManagementLevel
   employmentType        EmploymentType?
   educationLevel        EducationLevel?

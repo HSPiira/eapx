@@ -4,6 +4,7 @@ import { cache } from '@/lib/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { interventionSelectFields } from '@/lib/select-fields';
 import { BaseStatus } from '@prisma/client';
+import { badRequest, internalError, notFound, ok } from '@/lib/response';
 
 type Params = Promise<{ id: string }>;
 
@@ -97,13 +98,32 @@ export async function DELETE(
 ) {
     return withRouteMiddleware(request, async () => {
         const { id } = await params;
-        if (!id) {
-            return NextResponse.json({ error: 'Intervention ID is required' }, { status: 400 });
+        if (!id) return badRequest("Intervention ID is required");
+
+        try {
+            const result = await prisma.$transaction(async (tx) => {
+                const existing = await tx.intervention.findUnique({ where: { id } });
+                if (!existing) throw new Error("NOT_FOUND");
+
+                const updated = await tx.intervention.update({
+                    where: { id },
+                    data: { deletedAt: new Date() },
+                });
+
+                // Optional: soft-delete related records
+                // await tx.interventionLog.updateMany({ where: { interventionId: id }, data: { deletedAt: new Date() } });
+
+                return updated;
+            });
+
+            return ok({ success: true, id: result.id });
+        } catch (error) {
+            if ((error as Error).message === "NOT_FOUND") {
+                return notFound("Intervention not found");
+            }
+
+            console.error("Delete transaction failed:", error);
+            return internalError("Failed to delete intervention");
         }
-        await prisma.intervention.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-        });
-        return NextResponse.json({ success: true });
     });
 } 

@@ -22,7 +22,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 
 const interventionSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -49,7 +48,7 @@ interface InterventionFormProps {
     isSubmitting?: boolean;
     onCancel: () => void;
     defaultValues?: Partial<InterventionFormData>;
-    categories: Service[];
+    services: Service[];
 }
 
 export function InterventionForm({
@@ -57,7 +56,7 @@ export function InterventionForm({
     isSubmitting = false,
     onCancel,
     defaultValues,
-    categories,
+    services,
 }: InterventionFormProps) {
     const form = useForm<InterventionFormData>({
         resolver: zodResolver(interventionSchema),
@@ -78,7 +77,7 @@ export function InterventionForm({
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-2">
                 <FormField
                     control={form.control}
                     name="name"
@@ -106,9 +105,9 @@ export function InterventionForm({
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {categories.map((category) => (
-                                        <SelectItem key={category.id} value={category.id}>
-                                            {category.name}
+                                    {services.map((service) => (
+                                        <SelectItem key={service.id} value={service.id}>
+                                            {service.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -146,7 +145,7 @@ export function InterventionForm({
                                     <Input
                                         type="number"
                                         min={0}
-                                        placeholder="Enter duration"
+                                        placeholder="Enter minimum duration (minutes)"
                                         value={field.value ?? ''}
                                         onChange={(e) => {
                                             const value = e.target.value === '' ? null : Number(e.target.value);
@@ -169,7 +168,7 @@ export function InterventionForm({
                                     <Input
                                         type="number"
                                         min={1}
-                                        placeholder="Enter capacity"
+                                        placeholder="Enter minimum capacity"
                                         value={field.value ?? ''}
                                         onChange={(e) => {
                                             const value = e.target.value === '' ? null : Number(e.target.value);
@@ -224,7 +223,7 @@ export function InterventionForm({
                     )}
                 />
 
-                <FormField
+                {/* <FormField
                     control={form.control}
                     name="isPublic"
                     render={({ field }) => (
@@ -243,7 +242,7 @@ export function InterventionForm({
                             </FormControl>
                         </FormItem>
                     )}
-                />
+                /> */}
 
                 <div className="flex justify-end space-x-2">
                     <Button

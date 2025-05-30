@@ -1,4 +1,4 @@
-import { PrismaClient, type ServiceSession } from '@prisma/client';
+import { PrismaClient, type CareSession } from '@prisma/client';
 import type { SessionRequest, SessionRequestStatus } from '../types/session-booking';
 
 export class SessionRequestService {
@@ -13,7 +13,7 @@ export class SessionRequestService {
      * @param requestData - The session request data
      * @returns The created session request
      */
-    async createRequest(requestData: Omit<SessionRequest, 'createdAt' | 'updatedAt'>): Promise<ServiceSession> {
+    async createRequest(requestData: Omit<SessionRequest, 'createdAt' | 'updatedAt'>): Promise<CareSession> {
         // Validate staff exists
         const staff = await this.prisma.staff.findUnique({
             where: { id: requestData.staffId }
@@ -46,11 +46,12 @@ export class SessionRequestService {
         }
 
         // Create the session request
-        const session = await this.prisma.serviceSession.create({
+        const session = await this.prisma.careSession.create({
             data: {
                 staffId: requestData.staffId,
+                clientId: requestData.clientId,
                 providerId: requestData.preferredCounselorId || '',
-                serviceId: counselingService.id,
+                interventionId: counselingService.id,
                 scheduledAt: requestData.preferredDate || new Date(),
                 status: 'SCHEDULED',
                 duration: 60, // Default 1-hour session
@@ -75,8 +76,8 @@ export class SessionRequestService {
         requestId: string,
         status: SessionRequestStatus,
         adminId: string
-    ): Promise<ServiceSession> {
-        const session = await this.prisma.serviceSession.update({
+    ): Promise<CareSession> {
+        const session = await this.prisma.careSession.update({
             where: { id: requestId },
             data: {
                 status: status === 'APPROVED' ? 'SCHEDULED' : 'CANCELED',
@@ -103,8 +104,8 @@ export class SessionRequestService {
      * @param staffId - The ID of the staff member
      * @returns Array of session requests
      */
-    async getStaffRequests(staffId: string): Promise<ServiceSession[]> {
-        return this.prisma.serviceSession.findMany({
+    async getStaffRequests(staffId: string): Promise<CareSession[]> {
+        return this.prisma.careSession.findMany({
             where: { staffId }
         });
     }
@@ -113,8 +114,8 @@ export class SessionRequestService {
      * Retrieves all pending session requests
      * @returns Array of pending session requests
      */
-    async getPendingRequests(): Promise<ServiceSession[]> {
-        return this.prisma.serviceSession.findMany({
+    async getPendingRequests(): Promise<CareSession[]> {
+        return this.prisma.careSession.findMany({
             where: { status: 'SCHEDULED' }
         });
     }

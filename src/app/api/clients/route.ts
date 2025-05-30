@@ -2,7 +2,7 @@ import { withRouteMiddleware } from '@/middleware/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { cache } from '@/lib/cache';
 import { getPaginationParams } from '@/lib/api-utils';
-import { BaseStatus, Prisma, ContactMethod } from '@prisma/client';
+import { BaseStatus, Prisma, ContactMethod, WorkStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -36,40 +36,12 @@ const clientSelectFields = {
     deletedAt: true,
     createdAt: true,
     updatedAt: true,
-    staff: {
-        where: {
-            deletedAt: null
-        },
+    _count: {
         select: {
-            id: true,
-            jobTitle: true,
-            status: true,
-            startDate: true,
-            endDate: true,
-            profile: {
-                select: {
-                    id: true,
-                    fullName: true,
-                    email: true,
-                    phone: true,
-                    dob: true,
-                    gender: true,
-                    nationality: true,
-                    address: true,
-                    idNumber: true,
-                    passportNumber: true,
-                    idType: true,
-                    bloodType: true,
-                    allergies: true,
-                    medicalConditions: true,
-                    dietaryRestrictions: true,
-                    accessibilityNeeds: true,
-                    emergencyContactName: true,
-                    emergencyContactPhone: true,
-                    emergencyContactEmail: true,
-                    preferredLanguage: true,
-                    preferredContactMethod: true,
-                    metadata: true
+            staff: {
+                where: {
+                    deletedAt: null,
+                    status: WorkStatus.ACTIVE
                 }
             }
         }
@@ -136,32 +108,13 @@ export async function GET(request: NextRequest) {
             deletedAt: null,
         };
 
-        console.log('Client query where clause:', JSON.stringify(where, null, 2));
-        console.log('Query parameters:', {
-            page,
-            limit,
-            offset,
-            search,
-            status,
-            industryId,
-            isVerified,
-            preferredContactMethod,
-            createdAfter,
-            createdBefore,
-            hasContract,
-            hasStaff
-        });
-
         const cacheKey = `clients:${page}:${limit}:${search}:${status}:${industryId}:${isVerified}:${preferredContactMethod}:${createdAfter}:${createdBefore}:${hasContract}:${hasStaff}`;
-        console.log('Cache key:', cacheKey);
         const cached = await cache.get(cacheKey);
         if (cached) {
-            console.log('Returning cached response');
             return NextResponse.json(cached);
         }
 
         const totalCount = await prisma.client.count({ where });
-        console.log('Total count:', totalCount);
 
         const clients = await prisma.client.findMany({
             where,
@@ -171,19 +124,11 @@ export async function GET(request: NextRequest) {
             orderBy: { createdAt: 'desc' },
         });
 
-        console.log('Found clients:', clients.map(c => ({
-            id: c.id,
-            name: c.name,
-            status: c.status,
-            deletedAt: c.deletedAt,
-            isVerified: c.isVerified,
-            industryId: c.industryId,
-            preferredContactMethod: c.preferredContactMethod,
-            createdAt: c.createdAt
-        })));
-
         const response = {
-            data: clients,
+            data: clients.map(client => ({
+                ...client,
+                totalStaff: client._count.staff
+            })),
             metadata: {
                 total: totalCount,
                 page,

@@ -1,9 +1,9 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import { StaffForm } from '../../_components/StaffForm';
+import { StaffForm } from '../../../../../components/admin/clients/staff/staff-form';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { StaffFormValues } from '../../_components/StaffForm';
+import { StaffFormValues } from '../../../../../components/admin/clients/staff/staff-form';
 
 type Params = Promise<{ id: string }>;
 

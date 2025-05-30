@@ -41,7 +41,7 @@ export async function GET(
             include: {
                 profile: true,
                 beneficiaries: true,
-                ServiceSession: true,
+                CareSession: true,
             },
         });
 
@@ -101,7 +101,7 @@ export async function PUT(
             include: {
                 profile: true,
                 beneficiaries: true,
-                ServiceSession: true,
+                CareSession: true,
             },
         });
 
@@ -123,7 +123,7 @@ export async function DELETE(
                 deletedAt: null,
             },
             include: {
-                ServiceSession: true,
+                CareSession: true,
                 beneficiaries: true,
             },
         });
@@ -133,7 +133,7 @@ export async function DELETE(
         }
 
         // Check if staff has any service sessions
-        if (staff.ServiceSession.length > 0) {
+        if (staff.CareSession.length > 0) {
             return NextResponse.json({
                 error: 'Cannot delete staff with active service sessions',
             }, { status: 400 });

@@ -9,6 +9,7 @@ export type SessionFormStatus = 'PENDING' | 'SUBMITTED' | 'EXPIRED';
 
 // Interface for session request data
 export interface SessionRequest {
+    clientId: string;
     staffId: string;
     preferredDate?: Date;
     preferredCounselorId?: string;

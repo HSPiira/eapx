@@ -75,7 +75,7 @@ export async function GET(
                 },
                 guardian: true,
                 userLink: true,
-                ServiceSession: true,
+                CareSession: true,
             },
         });
 
@@ -191,7 +191,7 @@ export async function PUT(
                 },
                 guardian: true,
                 userLink: true,
-                ServiceSession: true,
+                CareSession: true,
             },
         });
 
@@ -216,7 +216,7 @@ export async function DELETE(
                 deletedAt: null,
             },
             include: {
-                ServiceSession: true,
+                CareSession: true,
             },
         });
 
@@ -225,7 +225,7 @@ export async function DELETE(
         }
 
         // Check if beneficiary has any service sessions
-        if (beneficiary.ServiceSession.length > 0) {
+        if (beneficiary.CareSession.length > 0) {
             return NextResponse.json({
                 error: 'Cannot delete beneficiary with active service sessions',
             }, { status: 400 });

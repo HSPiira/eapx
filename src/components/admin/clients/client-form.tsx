@@ -173,7 +173,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Company Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter company name" {...field} />
+                                            <Input className="w-full" placeholder="Enter company name" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -248,7 +248,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Tax ID</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter tax ID" {...field} value={field.value ?? ''} />
+                                            <Input className="w-full" placeholder="Enter tax ID" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -267,7 +267,7 @@ export function ClientForm({
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
                                             <FormControl>
-                                                <Input type="email" placeholder="Enter email" {...field} value={field.value ?? ''} />
+                                                <Input className="w-full" type="email" placeholder="Enter email" {...field} value={field.value ?? ''} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -281,7 +281,7 @@ export function ClientForm({
                                         <FormItem>
                                             <FormLabel>Phone</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Enter phone number" {...field} value={field.value ?? ''} />
+                                                <Input className="w-full" placeholder="Enter phone number" {...field} value={field.value ?? ''} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -296,7 +296,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Website</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter website URL" {...field} value={field.value ?? ''} />
+                                            <Input className="w-full" placeholder="Enter website URL" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -310,7 +310,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Address</FormLabel>
                                         <FormControl>
-                                            <Textarea placeholder="Enter address" {...field} value={field.value ?? ''} />
+                                            <Textarea className="w-full" placeholder="Enter address" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -324,7 +324,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Billing Address</FormLabel>
                                         <FormControl>
-                                            <Textarea placeholder="Enter billing address" {...field} value={field.value ?? ''} />
+                                            <Textarea className="w-full" placeholder="Enter billing address" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -343,7 +343,7 @@ export function ClientForm({
                                         <FormItem>
                                             <FormLabel>Contact Person</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Enter contact person" {...field} value={field.value ?? ''} />
+                                                <Input className="w-full" placeholder="Enter contact person" {...field} value={field.value ?? ''} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -357,7 +357,7 @@ export function ClientForm({
                                         <FormItem>
                                             <FormLabel>Contact Email</FormLabel>
                                             <FormControl>
-                                                <Input type="email" placeholder="Enter contact email" {...field} value={field.value ?? ''} />
+                                                <Input className="w-full" type="email" placeholder="Enter contact email" {...field} value={field.value ?? ''} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -372,7 +372,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Contact Phone</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter contact phone" {...field} value={field.value ?? ''} />
+                                            <Input className="w-full" placeholder="Enter contact phone" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -411,7 +411,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Timezone</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter timezone" {...field} value={field.value ?? ''} />
+                                            <Input className="w-full" placeholder="Enter timezone" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -425,7 +425,7 @@ export function ClientForm({
                                     <FormItem>
                                         <FormLabel>Notes</FormLabel>
                                         <FormControl>
-                                            <Textarea placeholder="Enter notes" {...field} value={field.value ?? ''} />
+                                            <Textarea className="w-full" placeholder="Enter notes" {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

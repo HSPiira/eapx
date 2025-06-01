@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createIntervention } from "@/api/interventions";
-import { InterventionsResponse, Intervention, Service } from "@/types/interventions";
+import { InterventionsResponse, Intervention } from "@/types/interventions";
 import { toast } from "sonner";
 import { CreateInterventionInput } from "@/schema/intervention";
+import { Service } from "@/types/services";
 
 export function useCreateIntervention(services: Service[], onClose: () => void) {
     const queryClient = useQueryClient();

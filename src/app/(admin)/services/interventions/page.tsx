@@ -15,8 +15,9 @@ import {
 import { InterventionForm, InterventionFormData } from '@/components/admin/services/intervention-form';
 import { InterventionsTable } from '@/components/admin/services/interventions-table';
 import { Intervention, CreateInterventionInput, UpdateInterventionInput } from '@/schema/intervention';
-import { useCreateIntervention, useDeleteIntervention, useInterventions, useServices, useUpdateIntervention } from '@/hooks/interventions';
+import { useCreateIntervention, useDeleteIntervention, useInterventions, useUpdateIntervention } from '@/hooks/interventions';
 import { ConfirmDeleteCard } from '@/components/admin/services/confirm-delete';
+import { useServices } from '@/hooks/services';
 
 export default function InterventionsPage() {
     const [open, setOpen] = React.useState(false);

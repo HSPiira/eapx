@@ -16,4 +16,8 @@ export interface Service {
         name: string;
         type: string;
     } | null;
-} 
+}
+
+export interface ServicesResponse {
+    data: Service[];
+}

@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const InterventionSchema = z.object({
-    id: z.string(),
+    id: z.string().cuid(),
     name: z.string(),
     description: z.string().nullable(),
-    serviceId: z.string(),
+    serviceId: z.string().cuid(),
     service: z.object({
-        id: z.string(),
+        id: z.string().cuid(),
         name: z.string(),
     }),
     status: z.enum(['ACTIVE', 'INACTIVE', 'PENDING', 'ARCHIVED', 'DELETED']),
@@ -19,9 +19,9 @@ export const InterventionSchema = z.object({
     deletedAt: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
-    serviceProviderId: z.string().nullable(),
+    serviceProviderId: z.string().cuid().nullable(),
     ServiceProvider: z.object({
-        id: z.string(),
+        id: z.string().cuid(),
         name: z.string(),
         type: z.string(),
     }).nullable().optional(),

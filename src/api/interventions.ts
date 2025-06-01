@@ -1,13 +1,5 @@
 import { CreateInterventionInput, Intervention, UpdateInterventionInput } from "@/schema/intervention";
-import { Service, InterventionsResponse } from "@/types/interventions";
-
-export async function fetchServices(): Promise<{ data: Service[] }> {
-    const res = await fetch('/api/services');
-    if (!res.ok) {
-        throw new Error('Failed to fetch services');
-    }
-    return res.json();
-}
+import { InterventionsResponse } from "@/types/interventions";
 
 export async function fetchInterventions(): Promise<InterventionsResponse> {
     const res = await fetch('/api/services/interventions?limit=50&page=1');

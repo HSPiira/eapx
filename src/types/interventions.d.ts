@@ -25,11 +25,6 @@ export interface Intervention {
     } | null;
 }
 
-export interface Service {
-    id: string;
-    name: string;
-}
-
 export interface InterventionsResponse {
     data: Intervention[];
 }

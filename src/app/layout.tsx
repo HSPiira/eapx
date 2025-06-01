@@ -8,6 +8,7 @@ import { AuthProvider } from "@/providers/auth-provider";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { Toaster } from "@/components/ui/toaster"
+import { ReactScan } from "@/components/admin";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <ReactScan />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

@@ -163,11 +163,11 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
     const isScheduled = sessionData?.status === 'SCHEDULED';
 
     return (
-        <div className="flex items-center justify-between w-full px-0 mx-0 mt-0 bg-white dark:bg-black">
+        <div className="fixed top-0 left-[240px] right-0 z-50 flex items-center justify-between w-[calc(100%-240px)] px-4 py-3 bg-white dark:bg-black border-b border-gray-200">
             {/* Left: Back + Title */}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
                 <button
-                    className="p-1 rounded-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border focus:bg-gray-100 dark:focus:bg-gray-800 transition-colors"
+                    className="flex-shrink-0 p-1 rounded-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border focus:bg-gray-100 dark:focus:bg-gray-800 transition-colors"
                     onClick={() => router.push('/sessions/unconfirmed')}
                     aria-label="Back to Sessions"
                 >
@@ -175,13 +175,13 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
                 </button>
                 <span className={`font-bold text-lg truncate ${error ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{sessionTitle}</span>
                 {error && (
-                    <span className="text-sm text-red-600 ml-2">{error}</span>
+                    <span className="text-sm text-red-600 ml-2 truncate">{error}</span>
                 )}
             </div>
             {/* Right: Hidden toggle, menu, save */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="flex items-center gap-1">
-                    <span className="text-gray-700 font-medium text-sm">Hidden</span>
+                    <span className="text-gray-700 font-medium text-sm whitespace-nowrap">Hidden</span>
                     <button
                         className={`w-8 h-5 flex items-center bg-gray-200 rounded-full p-0.5 transition-colors duration-200 ${hidden ? 'bg-blue-500' : ''}`}
                         onClick={() => setHidden(h => !h)}
@@ -199,7 +199,7 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
                 </div>
                 <span className="h-5 w-px bg-gray-200 mx-1" />
                 <button
-                    className={`px-3 py-1.5 rounded font-semibold transition-colors ml-1 text-sm ${isScheduled
+                    className={`px-3 py-1.5 rounded font-semibold transition-colors ml-1 text-sm whitespace-nowrap ${isScheduled
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 hover:bg-gray-800'
                         }`}

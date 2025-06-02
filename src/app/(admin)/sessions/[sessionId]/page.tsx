@@ -1,13 +1,11 @@
 'use client'
-import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import { useSession } from 'next-auth/react';
 import { SessionHeader } from './session-header';
 import { FormData, SectionKey, sectionComponents, SessionData } from './types';
 import { ReviewDetails } from './review-details';
 import { Sidebar, TabBar } from './session-sidebar';
-import { toast } from 'sonner';
+import { useSessionDetails } from '@/hooks/sessions/useSessionDetails';
 
 function Content({
     selected,
@@ -17,7 +15,7 @@ function Content({
 }: {
     selected: string;
     formData: FormData;
-    setFormData: Dispatch<SetStateAction<FormData>>;
+    setFormData: (data: FormData | ((prev: FormData) => FormData)) => void;
     onConfirm: () => void;
 }) {
     if (selected === 'review') {
@@ -44,8 +42,9 @@ function Content({
                 <SectionComponent
                     data={formData[sectionKey]}
                     setData={(d: FormData[typeof sectionKey]) =>
-                        setFormData((prev) => ({ ...prev, [sectionKey]: d }))
+                        setFormData((prev: FormData) => ({ ...prev, [sectionKey]: d }))
                     }
+                    {...(sectionKey === 'client' ? { clientId: formData.client.clientId } : {})}
                 />
             </div>
         );
@@ -60,214 +59,90 @@ function Content({
 }
 
 export default function SessionEditPage() {
-    const searchParams = useSearchParams();
-    const [selected, setSelected] = useState(searchParams.get('tab') || 'client-setup');
+    const { sessionId } = useParams();
+    const [selected, setSelected] = useState('client-setup');
     const [formData, setFormData] = useState<FormData>({
         client: {},
         intervention: {},
         counselor: {},
         location: {},
     });
-    const [, setSessionData] = useState<SessionData | null>(null);
-    const [, setError] = useState<string | null>(null);
-    const params = useParams();
-    const router = useRouter();
-    const { status } = useSession();
 
-    // Update URL when tab changes
+    // Initialize with empty session data
+    const [sessionData, setSessionData] = useState<SessionData | null>(null);
+
+    const { session, staff, dependants, isLoading, isError, error } = useSessionDetails(
+        sessionId as string,
+        sessionData?.client?.id || '',
+        sessionData?.staffId
+    );
+
+    // Update session data when session is loaded
     useEffect(() => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', selected);
-        window.history.replaceState({}, '', url.toString());
-    }, [selected]);
+        if (session) {
+            setSessionData(session);
+        }
+    }, [session]);
 
-    // Single useEffect for data fetching
+    // Update form data when session data is loaded
     useEffect(() => {
-        const fetchSessionData = async () => {
-            try {
-                if (status === 'loading') return;
-                if (status === 'unauthenticated') {
-                    router.push('/auth/login');
-                    return;
-                }
-
-                setError(null);
-                const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    throw new Error(errorData.error || `Failed to fetch session: ${res.status}`);
-                }
-
-                const data = await res.json();
-                setSessionData(data);
-
-                // Update form data with session data
-                setFormData(prev => {
-                    // Determine timeFormat (default to 12hr if not set)
-                    const timeFormat = '12hr';
-
-                    // Format the time slot from scheduledAt
-                    const selectedSlot = data.scheduledAt ? new Date(data.scheduledAt).toLocaleTimeString('en-US', {
+        if (sessionData) {
+            setFormData((prev: FormData) => ({
+                ...prev,
+                client: {
+                    ...prev.client,
+                    company: sessionData.client?.name || '',
+                    clientId: sessionData.client?.id || '',
+                    staff: sessionData.staffId || '',
+                    dependant: sessionData.beneficiaryId || '',
+                    sessionType: sessionData.sessionType,
+                    numAttendees: sessionData.metadata?.numAttendees || 1,
+                    sessionFor: sessionData.metadata?.sessionFor || 'organization',
+                    whoFor: sessionData.metadata?.whoFor || 'self',
+                    notes: sessionData.metadata?.clientNotes || '',
+                },
+                intervention: {
+                    ...prev.intervention,
+                    intervention: sessionData.interventionId || '',
+                    notes: sessionData.metadata?.interventionNotes || '',
+                },
+                counselor: {
+                    ...prev.counselor,
+                    provider: sessionData.providerId || '',
+                    staff: sessionData.providerStaffId || '',
+                    date: sessionData.scheduledAt ? new Date(sessionData.scheduledAt) : undefined,
+                    duration: sessionData.duration ? sessionData.duration.toString() : '30',
+                    selectedSlot: sessionData.scheduledAt ? new Date(sessionData.scheduledAt).toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
-                        hour12: timeFormat === '12hr'
-                    }) : '';
-
-                    // Determine sessionFor based on metadata and client
-                    const sessionFor = data.metadata?.sessionFor || (data.client?.id ? 'organization' : 'staff');
-
-                    // Use sessionType directly from the database
-                    const sessionType = data.sessionType;
-
-                    return ({
-                        ...prev,
-                        client: {
-                            ...prev.client,
-                            company: data.client?.name || '',
-                            clientId: data.client?.id || '',
-                            staff: data.staffId || '',
-                            dependant: data.beneficiaryId || '',
-                            sessionType: sessionType,
-                            numAttendees: data.metadata?.numAttendees || 1,
-                            sessionFor,
-                            whoFor: data.metadata?.whoFor || 'self',
-                            notes: data.metadata?.clientNotes || '',
-                        },
-                        intervention: {
-                            ...prev.intervention,
-                            intervention: data.interventionId || '',
-                            notes: data.metadata?.interventionNotes || '',
-                        },
-                        counselor: {
-                            ...prev.counselor,
-                            provider: data.providerId || '',
-                            staff: data.providerStaffId || '',
-                            date: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
-                            duration: data.duration ? data.duration.toString() : '30',
-                            selectedSlot,
-                            timeFormat,
-                        },
-                        location: {
-                            ...prev.location,
-                            location: data.location || '',
-                            requirements: data.metadata?.requirements || '',
-                        }
-                    });
-                });
-            } catch (error) {
-                console.error('Error fetching session:', error);
-                setError(error instanceof Error ? error.message : 'Failed to fetch session');
-            }
-        };
-
-        if (params.sessionId) {
-            fetchSessionData();
-        }
-    }, [params.sessionId, status, router]);
-
-    const handleConfirm = async () => {
-        try {
-            if (!params.sessionId) {
-                throw new Error('No session ID found');
-            }
-
-            // Parse the selected time slot and date
-            const { date, selectedSlot, duration } = formData.counselor;
-            if (!date || !selectedSlot || !duration) {
-                throw new Error('Please select a date, time slot, and duration');
-            }
-
-            // Convert time slot to DateTime
-            const [time, period] = selectedSlot.split(' ');
-            let hours;
-            const [, minutes] = time.split(':').map(Number);
-            [hours] = time.split(':').map(Number);
-
-            // Adjust hours for PM
-            if (period === 'pm' && hours !== 12) {
-                hours += 12;
-            }
-            // Adjust hours for AM
-            if (period === 'am' && hours === 12) {
-                hours = 0;
-            }
-
-            // Create scheduledAt DateTime
-            const scheduledAt = new Date(date);
-            scheduledAt.setHours(hours, minutes, 0, 0);
-
-            // Validate that the scheduled time is not in the past
-            const now = new Date();
-            if (scheduledAt < now) {
-                throw new Error('Session cannot be scheduled in the past');
-            }
-
-            // Create a complete update object with all required fields
-            const sessionUpdate = {
-                clientId: formData.client.clientId,
-                staffId: formData.client.staff || null,
-                beneficiaryId: formData.client.dependant || null,
-                isGroupSession: ['group', 'family', 'couple'].includes(formData.client.sessionType || ''),
-                sessionType: formData.client.sessionType,
-                notes: formData.client.notes,
-                interventionId: formData.intervention.intervention,
-                providerId: formData.counselor.provider,
-                providerStaffId: formData.counselor.staff || null,
-                scheduledAt: scheduledAt.toISOString(),
-                duration: parseInt(duration),
-                location: formData.location.location,
-                status: 'SCHEDULED',
-                metadata: {
-                    numAttendees: formData.client.numAttendees,
-                    sessionFor: formData.client.sessionFor,
-                    whoFor: formData.client.whoFor,
-                    clientNotes: formData.client.notes,
-                    interventionNotes: formData.intervention.notes,
-                    requirements: formData.location.requirements,
-                }
-            };
-
-            const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
+                        hour12: true
+                    }) : '',
+                    timeFormat: '12hr',
                 },
-                body: JSON.stringify(sessionUpdate),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || `Failed to confirm session: ${res.status}`);
-            }
-
-            toast.success('Session confirmed successfully!');
-            router.push('/sessions/upcoming');
-        } catch (error) {
-            console.error('Error confirming session:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to confirm session');
+                location: {
+                    ...prev.location,
+                    location: sessionData.location || '',
+                    requirements: sessionData.metadata?.requirements || '',
+                }
+            }));
         }
-    };
+    }, [sessionData]);
+
+    if (isLoading) return <div>Loading...</div>;
+    if (isError) return <div>Error loading session details: {error?.message}</div>;
 
     return (
-        <div className="flex flex-col h-screen w-full">
-            <div className="sticky top-0 z-20 w-full bg-white">
+        <div className="flex h-full">
+            <Sidebar selected={selected} onSelect={setSelected} />
+            <div className="flex-1 flex flex-col">
                 <SessionHeader formData={formData} />
-                <TabBar selected={selected} onSelect={setSelected} />
-            </div>
-            <div className="flex flex-1 min-h-0">
-                <Sidebar selected={selected} onSelect={setSelected} />
-                <div className="flex-1 overflow-y-auto">
+                <div>
+                    <TabBar selected={selected} onSelect={setSelected} />
                     <Content
                         selected={selected}
                         formData={formData}
                         setFormData={setFormData}
-                        onConfirm={handleConfirm}
+                        onConfirm={() => { }}
                     />
                 </div>
             </div>

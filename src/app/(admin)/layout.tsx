@@ -1,6 +1,6 @@
-import {Header} from "@/components/admin/header/header";
+import { Header } from "@/components/admin/header/header";
 import React from "react";
-import {AppSidebar} from "@/components/admin";
+import { AppSidebar } from "@/components/admin";
 
 const user = {
     avatar: 'https://i.pravatar.cc/100',
@@ -9,11 +9,16 @@ const user = {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="min-h-screen flex flex-col md:flex-row bg-white dark:bg-black">
+        <div className="min-h-screen bg-white dark:bg-black">
+            {/* Fixed Header (hidden on md+) */}
             <Header user={user} />
+            {/* Fixed Sidebar (md+) */}
             <AppSidebar user={user} />
-            <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
-                <div className="px-4 md:px-4 py-4">
+            {/* Main content area, scrollable, with padding for header and margin for sidebar */}
+            <main
+                className="pt-0 md:pt-0 md:ml-16 lg:ml-56 h-screen overflow-y-auto overflow-x-hidden transition-all flex flex-col"
+            >
+                <div className="flex-1 rounded-sm mx-auto p-6 w-full m-3 max-w-7xl">
                     {children}
                 </div>
             </main>

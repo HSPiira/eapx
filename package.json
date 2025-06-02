@@ -99,6 +99,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "node-fetch": "^3.3.2",
     "prisma": "^6.8.2",
+    "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^4",
     "ts-jest": "^29.3.4",
     "ts-node": "^10.9.2",

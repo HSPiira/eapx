@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { InterventionDetails } from "./intervention-details";
-import { ClientDetails } from "./client-details";
+import ClientDetails from "./client-details";
 import { CounselorAvailabilityDetails } from "./counselor-availability";
 import { LocationDetails } from "./location-details";
 import { SessionType as PrismaSessionType } from "@prisma/client";
@@ -51,6 +51,7 @@ export type SectionKey = keyof FormData;
 export type SectionComponentProps<T extends SectionKey> = {
     data: FormData[T];
     setData: (d: FormData[T]) => void;
+    clientId?: string;
 };
 
 export const sectionComponents = {
@@ -62,8 +63,8 @@ export const sectionComponents = {
 
 export interface SessionMetadata {
     numAttendees?: number;
-    sessionFor?: 'organization' | 'individual' | 'staff';
-    whoFor?: 'self' | 'dependant' | 'other';
+    sessionFor?: 'organization' | 'staff';
+    whoFor?: 'self' | 'dependant';
     requirements?: string;
     clientNotes?: string;
     interventionNotes?: string;
@@ -79,6 +80,7 @@ export interface SessionData {
     staffId?: string;
     beneficiaryId?: string;
     isGroupSession: boolean;
+    sessionType?: SessionType;
     notes?: string;
     interventionId?: string;
     providerId?: string;

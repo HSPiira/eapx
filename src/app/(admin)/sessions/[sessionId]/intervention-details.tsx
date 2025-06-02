@@ -139,7 +139,7 @@ export function InterventionDetails({ data, setData }: InterventionDetailsProps)
     // Show error states
     if (servicesError || interventionsError) {
         return (
-            <div className="w-full flex items-start justify-start mt-6">
+            <div className="w-full flex items-start justify-start">
                 <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
                     <div className="text-center text-red-500">
                         <p>Error loading data. Please try again.</p>

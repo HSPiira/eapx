@@ -1,357 +1,302 @@
-import React, { FC } from "react";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { SelectContent } from "@/components/ui/select";
-import { SelectItem } from "@/components/ui/select";
-import { SelectTrigger } from "@/components/ui/select";
-import { SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { ClientDetailsData, SessionType } from "./types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import React, { useEffect, useMemo } from 'react';
+import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useValidateSessionType } from '@/hooks/sessions/useValidateSessionType';
+import { useStaff } from '@/hooks/staff';
+import { useStaffDependants } from '@/hooks/staff-dependants';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 
-interface Staff {
-    id: string;
-    name: string;
-    profile?: {
-        fullName?: string;
-    };
+const ORG_SESSION_TYPES = ['TALK', 'WEBINAR', 'TRAINING', 'WORKSHOP', 'SEMINAR', 'CONFERENCE'] as const;
+const STAFF_SESSION_TYPES = ['INDIVIDUAL', 'COUPLE', 'FAMILY', 'GROUP'] as const;
+
+type OrgSessionType = typeof ORG_SESSION_TYPES[number];
+type StaffSessionType = typeof STAFF_SESSION_TYPES[number];
+type SessionType = OrgSessionType | StaffSessionType;
+
+type SessionFor = 'organization' | 'staff';
+
+type WhoFor = 'self' | 'dependant';
+
+interface SessionAttendees {
+    staff?: string[];
+    dependants?: string[];
 }
 
-interface Dependant {
-    id: string;
-    name: string;
+interface SessionData {
+    company?: string;
+    sessionFor: SessionFor;
+    staffId?: string;
+    whoFor?: WhoFor;
+    sessionType?: SessionType;
+    numberOfAttendees?: number;
+    attendees?: SessionAttendees;
+    comments?: string;
+    dependantId?: string;
 }
 
 interface ClientDetailsProps {
-    data: ClientDetailsData;
-    setData: (d: ClientDetailsData) => void;
+    sessionFor: SessionFor;
+    data: SessionData;
+    setData: (data: SessionData) => void;
+    clientId: string;
 }
 
-const MIN_ATTENDEES = 5;
+const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsProps) => {
+    // Queries
+    const { data: staffData, isLoading: isStaffLoading, isError: isStaffError, refetch: refetchStaff, } = useStaff(clientId);
+    const { data: dependantsData, isLoading: isDependantsLoading, isError: isDependantsError, refetch: refetchDependants } = useStaffDependants(clientId, data.staffId ?? "");
 
-const OrganizationSessionTypes: FC<{ value?: SessionType; onChange: (value: SessionType) => void }> = ({ value, onChange }) => {
-    const orgTypes = [
-        { value: 'TALK', label: 'Talk' },
-        { value: 'WEBINAR', label: 'Webinar' },
-        { value: 'TRAINING', label: 'Training' },
-        { value: 'WORKSHOP', label: 'Workshop' },
-        { value: 'SEMINAR', label: 'Seminar' },
-        { value: 'CONFERENCE', label: 'Conference' },
-    ] as const;
+    // Memoized lists
+    const staffList = useMemo(() => staffData?.data || [], [staffData]);
+    const dependants = useMemo(() => dependantsData?.data || [], [dependantsData]);
 
-    return (
-        <div className="space-y-1">
-            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session Type</Label>
-            <Select value={value || 'TALK'} onValueChange={(value) => onChange(value as SessionType)}>
-                <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
-                    <SelectValue placeholder="Select session type" />
-                </SelectTrigger>
-                <SelectContent>
-                    {orgTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-    );
-};
+    // Custom hook for session type validation
+    useValidateSessionType(sessionFor, data, setData, ORG_SESSION_TYPES, STAFF_SESSION_TYPES);
 
-const StaffSessionTypes: FC<{ value?: SessionType; onChange: (value: SessionType) => void }> = ({ value, onChange }) => {
-    const staffTypes = [
-        { value: 'INDIVIDUAL', label: 'Individual' },
-        { value: 'COUPLE', label: 'Couple' },
-        { value: 'FAMILY', label: 'Family' },
-        { value: 'GROUP', label: 'Group' },
-    ] as const;
-
-    return (
-        <div className="space-y-1">
-            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session Type</Label>
-            <Select value={value || 'INDIVIDUAL'} onValueChange={(value) => onChange(value as SessionType)}>
-                <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
-                    <SelectValue placeholder="Select session type" />
-                </SelectTrigger>
-                <SelectContent>
-                    {staffTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-    );
-};
-
-export function ClientDetails({ data, setData }: ClientDetailsProps) {
-    const { sessionFor = 'organization', whoFor = 'self', sessionType, numAttendees = 1, company = '', staff = '', dependant = '', clientId = '' } = data || {};
-    const queryClient = useQueryClient();
-
-    // Set initial session type on mount
-    React.useEffect(() => {
-        if (sessionFor === 'organization') {
-            // For organization sessions, validate or set default
-            const orgTypes = ['TALK', 'WEBINAR', 'TRAINING', 'WORKSHOP', 'SEMINAR', 'CONFERENCE'] as const;
-            if (!sessionType || !orgTypes.includes(sessionType as unknown as typeof orgTypes[number])) {
-                setData({ ...data, sessionType: 'TALK' });
-            }
-        } else if (sessionFor === 'staff') {
-            // For staff sessions, validate or set default
-            const staffTypes = ['INDIVIDUAL', 'COUPLE', 'FAMILY', 'GROUP'] as const;
-            if (!sessionType || !staffTypes.includes(sessionType as unknown as typeof staffTypes[number])) {
-                setData({ ...data, sessionType: 'INDIVIDUAL' });
-            }
-        }
-    }, [sessionFor, sessionType, data, setData]);
-
-    // Update numAttendees when sessionType changes
-    React.useEffect(() => {
-        if (sessionFor === 'organization') {
-            // For organization sessions, ensure minimum of 5 attendees
-            if (numAttendees < MIN_ATTENDEES) {
-                setData({ ...data, numAttendees: MIN_ATTENDEES });
-            }
-        } else if (sessionFor === 'staff') {
-            if (sessionType === 'COUPLE') {
-                setData({ ...data, numAttendees: 2 });
-            } else if (sessionType === 'GROUP' || sessionType === 'FAMILY') {
-                setData({ ...data, numAttendees: MIN_ATTENDEES });
-            } else if (sessionType === 'INDIVIDUAL') {
-                setData({ ...data, numAttendees: 1 });
-            }
-        }
-    }, [sessionFor, sessionType, data, setData, numAttendees]);
-
-    // Update session type when sessionFor changes
-    React.useEffect(() => {
-        if (sessionFor === 'organization') {
-            // Only set default if no session type is set
-            if (!sessionType) {
-                setData({ ...data, sessionType: 'TALK' });
-            } else {
-                // Validate that the current session type is valid for organization
-                const orgTypes = ['TALK', 'WEBINAR', 'TRAINING', 'WORKSHOP', 'SEMINAR', 'CONFERENCE'] as const;
-                if (!orgTypes.includes(sessionType as unknown as typeof orgTypes[number])) {
-                    setData({ ...data, sessionType: 'TALK' });
-                }
-            }
-        }
-    }, [sessionFor, data, setData, sessionType]);
-
-    React.useEffect(() => {
-        if (sessionFor === 'staff') {
-            // Only set default if no session type is set
-            if (!sessionType) {
-                setData({ ...data, sessionType: 'INDIVIDUAL' });
-            } else {
-                // Validate that the current session type is valid for staff
-                const staffTypes = ['INDIVIDUAL', 'COUPLE', 'FAMILY', 'GROUP'] as const;
-                if (!staffTypes.includes(sessionType as unknown as typeof staffTypes[number])) {
-                    setData({ ...data, sessionType: 'INDIVIDUAL' });
-                }
-            }
-        }
-    }, [sessionFor, data, setData, sessionType]);
-
-    // Prefetch staff data when clientId is available
-    React.useEffect(() => {
-        if (clientId) {
-            queryClient.prefetchQuery({
-                queryKey: ['staff', clientId],
-                queryFn: async () => {
-                    const res = await fetch(`/api/clients/${clientId}/staff`);
-                    if (!res.ok) throw new Error('Failed to fetch staff');
-                    return res.json();
-                },
-                staleTime: 5 * 60 * 1000, // 5 minutes
-                gcTime: 30 * 60 * 1000, // 30 minutes
+    // Automatically preselect staff if only one exists
+    useEffect(() => {
+        if (staffList.length === 1 && !data.staffId) {
+            setData({
+                ...data,
+                staffId: staffList[0].id,
             });
         }
-    }, [clientId, queryClient]);
+    }, [staffList, data, setData]);
 
-    // Prefetch beneficiaries when staff is selected
-    React.useEffect(() => {
-        if (clientId && staff) {
-            queryClient.prefetchQuery({
-                queryKey: ['beneficiaries', clientId, staff],
-                queryFn: async () => {
-                    const res = await fetch(`/api/clients/${clientId}/staff/${staff}/beneficiaries`);
-                    if (!res.ok) throw new Error('Failed to fetch beneficiaries');
-                    return res.json();
-                },
-                staleTime: 5 * 60 * 1000,
-                gcTime: 30 * 60 * 1000,
-            });
-        }
-    }, [clientId, staff, queryClient]);
+    const [staffSearch, setStaffSearch] = React.useState('');
+    const [dependantSearch, setDependantSearch] = React.useState('');
 
-    // Fetch staff data
-    const { data: staffData, isLoading: loadingStaff, error: staffError } = useQuery({
-        queryKey: ['staff', clientId],
-        queryFn: async () => {
-            const res = await fetch(`/api/clients/${clientId}/staff`);
-            if (!res.ok) throw new Error('Failed to fetch staff');
-            return res.json();
-        },
-        enabled: !!clientId,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
-        retry: 2,
-        retryDelay: 1000,
-    });
+    return (
+        <div className="mt-6 border border-gray-200 rounded-sm">
+            <Card className="border-none">
+                <CardHeader>
+                    <CardTitle>Client Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* Company */}
+                    <div className="flex flex-col gap-1">
+                        <Label htmlFor="company">Company</Label>
+                        <Input id="company" value={data.company || ''} disabled />
+                    </div>
 
-    // Fetch beneficiaries data
-    const { data: beneficiariesData, isLoading: loadingDependants, error: beneficiariesError } = useQuery({
-        queryKey: ['beneficiaries', clientId, staff],
-        queryFn: async () => {
-            const res = await fetch(`/api/clients/${clientId}/staff/${staff}/beneficiaries`);
-            if (!res.ok) throw new Error('Failed to fetch beneficiaries');
-            return res.json();
-        },
-        enabled: !!clientId && !!staff,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
-        retry: 2,
-        retryDelay: 1000,
-    });
-
-    // Handle staff selection
-    const handleStaffChange = (newStaffId: string) => {
-        setData({ ...data, staff: newStaffId, dependant: '' });
-    };
-
-    // Memoize staffList to prevent unnecessary re-renders
-    const staffList = React.useMemo(() =>
-        staffData?.data?.map((s: Staff) => ({
-            id: s.id,
-            name: s.profile?.fullName || s.name || 'Unnamed Staff'
-        })) || [],
-        [staffData?.data]
-    );
-
-    const dependants = beneficiariesData?.data || [];
-
-    // Auto-select staff if only one staff and none is selected
-    React.useEffect(() => {
-        if (!staff && staffList.length === 1) {
-            setData({ ...data, staff: staffList[0].id });
-        }
-    }, [staffList, staff, data, setData]);
-
-    // Show error states
-    if (staffError || beneficiariesError) {
-        return (
-            <div className="w-full flex items-start justify-start mt-6">
-                <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
-                    <div className="text-center text-red-500">
-                        <p>Error loading data. Please try again.</p>
-                        <Button
-                            onClick={() => {
-                                queryClient.invalidateQueries({ queryKey: ['staff', clientId] });
-                                if (staff) {
-                                    queryClient.invalidateQueries({ queryKey: ['beneficiaries', clientId, staff] });
-                                }
+                    {/* Session for? */}
+                    <div className="flex items-center gap-4 mt-2">
+                        <Label htmlFor="sessionForSwitch" className="mr-2 whitespace-nowrap">Session for?</Label>
+                        <span className={
+                            `text-sm font-medium transition-colors ${data.sessionFor === 'organization' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
+                        }>
+                            Organization
+                        </span>
+                        <Switch
+                            id="sessionForSwitch"
+                            checked={data.sessionFor === 'staff'}
+                            onCheckedChange={(checked) => {
+                                const newSessionFor = checked ? 'staff' : 'organization';
+                                const validTypes: SessionType[] = newSessionFor === 'organization'
+                                    ? Array.from(ORG_SESSION_TYPES)
+                                    : Array.from(STAFF_SESSION_TYPES);
+                                setData({
+                                    ...data,
+                                    sessionFor: newSessionFor,
+                                    sessionType: data.sessionType && validTypes.includes(data.sessionType) ? data.sessionType : undefined,
+                                    whoFor: checked ? data.whoFor : undefined,
+                                    dependantId: checked ? data.dependantId : undefined,
+                                });
                             }}
-                            className="mt-4"
+                            className="relative"
                         >
-                            Retry
-                        </Button>
+                            {/* Tick icon for checked state */}
+                            {data.sessionFor === 'staff' && (
+                                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none text-primary-foreground text-base">✓</span>
+                            )}
+                        </Switch>
+                        <span className={
+                            `text-sm font-medium transition-colors ${data.sessionFor === 'staff' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
+                        }>
+                            Staff
+                        </span>
                     </div>
-                </div>
-            </div>
-        );
-    }
 
-    return (
-        <div className="w-full flex items-start justify-start mt-6">
-            <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
-                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Client Details</h2>
-                {/* Company */}
-                <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Company</Label>
-                    <input
-                        value={company}
-                        readOnly
-                        disabled
-                        className="w-full border dark:border-gray-700 text-sm rounded-sm px-3 py-2 bg-background text-gray-700 dark:text-gray-300"
-                    />
-                </div>
-                {/* Session for? */}
-                <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Session for?</Label>
-                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
-                        <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${sessionFor === 'organization' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, sessionFor: 'organization' })}>Organization</button>
-                        <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${sessionFor === 'staff' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, sessionFor: 'staff' })}>Staff</button>
-                    </div>
-                </div>
-                {/* Staff and Who is it for? (only if Staff) */}
-                {sessionFor === 'staff' && (
-                    <>
-                        <div className="space-y-1">
-                            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Staff</Label>
-                            <Select value={staff} onValueChange={handleStaffChange}>
-                                <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
-                                    <SelectValue placeholder={loadingStaff ? "Loading staff..." : "Select staff"} />
+                    {/* Staff (only if sessionFor is 'staff') */}
+                    {data.sessionFor === 'staff' && (
+                        <div className="flex flex-col gap-1">
+                            <Label htmlFor="staff">Staff</Label>
+                            <Select
+                                value={data.staffId || ''}
+                                onValueChange={(value) => setData({ ...data, staffId: value })}
+                                disabled={isStaffLoading}
+                            >
+                                <SelectTrigger id="staff" className="w-full">
+                                    {isStaffLoading
+                                        ? 'Loading...'
+                                        : staffList.length === 0
+                                            ? 'No staff available'
+                                            : staffList.find(staff => staff.id === data.staffId)?.profile?.fullName ||
+                                            staffList.find(staff => staff.id === data.staffId)?.id ||
+                                            'Select staff'}
                                 </SelectTrigger>
-                                <SelectContent>
-                                    {staffList.map((s: { id: string; name: string }) => (
-                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                    ))}
+                                <SelectContent className="max-h-56 overflow-y-auto">
+                                    <Input
+                                        placeholder="Search staff..."
+                                        value={staffSearch}
+                                        onChange={e => setStaffSearch(e.target.value)}
+                                        className="mb-2"
+                                    />
+                                    {staffList.length === 0 ? (
+                                        <SelectItem value="__no_staff__" disabled>No staff available</SelectItem>
+                                    ) : (
+                                        staffList
+                                            .filter(staff =>
+                                                (staff.profile?.fullName || staff.id)
+                                                    .toLowerCase()
+                                                    .includes(staffSearch.toLowerCase())
+                                            )
+                                            .map((staff) => (
+                                                <SelectItem key={staff.id} value={staff.id}>
+                                                    {staff.profile?.fullName || staff.id}
+                                                </SelectItem>
+                                            ))
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1">
-                            <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Who is it for?</Label>
-                            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
-                                <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${whoFor === 'self' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, whoFor: 'self' })}>Self</button>
-                                <button type="button" className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${whoFor === 'dependant' ? 'bg-white dark:bg-gray-700 border border-blue-400 text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'}`} onClick={() => setData({ ...data, whoFor: 'dependant' })}>Dependant</button>
-                            </div>
+                    )}
+
+                    {/* Who is it for? (only if sessionFor is 'staff') */}
+                    {data.sessionFor === 'staff' && (
+                        <div className="flex items-center gap-4 mt-2">
+                            <Label htmlFor="whoForSwitch" className="mr-2 whitespace-nowrap">Who is it for?</Label>
+                            <span className={
+                                `text-sm font-medium transition-colors ${data.whoFor === 'self' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
+                            }>
+                                Self
+                            </span>
+                            <Switch
+                                id="whoForSwitch"
+                                checked={data.whoFor === 'dependant'}
+                                onCheckedChange={(checked) => setData({
+                                    ...data,
+                                    whoFor: checked ? 'dependant' : 'self',
+                                    dependantId: checked ? data.dependantId : undefined,
+                                })}
+                                className="relative"
+                            >
+                                {/* Tick icon for checked state */}
+                                {data.whoFor === 'dependant' && (
+                                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none text-primary-foreground text-base">✓</span>
+                                )}
+                            </Switch>
+                            <span className={
+                                `text-sm font-medium transition-colors ${data.whoFor === 'dependant' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
+                            }>
+                                Dependant
+                            </span>
                         </div>
-                        {/* Dependant dropdown (only if Who is it for? is dependant) */}
-                        {whoFor === 'dependant' && (
-                            <div className="space-y-1">
-                                <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Dependant</Label>
-                                <Select value={dependant} onValueChange={v => setData({ ...data, dependant: v })} disabled={!staff}>
-                                    <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
-                                        <SelectValue placeholder={loadingDependants ? "Loading dependants..." : "Select dependant"} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {dependants.map((d: Dependant) => (
-                                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                    </>
-                )}
-                {/* Session Type */}
-                {sessionFor === 'organization' ? (
-                    <OrganizationSessionTypes value={sessionType} onChange={v => setData({ ...data, sessionType: v })} />
-                ) : (
-                    <StaffSessionTypes value={sessionType} onChange={v => setData({ ...data, sessionType: v })} />
-                )}
-                {/* Number of Attendees */}
-                <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Number of Attendees</Label>
-                    <input
-                        type="number"
-                        min={1}
-                        value={numAttendees}
-                        onChange={e => setData({ ...data, numAttendees: parseInt(e.target.value) })}
-                        className="w-full border dark:border-gray-700 text-sm rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background"
-                    />
-                </div>
-                {/* Notes */}
-                <div className="space-y-1">
-                    <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Notes</Label>
-                    <Textarea
-                        value={data.notes || ''}
-                        onChange={e => setData({ ...data, notes: e.target.value })}
-                        className="w-full border dark:border-gray-700 text-sm rounded-sm px-3 py-2 min-h-[80px] focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background"
-                        placeholder="Add any additional notes..."
-                    />
-                </div>
-            </div>
+                    )}
+
+                    {/* Dependants (only if whoFor is 'dependant' and sessionFor is 'staff') */}
+                    {data.sessionFor === 'staff' && data.whoFor === 'dependant' && (
+                        <div className="flex flex-col gap-1">
+                            <Label htmlFor="dependant">Dependant</Label>
+                            <Select
+                                value={data.dependantId || ''}
+                                onValueChange={value => setData({ ...data, dependantId: value })}
+                                disabled={isDependantsLoading}
+                            >
+                                <SelectTrigger id="dependant" className="w-full">
+                                    {isDependantsLoading
+                                        ? 'Loading...'
+                                        : dependants.length === 0
+                                            ? 'No dependants available'
+                                            : dependants.find(dep => dep.id === data.dependantId)?.profile?.fullName ||
+                                            dependants.find(dep => dep.id === data.dependantId)?.id ||
+                                            'Select dependant'}
+                                </SelectTrigger>
+                                <SelectContent className="max-h-56 overflow-y-auto">
+                                    <Input
+                                        placeholder="Search dependant..."
+                                        value={dependantSearch}
+                                        onChange={e => setDependantSearch(e.target.value)}
+                                        className="mb-2"
+                                    />
+                                    {dependants.length === 0 ? (
+                                        <SelectItem value="__no_dependants__" disabled>No dependants available</SelectItem>
+                                    ) : (
+                                        dependants
+                                            .filter(dep =>
+                                                (dep.profile?.fullName || dep.id)
+                                                    .toLowerCase()
+                                                    .includes(dependantSearch.toLowerCase())
+                                            )
+                                            .map(dep => (
+                                                <SelectItem key={dep.id} value={dep.id}>
+                                                    {dep.profile?.fullName || dep.id}
+                                                </SelectItem>
+                                            ))
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {/* Session Type */}
+                    <div className="flex flex-col gap-1">
+                        <Label htmlFor="sessionType">Session Type</Label>
+                        <Select
+                            value={
+                                data.sessionType &&
+                                    ((data.sessionFor === 'organization' && ORG_SESSION_TYPES.includes(data.sessionType as OrgSessionType)) ||
+                                        (data.sessionFor === 'staff' && STAFF_SESSION_TYPES.includes(data.sessionType as StaffSessionType)))
+                                    ? data.sessionType
+                                    : ''
+                            }
+                            onValueChange={(value: SessionType) => setData({ ...data, sessionType: value })}
+                            disabled={isStaffLoading || isDependantsLoading}
+                        >
+                            <SelectTrigger id="sessionType" className="w-full">
+                                {isStaffLoading || isDependantsLoading
+                                    ? 'Loading...'
+                                    : data.sessionType || 'Select Session Type'}
+                            </SelectTrigger>
+                            <SelectContent className="max-h-56 overflow-y-auto">
+                                {(data.sessionFor === 'organization' ? ORG_SESSION_TYPES : STAFF_SESSION_TYPES).map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                        {type}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Number of Attendees */}
+                    <div className="flex flex-col gap-1">
+                        <Label htmlFor="numberOfAttendees">Number of Attendees</Label>
+                        <Input
+                            id="numberOfAttendees"
+                            type="number"
+                            min={1}
+                            value={data.numberOfAttendees || 1}
+                            onChange={e => setData({ ...data, numberOfAttendees: Number(e.target.value) })}
+                        />
+                    </div>
+
+                    {/* Notes */}
+                    <div className="flex flex-col gap-1">
+                        <Label htmlFor="comments">Notes</Label>
+                        <Textarea
+                            id="comments"
+                            placeholder="Add any additional notes..."
+                            value={data.comments || ''}
+                            onChange={(e) => setData({ ...data, comments: e.target.value })}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
-}
+};
+
+export default ClientDetails;

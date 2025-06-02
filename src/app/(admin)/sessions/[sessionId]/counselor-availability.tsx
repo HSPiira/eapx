@@ -128,7 +128,7 @@ function TimeSlot({ selectedSlot, onSelect, timeFormat, onFormatChange }: TimeSl
                     </Button>
                 </div>
             </div>
-            <div className="grid grid-cols-4 gap-2 mt-2 max-h-[200px] overflow-y-auto">
+            <div className="grid grid-cols-4 gap-2 mt-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 hover:scrollbar-thumb-gray-500 max-h-[240px]">
                 {timeSlots.map(slot => (
                     <button
                         key={slot}

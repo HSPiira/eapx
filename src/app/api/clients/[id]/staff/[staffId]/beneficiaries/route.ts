@@ -81,7 +81,7 @@ export async function GET(
                 profile: true,
                 guardian: true,
                 userLink: true,
-                ServiceSession: true,
+                CareSession: true,
             },
             skip: offset,
             take: limit,
@@ -197,7 +197,7 @@ export async function POST(
                 profile: true,
                 guardian: true,
                 userLink: true,
-                ServiceSession: true,
+                CareSession: true,
             },
         });
 

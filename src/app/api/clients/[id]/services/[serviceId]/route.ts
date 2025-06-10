@@ -37,7 +37,7 @@ export async function GET(
             include: {
                 service: {
                     include: {
-                        ServiceSession: true,
+                        CareSession: true,
                     },
                 },
                 contract: true,
@@ -100,7 +100,7 @@ export async function PUT(
             include: {
                 service: {
                     include: {
-                        ServiceSession: true,
+                        CareSession: true,
                     },
                 },
                 contract: true,
@@ -129,7 +129,7 @@ export async function DELETE(
             include: {
                 service: {
                     include: {
-                        ServiceSession: true,
+                        CareSession: true,
                     },
                 },
             },
@@ -140,7 +140,7 @@ export async function DELETE(
         }
 
         // Check if service has any sessions
-        if (serviceAssignment.service.ServiceSession.length > 0) {
+        if (serviceAssignment.service.CareSession.length > 0) {
             return NextResponse.json({
                 error: 'Cannot delete service assignment with active sessions',
             }, { status: 400 });

@@ -1,8 +1,8 @@
 'use client'
 
 import { DataTable } from "@/components/ui/data-table"
-import { columns } from "./columns"
-import { Staff } from "./columns"
+import { columns } from "../../../components/admin/clients/staff/columns"
+import { Staff } from "../../../components/admin/clients/staff/columns"
 
 interface StaffTableProps {
     data: Staff[]

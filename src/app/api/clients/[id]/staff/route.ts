@@ -1,31 +1,19 @@
-import { withRouteMiddleware } from '@/middleware/api-middleware';
-import { prisma } from '@/lib/prisma';
-import { cache } from '@/lib/cache';
-import { getPaginationParams } from '@/lib/api-utils';
-import { StaffRole, WorkStatus, Prisma } from '@prisma/client';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { withRouteMiddleware } from "@/middleware/api-middleware";
+import { prisma } from "@/lib/prisma";
+import { cache } from "@/lib/cache";
+import { getPaginationParams } from "@/lib/api-utils";
+import { StaffRole, WorkStatus, Prisma } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import {
+    findOrCreateUser,
+    findOrCreateProfile,
+    ensureStaffDoesNotExist,
+    createStaffRecord,
+    handleError,
+    createStaffSchema,
+} from "@/lib/staff";
 
-// Create Zod enums from Prisma enums
-
-// Define Params type for route handlers
 type Params = Promise<{ id: string }>;
-
-// Validation schema for staff creation/update
-const createStaffSchema = z.object({
-    profileId: z.string(),
-    jobTitle: z.string(),
-    companyId: z.string().optional(),
-    managementLevel: z.enum(['JUNIOR', 'MID', 'SENIOR', 'EXECUTIVE', 'OTHER']).optional(),
-    maritalStatus: z.enum(['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED']).optional(),
-    startDate: z.string().transform((val) => new Date(val)),
-    endDate: z.string().transform((val) => new Date(val)).optional(),
-    status: z.enum(['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED']).optional(),
-    qualifications: z.array(z.string()).optional(),
-    specializations: z.array(z.string()).optional(),
-    preferredWorkingHours: z.any().optional(),
-    metadata: z.any().optional(),
-});
 
 export async function GET(
     request: NextRequest,
@@ -34,16 +22,24 @@ export async function GET(
     return withRouteMiddleware(request, async () => {
         const { id } = await params;
         const { searchParams } = new URL(request.url);
-        const { page, limit, offset, search, status } = getPaginationParams(searchParams);
-        const role = searchParams.get('role') as StaffRole | undefined;
-        const hasBeneficiaries = searchParams.get('hasBeneficiaries') === 'true' ? true :
-            searchParams.get('hasBeneficiaries') === 'false' ? false : undefined;
+        const { page, limit, offset, search, status } =
+            getPaginationParams(searchParams);
+        const role = searchParams.get("role") as StaffRole | undefined;
+        const hasBeneficiaries =
+            searchParams.get("hasBeneficiaries") === "true"
+                ? true
+                : searchParams.get("hasBeneficiaries") === "false"
+                    ? false
+                    : undefined;
 
-        if (status && status !== 'all') {
+        if (status && status !== "all") {
             if (!Object.values(WorkStatus).includes(status as WorkStatus)) {
-                return NextResponse.json({
-                    error: `Invalid status value. Must be one of: ${Object.values(WorkStatus).join(', ')}`,
-                }, { status: 400 });
+                return NextResponse.json(
+                    {
+                        error: `Invalid status value. Must be one of: ${Object.values(WorkStatus).join(", ")}`,
+                    },
+                    { status: 400 }
+                );
             }
         }
 
@@ -52,11 +48,22 @@ export async function GET(
             deletedAt: null,
             OR: search
                 ? [
-                    { profile: { fullName: { contains: search, mode: Prisma.QueryMode.insensitive } } },
-                    { profile: { email: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+                    {
+                        profile: {
+                            fullName: {
+                                contains: search,
+                                mode: Prisma.QueryMode.insensitive,
+                            },
+                        },
+                    },
+                    {
+                        profile: {
+                            email: { contains: search, mode: Prisma.QueryMode.insensitive },
+                        },
+                    },
                 ]
                 : undefined,
-            status: status && status !== 'all' ? (status as WorkStatus) : undefined,
+            status: status && status !== "all" ? (status as WorkStatus) : undefined,
             ...(role && { role }),
             ...(hasBeneficiaries !== undefined && {
                 beneficiaries: hasBeneficiaries ? { some: {} } : { none: {} },
@@ -92,15 +99,15 @@ export async function GET(
                         emergencyContactEmail: true,
                         preferredLanguage: true,
                         preferredContactMethod: true,
-                        metadata: true
-                    }
+                        metadata: true,
+                    },
                 },
                 beneficiaries: true,
-                ServiceSession: true,
+                CareSession: true,
             },
             skip: offset,
             take: limit,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
         });
 
         const response = {
@@ -123,88 +130,53 @@ export async function POST(
     { params }: { params: Params }
 ) {
     return withRouteMiddleware(request, async () => {
-        const { id } = await params;
+        const { id: clientId } = await params;
+
         let body;
         try {
             body = await request.json();
         } catch {
-            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+            return NextResponse.json(
+                { error: "Invalid JSON in request body" },
+                { status: 400 }
+            );
         }
 
-        // Validate request body
         const validationResult = createStaffSchema.safeParse(body);
         if (!validationResult.success) {
-            return NextResponse.json({
-                error: 'Validation failed',
-                details: validationResult.error.errors,
-            }, { status: 400 });
-        }
-
-        // Check if profile exists
-        const profile = await prisma.profile.findUnique({
-            where: { id: validationResult.data.profileId },
-        });
-
-        if (!profile) {
-            return NextResponse.json({
-                error: 'Profile not found',
-            }, { status: 404 });
-        }
-
-        if (!profile.userId) {
-            return NextResponse.json({
-                error: 'Profile has no associated user',
-            }, { status: 400 });
-        }
-
-        const newStaff = await prisma.staff.create({
-            data: {
-                clientId: id,
-                userId: profile.userId,
-                profileId: validationResult.data.profileId,
-                jobTitle: validationResult.data.jobTitle,
-                companyId: validationResult.data.companyId || id,
-                managementLevel: validationResult.data.managementLevel || 'JUNIOR',
-                maritalStatus: validationResult.data.maritalStatus || 'SINGLE',
-                startDate: validationResult.data.startDate,
-                endDate: validationResult.data.endDate,
-                status: validationResult.data.status || 'ACTIVE',
-                qualifications: validationResult.data.qualifications || [],
-                specializations: validationResult.data.specializations || [],
-                preferredWorkingHours: validationResult.data.preferredWorkingHours,
-                metadata: validationResult.data.metadata,
-            },
-            include: {
-                profile: {
-                    select: {
-                        id: true,
-                        fullName: true,
-                        preferredName: true,
-                        email: true,
-                        phone: true,
-                        dob: true,
-                        gender: true,
-                        address: true,
-                        nationality: true,
-                        bloodType: true,
-                        allergies: true,
-                        medicalConditions: true,
-                        dietaryRestrictions: true,
-                        accessibilityNeeds: true,
-                        emergencyContactName: true,
-                        emergencyContactPhone: true,
-                        emergencyContactEmail: true,
-                        preferredLanguage: true,
-                        preferredContactMethod: true,
-                        metadata: true
-                    }
+            return NextResponse.json(
+                {
+                    error: "Validation failed",
+                    details: validationResult.error.errors,
                 },
-                beneficiaries: true,
-                ServiceSession: true,
-            },
-        });
+                { status: 400 }
+            );
+        }
 
-        await cache.deleteByPrefix(`clients:${id}:staff:`);
-        return NextResponse.json(newStaff, { status: 201 });
+        const data = validationResult.data;
+
+        try {
+            const result = await prisma.$transaction(async (tx) => {
+                const user = await findOrCreateUser(tx, data);
+                console.log('user', user);
+                const profile = await findOrCreateProfile(tx, user, data);
+                console.log('profile', profile);
+                await ensureStaffDoesNotExist(tx, profile.id, clientId);
+                console.log('staff does not exist');
+                const staff = await createStaffRecord(
+                    tx,
+                    profile.id,
+                    user.id,
+                    clientId,
+                    data
+                );
+                return staff;
+            });
+            console.log('result', result);
+            await cache.deleteByPrefix(`clients:${clientId}:staff:`);
+            return NextResponse.json(result, { status: 201 });
+        } catch (error) {
+            return handleError(error);
+        }
     });
-} 
+}

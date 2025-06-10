@@ -26,9 +26,9 @@ async function getStaffMember(id: string) {
                     profile: true,
                 },
             },
-            ServiceSession: {
+            CareSession: {
                 include: {
-                    service: true,
+                    intervention: true,
                     beneficiary: {
                         include: {
                             profile: true,
@@ -214,14 +214,14 @@ export default async function StaffDetailsPage({
                             <CardTitle>Service Sessions</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {staff.ServiceSession.length > 0 ? (
+                            {staff.CareSession.length > 0 ? (
                                 <div className="space-y-4">
-                                    {staff.ServiceSession.map((session) => (
+                                    {staff.CareSession.map((session) => (
                                         <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg">
                                             <div>
-                                                <p className="font-medium">{session.service.name}</p>
+                                                <p className="font-medium">{session.intervention?.name || 'No intervention'}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {new Date(session.scheduledAt).toLocaleString()}
+                                                    {session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : 'No date set'}
                                                 </p>
                                                 {session.beneficiary && (
                                                     <p className="text-sm">

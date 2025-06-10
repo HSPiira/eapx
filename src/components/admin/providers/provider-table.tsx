@@ -21,31 +21,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-type ProviderType = 'COUNSELOR' | 'CLINIC' | 'HOTLINE' | 'COACH' | 'OTHER';
-type ProviderEntityType = 'INDIVIDUAL' | 'COMPANY';
-type ProviderStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
-
-interface Provider {
-    id: string;
-    name: string;
-    type: ProviderType;
-    entityType: ProviderEntityType;
-    contactEmail: string;
-    contactPhone: string | null;
-    location: string | null;
-    qualifications: string[];
-    specializations: string[];
-    status: ProviderStatus;
-    isVerified: boolean;
-    rating: number | null;
-    createdAt: string;
-    updatedAt?: string;
-    _count?: {
-        services: number;
-        sessions: number;
-    };
-}
+import { Provider } from '@/types/provider';
 
 interface ProviderTableProps {
     providers: Provider[];

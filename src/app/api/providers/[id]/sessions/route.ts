@@ -6,7 +6,7 @@ type Params = Promise<{ id: string }>;
 export async function GET(request: NextRequest, { params }: { params: Params }) {
     try {
         const { id: providerId } = await params;
-        const sessions = await prisma.serviceSession.findMany({
+        const sessions = await prisma.careSession.findMany({
             where: {
                 providerId: providerId
             },
@@ -29,10 +29,11 @@ export async function POST(request: NextRequest, { params }: { params: Params })
         if (!body.scheduledAt) {
             return NextResponse.json({ error: 'scheduledAt is required' }, { status: 400 });
         }
-        const session = await prisma.serviceSession.create({
+        const session = await prisma.careSession.create({
             data: {
                 providerId: providerId,
-                serviceId: body.serviceId,
+                interventionId: body.interventionId,
+                clientId: body.clientId,
                 staffId: body.staffId,
                 beneficiaryId: body.beneficiaryId,
                 scheduledAt: body.scheduledAt,

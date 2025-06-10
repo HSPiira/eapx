@@ -26,11 +26,18 @@ export function withSecurityHeaders(request: NextRequest, response: NextResponse
 function constructCSP() {
     const directives = {
         'default-src': ["'self'"],
-        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Needed for Next.js
+        'script-src': [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            "'wasm-unsafe-eval'",
+            "'inline-speculation-rules'",
+            'chrome-extension://ee9c792f-6bcf-45a9-915f-3b7fe788b73d/'
+        ],
         'style-src': ["'self'", "'unsafe-inline'"],
         'img-src': ["'self'", 'data:', 'https:'],
         'font-src': ["'self'"],
-        'connect-src': ["'self'"],
+        'connect-src': ["'self'", 'https://axis-peach-three.vercel.app'],
         'media-src': ["'self'"],
         'object-src': ["'none'"],
         'frame-ancestors': ["'none'"],

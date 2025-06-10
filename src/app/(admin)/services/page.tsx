@@ -62,7 +62,7 @@ async function createService(data: ServiceFormData): Promise<Service> {
 
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create service');
+        throw new Error(errorData.error || 'Failed to create service');
     }
 
     return response.json();

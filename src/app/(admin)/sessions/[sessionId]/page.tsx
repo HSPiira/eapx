@@ -6,6 +6,23 @@ import { FormData, SectionKey, sectionComponents, SessionData } from './types';
 import { ReviewDetails } from './review-details';
 import { Sidebar, TabBar } from './session-sidebar';
 import { useSessionDetails } from '@/hooks/sessions/useSessionDetails';
+import { SessionType as PrismaSessionType } from '@prisma/client';
+
+const ORG_SESSION_TYPES = [
+    PrismaSessionType.TALK,
+    PrismaSessionType.WEBINAR,
+    PrismaSessionType.TRAINING,
+    PrismaSessionType.WORKSHOP,
+    PrismaSessionType.SEMINAR,
+    PrismaSessionType.CONFERENCE
+] as const;
+
+const STAFF_SESSION_TYPES = [
+    PrismaSessionType.INDIVIDUAL,
+    PrismaSessionType.COUPLE,
+    PrismaSessionType.FAMILY,
+    PrismaSessionType.GROUP
+] as const;
 
 function Content({
     selected,
@@ -62,31 +79,39 @@ export default function SessionEditPage() {
     const { sessionId } = useParams();
     const [selected, setSelected] = useState('client-setup');
     const [formData, setFormData] = useState<FormData>({
-        client: {},
+        client: {
+            sessionFor: 'organization',
+        },
         intervention: {},
         counselor: {},
         location: {},
     });
 
-    // Initialize with empty session data
     const [sessionData, setSessionData] = useState<SessionData | null>(null);
+    const [initialLoad, setInitialLoad] = useState(true);
 
-    const { session, staff, dependants, isLoading, isError, error } = useSessionDetails(
+    const { session, isLoading, isError, error } = useSessionDetails(
         sessionId as string,
         sessionData?.client?.id || '',
         sessionData?.staffId
     );
 
-    // Update session data when session is loaded
     useEffect(() => {
         if (session) {
             setSessionData(session);
         }
     }, [session]);
 
-    // Update form data when session data is loaded
     useEffect(() => {
-        if (sessionData) {
+        if (sessionData && initialLoad) {
+            const sessionFor = sessionData.metadata?.sessionFor || 'organization';
+            const validTypes: readonly PrismaSessionType[] = sessionFor === 'organization'
+                ? ORG_SESSION_TYPES
+                : STAFF_SESSION_TYPES;
+            const sessionType = validTypes.includes(sessionData.sessionType as PrismaSessionType)
+                ? sessionData.sessionType
+                : validTypes[0];
+
             setFormData((prev: FormData) => ({
                 ...prev,
                 client: {
@@ -95,9 +120,9 @@ export default function SessionEditPage() {
                     clientId: sessionData.client?.id || '',
                     staff: sessionData.staffId || '',
                     dependant: sessionData.beneficiaryId || '',
-                    sessionType: sessionData.sessionType,
+                    sessionType,
                     numAttendees: sessionData.metadata?.numAttendees || 1,
-                    sessionFor: sessionData.metadata?.sessionFor || 'organization',
+                    sessionFor,
                     whoFor: sessionData.metadata?.whoFor || 'self',
                     notes: sessionData.metadata?.clientNotes || '',
                 },
@@ -125,8 +150,29 @@ export default function SessionEditPage() {
                     requirements: sessionData.metadata?.requirements || '',
                 }
             }));
+            setInitialLoad(false);
         }
-    }, [sessionData]);
+    }, [sessionData, initialLoad]);
+
+    useEffect(() => {
+        setFormData((prev) => {
+            if (!prev.client.sessionType) {
+                const sessionFor = prev.client.sessionFor || 'organization';
+                const defaultType =
+                    sessionFor === 'organization'
+                        ? ORG_SESSION_TYPES[0]
+                        : STAFF_SESSION_TYPES[0];
+                return {
+                    ...prev,
+                    client: {
+                        ...prev.client,
+                        sessionType: defaultType,
+                    },
+                };
+            }
+            return prev;
+        });
+    }, [formData.client.sessionFor]);
 
     if (isLoading) return <div>Loading...</div>;
     if (isError) return <div>Error loading session details: {error?.message}</div>;

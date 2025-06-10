@@ -6,11 +6,24 @@ import { useStaff } from '@/hooks/staff';
 import { useStaffDependants } from '@/hooks/staff-dependants';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { SessionType as PrismaSessionType } from '@prisma/client';
 
-const ORG_SESSION_TYPES = ['TALK', 'WEBINAR', 'TRAINING', 'WORKSHOP', 'SEMINAR', 'CONFERENCE'] as const;
-const STAFF_SESSION_TYPES = ['INDIVIDUAL', 'COUPLE', 'FAMILY', 'GROUP'] as const;
+const ORG_SESSION_TYPES = [
+    PrismaSessionType.TALK,
+    PrismaSessionType.WEBINAR,
+    PrismaSessionType.TRAINING,
+    PrismaSessionType.WORKSHOP,
+    PrismaSessionType.SEMINAR,
+    PrismaSessionType.CONFERENCE
+] as const;
+
+const STAFF_SESSION_TYPES = [
+    PrismaSessionType.INDIVIDUAL,
+    PrismaSessionType.COUPLE,
+    PrismaSessionType.FAMILY,
+    PrismaSessionType.GROUP
+] as const;
 
 type OrgSessionType = typeof ORG_SESSION_TYPES[number];
 type StaffSessionType = typeof STAFF_SESSION_TYPES[number];
@@ -18,23 +31,18 @@ type SessionType = OrgSessionType | StaffSessionType;
 
 type SessionFor = 'organization' | 'staff';
 
-type WhoFor = 'self' | 'dependant';
 
-interface SessionAttendees {
-    staff?: string[];
-    dependants?: string[];
-}
 
 interface SessionData {
+    clientId?: string;
     company?: string;
-    sessionFor: SessionFor;
-    staffId?: string;
-    whoFor?: WhoFor;
+    sessionFor?: 'organization' | 'staff';
+    whoFor?: 'self' | 'dependant';
     sessionType?: SessionType;
-    numberOfAttendees?: number;
-    attendees?: SessionAttendees;
-    comments?: string;
-    dependantId?: string;
+    numAttendees?: number;
+    staff?: string;
+    dependant?: string;
+    notes?: string;
 }
 
 interface ClientDetailsProps {
@@ -44,24 +52,22 @@ interface ClientDetailsProps {
     clientId: string;
 }
 
-const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsProps) => {
-    // Queries
-    const { data: staffData, isLoading: isStaffLoading, isError: isStaffError, refetch: refetchStaff, } = useStaff(clientId);
-    const { data: dependantsData, isLoading: isDependantsLoading, isError: isDependantsError, refetch: refetchDependants } = useStaffDependants(clientId, data.staffId ?? "");
+const ClientDetails = ({ data, setData, clientId }: ClientDetailsProps) => {
+    const sessionFor = data.sessionFor || 'organization';
 
-    // Memoized lists
+    const { data: staffData, isLoading: isStaffLoading, } = useStaff(clientId);
+    const { data: dependantsData, isLoading: isDependantsLoading } = useStaffDependants(clientId, data.staff ?? "");
+
     const staffList = useMemo(() => staffData?.data || [], [staffData]);
     const dependants = useMemo(() => dependantsData?.data || [], [dependantsData]);
 
-    // Custom hook for session type validation
     useValidateSessionType(sessionFor, data, setData, ORG_SESSION_TYPES, STAFF_SESSION_TYPES);
 
-    // Automatically preselect staff if only one exists
     useEffect(() => {
-        if (staffList.length === 1 && !data.staffId) {
+        if (staffList.length === 1 && !data.staff) {
             setData({
                 ...data,
-                staffId: staffList[0].id,
+                staff: staffList[0].id,
             });
         }
     }, [staffList, data, setData]);
@@ -70,29 +76,25 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
     const [dependantSearch, setDependantSearch] = React.useState('');
 
     return (
-        <div className="mt-6 border border-gray-200 rounded-sm">
-            <Card className="border-none">
-                <CardHeader>
-                    <CardTitle>Client Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {/* Company */}
+        <div className="w-full flex items-start justify-start mt-6">
+            <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
+                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Client Details</h2>
+                <div className="space-y-6">
                     <div className="flex flex-col gap-1">
                         <Label htmlFor="company">Company</Label>
                         <Input id="company" value={data.company || ''} disabled />
                     </div>
 
-                    {/* Session for? */}
                     <div className="flex items-center gap-4 mt-2">
                         <Label htmlFor="sessionForSwitch" className="mr-2 whitespace-nowrap">Session for?</Label>
                         <span className={
-                            `text-sm font-medium transition-colors ${data.sessionFor === 'organization' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
+                            `text-sm font-medium transition-colors ${sessionFor === 'organization' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
                         }>
                             Organization
                         </span>
                         <Switch
                             id="sessionForSwitch"
-                            checked={data.sessionFor === 'staff'}
+                            checked={sessionFor === 'staff'}
                             onCheckedChange={(checked) => {
                                 const newSessionFor = checked ? 'staff' : 'organization';
                                 const validTypes: SessionType[] = newSessionFor === 'organization'
@@ -101,32 +103,30 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                                 setData({
                                     ...data,
                                     sessionFor: newSessionFor,
-                                    sessionType: data.sessionType && validTypes.includes(data.sessionType) ? data.sessionType : undefined,
+                                    sessionType: validTypes[0],
                                     whoFor: checked ? data.whoFor : undefined,
-                                    dependantId: checked ? data.dependantId : undefined,
+                                    dependant: checked ? data.dependant : undefined,
                                 });
                             }}
                             className="relative"
                         >
-                            {/* Tick icon for checked state */}
-                            {data.sessionFor === 'staff' && (
+                            {sessionFor === 'staff' && (
                                 <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none text-primary-foreground text-base">✓</span>
                             )}
                         </Switch>
                         <span className={
-                            `text-sm font-medium transition-colors ${data.sessionFor === 'staff' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
+                            `text-sm font-medium transition-colors ${sessionFor === 'staff' ? 'text-primary font-semibold' : 'text-muted-foreground'}`
                         }>
                             Staff
                         </span>
                     </div>
 
-                    {/* Staff (only if sessionFor is 'staff') */}
-                    {data.sessionFor === 'staff' && (
+                    {sessionFor === 'staff' && (
                         <div className="flex flex-col gap-1">
                             <Label htmlFor="staff">Staff</Label>
                             <Select
-                                value={data.staffId || ''}
-                                onValueChange={(value) => setData({ ...data, staffId: value })}
+                                value={data.staff || ''}
+                                onValueChange={(value) => setData({ ...data, staff: value })}
                                 disabled={isStaffLoading}
                             >
                                 <SelectTrigger id="staff" className="w-full">
@@ -134,8 +134,8 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                                         ? 'Loading...'
                                         : staffList.length === 0
                                             ? 'No staff available'
-                                            : staffList.find(staff => staff.id === data.staffId)?.profile?.fullName ||
-                                            staffList.find(staff => staff.id === data.staffId)?.id ||
+                                            : staffList.find(staff => staff.id === data.staff)?.profile?.fullName ||
+                                            staffList.find(staff => staff.id === data.staff)?.id ||
                                             'Select staff'}
                                 </SelectTrigger>
                                 <SelectContent className="max-h-56 overflow-y-auto">
@@ -165,8 +165,7 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                         </div>
                     )}
 
-                    {/* Who is it for? (only if sessionFor is 'staff') */}
-                    {data.sessionFor === 'staff' && (
+                    {sessionFor === 'staff' && (
                         <div className="flex items-center gap-4 mt-2">
                             <Label htmlFor="whoForSwitch" className="mr-2 whitespace-nowrap">Who is it for?</Label>
                             <span className={
@@ -180,11 +179,10 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                                 onCheckedChange={(checked) => setData({
                                     ...data,
                                     whoFor: checked ? 'dependant' : 'self',
-                                    dependantId: checked ? data.dependantId : undefined,
+                                    dependant: checked ? data.dependant : undefined,
                                 })}
                                 className="relative"
                             >
-                                {/* Tick icon for checked state */}
                                 {data.whoFor === 'dependant' && (
                                     <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none text-primary-foreground text-base">✓</span>
                                 )}
@@ -197,13 +195,12 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                         </div>
                     )}
 
-                    {/* Dependants (only if whoFor is 'dependant' and sessionFor is 'staff') */}
-                    {data.sessionFor === 'staff' && data.whoFor === 'dependant' && (
+                    {sessionFor === 'staff' && data.whoFor === 'dependant' && (
                         <div className="flex flex-col gap-1">
                             <Label htmlFor="dependant">Dependant</Label>
                             <Select
-                                value={data.dependantId || ''}
-                                onValueChange={value => setData({ ...data, dependantId: value })}
+                                value={data.dependant || ''}
+                                onValueChange={value => setData({ ...data, dependant: value })}
                                 disabled={isDependantsLoading}
                             >
                                 <SelectTrigger id="dependant" className="w-full">
@@ -211,8 +208,8 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                                         ? 'Loading...'
                                         : dependants.length === 0
                                             ? 'No dependants available'
-                                            : dependants.find(dep => dep.id === data.dependantId)?.profile?.fullName ||
-                                            dependants.find(dep => dep.id === data.dependantId)?.id ||
+                                            : dependants.find(dep => dep.id === data.dependant)?.profile?.fullName ||
+                                            dependants.find(dep => dep.id === data.dependant)?.id ||
                                             'Select dependant'}
                                 </SelectTrigger>
                                 <SelectContent className="max-h-56 overflow-y-auto">
@@ -242,27 +239,22 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                         </div>
                     )}
 
-                    {/* Session Type */}
                     <div className="flex flex-col gap-1">
                         <Label htmlFor="sessionType">Session Type</Label>
                         <Select
-                            value={
-                                data.sessionType &&
-                                    ((data.sessionFor === 'organization' && ORG_SESSION_TYPES.includes(data.sessionType as OrgSessionType)) ||
-                                        (data.sessionFor === 'staff' && STAFF_SESSION_TYPES.includes(data.sessionType as StaffSessionType)))
-                                    ? data.sessionType
-                                    : ''
-                            }
-                            onValueChange={(value: SessionType) => setData({ ...data, sessionType: value })}
+                            value={data.sessionType || ''}
+                            onValueChange={(value: string) => {
+                                setData({
+                                    ...data, sessionType: value as PrismaSessionType
+                                });
+                            }}
                             disabled={isStaffLoading || isDependantsLoading}
                         >
                             <SelectTrigger id="sessionType" className="w-full">
-                                {isStaffLoading || isDependantsLoading
-                                    ? 'Loading...'
-                                    : data.sessionType || 'Select Session Type'}
+                                {data.sessionType || 'Select Session Type'}
                             </SelectTrigger>
                             <SelectContent className="max-h-56 overflow-y-auto">
-                                {(data.sessionFor === 'organization' ? ORG_SESSION_TYPES : STAFF_SESSION_TYPES).map((type) => (
+                                {(sessionFor === 'organization' ? ORG_SESSION_TYPES : STAFF_SESSION_TYPES).map((type) => (
                                     <SelectItem key={type} value={type}>
                                         {type}
                                     </SelectItem>
@@ -271,30 +263,28 @@ const ClientDetails = ({ sessionFor, data, setData, clientId }: ClientDetailsPro
                         </Select>
                     </div>
 
-                    {/* Number of Attendees */}
                     <div className="flex flex-col gap-1">
                         <Label htmlFor="numberOfAttendees">Number of Attendees</Label>
                         <Input
                             id="numberOfAttendees"
                             type="number"
                             min={1}
-                            value={data.numberOfAttendees || 1}
-                            onChange={e => setData({ ...data, numberOfAttendees: Number(e.target.value) })}
+                            value={data.numAttendees || 1}
+                            onChange={e => setData({ ...data, numAttendees: Number(e.target.value) })}
                         />
                     </div>
 
-                    {/* Notes */}
                     <div className="flex flex-col gap-1">
                         <Label htmlFor="comments">Notes</Label>
                         <Textarea
                             id="comments"
                             placeholder="Add any additional notes..."
-                            value={data.comments || ''}
-                            onChange={(e) => setData({ ...data, comments: e.target.value })}
+                            value={data.notes || ''}
+                            onChange={(e) => setData({ ...data, notes: e.target.value })}
                         />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         </div>
     );
 };

@@ -28,19 +28,17 @@ export default function ProvidersListPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    // Queries
     const { data: providersData, isLoading, error: providersError } = useProviders();
     const { data: servicesData, error: servicesError } = useServices();
     const { data: interventionsData, error: interventionsError } = useInterventions();
 
-    // Mutations
     const createProviderMutation = useCreateProvider(() => setIsDialogOpen(false));
     const updateProviderMutation = useUpdateProvider();
     const deleteProviderMutation = useDeleteProvider();
 
-    const handleCreateProvider = async (data: CreateServiceProviderInput & { documents: Record<string, File | File[] | null>; interventionsOffered: string[] }) => {
+    const handleCreateProvider = async (data: CreateServiceProviderInput) => {
         try {
-            const { documents, interventionsOffered, ...payload } = data;
+            const { ...payload } = data;
             createProviderMutation.mutate(payload);
         } catch (error) {
             console.error('Failed to add provider:', error);

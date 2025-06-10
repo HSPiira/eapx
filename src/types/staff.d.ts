@@ -14,8 +14,8 @@ export interface Staff {
     status: WorkStatus;
     qualifications: string[];
     specializations: string[];
-    preferredWorkingHours?: Record<string, any>;
-    metadata?: Record<string, any>;
+    preferredWorkingHours?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
     profile: {
         id: string;
         fullName: string;

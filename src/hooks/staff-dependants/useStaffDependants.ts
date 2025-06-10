@@ -1,9 +1,15 @@
 import { StaffDependantResponse } from "@/types/staff-dependants";
-import { createQuery } from "../generic-create";
+import { useGenericQuery } from "../generic-create";
 import { fetchDependants } from "@/api/staff-dependants";
 
-export function useStaffDependants(clientId: string | undefined, staffId: string | undefined) {
+export function useStaffDependants(clientId: string | undefined, staffId: string | undefined, whoFor?: 'self' | 'dependant') {
     const safeClientId = clientId ?? "";
     const safeStaffId = staffId ?? "";
-    return createQuery<StaffDependantResponse>(['staffDependants', safeClientId, safeStaffId], () => fetchDependants(safeClientId, safeStaffId));
+    const shouldFetch = !!safeClientId && !!safeStaffId && whoFor === 'dependant';
+
+    return useGenericQuery<StaffDependantResponse>(
+        ['staffDependants', safeClientId, safeStaffId],
+        () => fetchDependants(safeClientId, safeStaffId),
+        { enabled: shouldFetch }
+    );
 };

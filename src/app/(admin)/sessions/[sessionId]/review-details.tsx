@@ -21,6 +21,7 @@ interface Dependant {
 interface Provider {
     id: string;
     name: string;
+    entityType: 'INDIVIDUAL' | 'COMPANY';
 }
 
 interface ProviderStaff {
@@ -196,6 +197,42 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
                     e.preventDefault();
                     setIsConfirming(true);
                     try {
+                        // Validate required fields
+                        const missingFields: string[] = [];
+
+                        // Client Details validation
+                        if (!formData.client.clientId) missingFields.push('Company');
+                        if (!formData.client.sessionFor) missingFields.push('Session For');
+                        if (formData.client.sessionFor === 'staff' && !formData.client.staff) missingFields.push('Staff Member');
+                        if (formData.client.sessionFor === 'staff' && formData.client.whoFor === 'dependant' && !formData.client.dependant) missingFields.push('Dependant');
+                        if (!formData.client.sessionType) missingFields.push('Session Type');
+                        if (!formData.client.numAttendees) missingFields.push('Number of Attendees');
+
+                        // Intervention validation
+                        if (!formData.intervention.service) missingFields.push('Service');
+                        if (!formData.intervention.intervention) missingFields.push('Intervention');
+
+                        // Counselor validation
+                        if (!formData.counselor.provider) missingFields.push('Provider');
+                        // Check if provider is a company and staff is required
+                        const selectedProvider = providers.find(p => p.id === formData.counselor.provider);
+                        if (selectedProvider?.entityType === 'COMPANY' && !formData.counselor.staff) {
+                            missingFields.push('Provider Staff');
+                        }
+                        if (!formData.counselor.date) missingFields.push('Date');
+                        if (!formData.counselor.selectedSlot) missingFields.push('Time Slot');
+                        if (!formData.counselor.duration) missingFields.push('Duration');
+
+                        // Location validation
+                        if (!formData.location.location) missingFields.push('Location');
+
+                        // If any required fields are missing, show error and return
+                        if (missingFields.length > 0) {
+                            toast.error(`Please provide the following required fields: ${missingFields.join(', ')}`);
+                            setIsConfirming(false);
+                            return;
+                        }
+
                         // Update session status to SCHEDULED
                         const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
                             method: 'PATCH',

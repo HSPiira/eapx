@@ -7,7 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/providers/auth-provider";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
 import { ReactScan } from "@/components/admin";
 
 const geistSans = Geist({
@@ -45,9 +45,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               <SettingsProvider>
-                <AuthGuard>
-                  {children}
-                </AuthGuard>
+                <AuthGuard>{children}</AuthGuard>
               </SettingsProvider>
             </ThemeProvider>
           </ReactQueryProvider>

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown, ChevronDown, FileText, FileSignature, FileSpreadsheet, FileCode, FileArchive } from "lucide-react";
 import { cn } from '@/lib/utils';
-import { ServiceProviderType, ProviderEntityType, WorkStatus } from '@/schema/enums';
+import { ServiceProviderType, ProviderEntityType } from '@/schema/enums';
 import { CreateServiceProviderInput } from '@/schema/provider';
 import { Intervention } from '@/types/interventions';
 

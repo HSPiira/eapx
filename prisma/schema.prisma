@@ -696,6 +696,7 @@ model CareSession {
   @@index([providerId])
   @@index([interventionId])
   @@index([deletedAt])
+  @@index([status, providerId, interventionId, beneficiaryId, deletedAt])
 }
 
 model SessionFeedback {

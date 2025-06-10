@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { ArrowLeft, ExternalLink, Link2, Code2, Trash2 } from 'lucide-react';
 import { SessionData, FormData, SessionMetadata } from './types';
 import React from 'react';
+import { toast } from 'sonner';
 
 interface SessionHeaderProps {
     formData: FormData;
@@ -85,12 +86,22 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
             if (formData.client.clientId) {
                 sessionUpdate.clientId = formData.client.clientId;
             }
-            if (formData.client.staff !== undefined) {
-                sessionUpdate.staffId = formData.client.staff || null;
+
+            // Handle staff-related fields based on sessionFor
+            if (formData.client.sessionFor === 'organization') {
+                // Clear staff-related fields when sessionFor is organization
+                sessionUpdate.staffId = null;
+                sessionUpdate.beneficiaryId = null;
+            } else {
+                // Only include staff-related fields if sessionFor is staff
+                if (formData.client.staff !== undefined) {
+                    sessionUpdate.staffId = formData.client.staff || null;
+                }
+                if (formData.client.dependant !== undefined) {
+                    sessionUpdate.beneficiaryId = formData.client.dependant || null;
+                }
             }
-            if (formData.client.dependant !== undefined) {
-                sessionUpdate.beneficiaryId = formData.client.dependant || null;
-            }
+
             if (formData.client.sessionType !== undefined) {
                 // Set isGroupSession based on session type
                 const isGroupSession = ['group', 'family', 'couple'].includes(formData.client.sessionType);
@@ -108,6 +119,29 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
             }
             if (formData.counselor.staff !== undefined) {
                 sessionUpdate.providerStaffId = formData.counselor.staff || null;
+            }
+
+            // Handle date, time, and duration
+            if (formData.counselor.date && formData.counselor.selectedSlot) {
+                // Parse the selected time slot
+                const [time, period] = formData.counselor.selectedSlot.split(' ');
+                const [hours, minutes] = time.split(':');
+                let hour = parseInt(hours);
+
+                // Convert to 24-hour format
+                if (period === 'pm' && hour !== 12) hour += 12;
+                if (period === 'am' && hour === 12) hour = 0;
+
+                // Create the scheduled date with the selected time
+                const scheduledDate = new Date(formData.counselor.date);
+                scheduledDate.setHours(hour, parseInt(minutes), 0, 0);
+
+                sessionUpdate.scheduledAt = scheduledDate.toISOString();
+            }
+
+            // Handle duration
+            if (formData.counselor.duration) {
+                sessionUpdate.duration = parseInt(formData.counselor.duration);
             }
 
             // Only update metadata if we have new values
@@ -147,10 +181,11 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
 
             const updatedSession = await res.json();
             setSessionData(updatedSession);
-            alert('Session saved successfully!');
+            await fetchSessionData();
+            toast.success('Session saved successfully!');
         } catch (error) {
             console.error('Error saving session:', error);
-            alert(error instanceof Error ? error.message : 'Failed to save session');
+            toast.error(error instanceof Error ? error.message : 'Failed to save session');
         }
     };
 
@@ -163,9 +198,14 @@ export function SessionHeader({ formData }: SessionHeaderProps) {
     const isScheduled = sessionData?.status === 'SCHEDULED';
 
     return (
-        <div className="fixed top-0 left-[240px] right-0 z-50 flex items-center justify-between w-[calc(100%-240px)] px-4 py-3 bg-white dark:bg-black border-b border-gray-200">
+        <div className="fixed top-0
+            left-0 w-full
+            md:left-[64px] md:w-[calc(100%-64px)]
+            lg:left-[240px] lg:w-[calc(100%-240px)]
+            right-0 z-50 flex items-center justify-between
+            px-4 py-3 mb-2 bg-white dark:bg-black border-b border-gray-200">
             {/* Left: Back + Title */}
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-4 md:mr-0">
                 <button
                     className="flex-shrink-0 p-1 rounded-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border focus:bg-gray-100 dark:focus:bg-gray-800 transition-colors"
                     onClick={() => router.push('/sessions/unconfirmed')}

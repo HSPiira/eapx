@@ -18,7 +18,7 @@ export interface Client {
     timezone?: string;
     isVerified: boolean;
     notes?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     deletedAt?: Date;
     createdAt: Date;
     updatedAt: Date;

@@ -18,7 +18,7 @@ export function StaffSelect({ staffList, data, setData, isLoading }: StaffSelect
     const filteredStaff = React.useMemo(() => {
         if (!search) return staffList;
         return staffList.filter(staff =>
-            staff.profile?.fullName.toLowerCase().includes(search.toLowerCase())
+            staff.profile?.fullName?.toLowerCase().includes(search.toLowerCase())
         );
     }, [staffList, search]);
 
@@ -38,7 +38,7 @@ export function StaffSelect({ staffList, data, setData, isLoading }: StaffSelect
                     disabled={isLoading}
                 >
                     <SelectTrigger id="staff" className="w-full">
-                        {isLoading ? 'Loading...' : data.staff ? staffList.find(s => s.id === data.staff)?.profile?.fullName || data.staff : 'Select Staff'}
+                        {isLoading ? 'Loading...' : data.staff ? staffList.find(s => s.id === data.staff)?.profile?.fullName || staffList.find(s => s.id === data.staff)?.id || data.staff : 'Select Staff'}
                     </SelectTrigger>
                     <SelectContent>
                         {filteredStaff.map((staff) => (

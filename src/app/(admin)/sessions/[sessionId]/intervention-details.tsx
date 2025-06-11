@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InterventionData } from "./types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServices } from "@/hooks/services";
+import { useInterventions } from "@/hooks/interventions";
+import { useInterventionDetails } from "@/hooks/interventions/useInterventionDetails";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -29,101 +31,22 @@ interface InterventionDetailsProps {
 
 export function InterventionDetails({ data, setData }: InterventionDetailsProps) {
     const { service = '', intervention = '', notes = '' } = data || {};
-    const queryClient = useQueryClient();
 
-    // Prefetch all services and their interventions on mount
+    // Use hooks for services and interventions
+    const { data: servicesData, isLoading: loadingServices, error: servicesError } = useServices();
+    const { data: interventionsData, isLoading: loadingInterventions, error: interventionsError } = useInterventions();
+    const { data: interventionDetails } = useInterventionDetails(intervention);
+
+    // Update service when intervention details are loaded
     useEffect(() => {
-        // Prefetch services
-        queryClient.prefetchQuery({
-            queryKey: ['services'],
-            queryFn: async () => {
-                const res = await fetch('/api/services?limit=50');
-                if (!res.ok) throw new Error('Failed to fetch services');
-                return res.json();
-            },
-            staleTime: 5 * 60 * 1000,
-            gcTime: 30 * 60 * 1000,
-        });
-
-        // If we have a service, prefetch its interventions
-        if (service) {
-            queryClient.prefetchQuery({
-                queryKey: ['interventions', service],
-                queryFn: async () => {
-                    const res = await fetch(`/api/services/interventions?serviceId=${service}&limit=50`);
-                    if (!res.ok) throw new Error('Failed to fetch interventions');
-                    return res.json();
-                },
-                staleTime: 5 * 60 * 1000,
-                gcTime: 30 * 60 * 1000,
-            });
+        if (interventionDetails?.service?.id && !service) {
+            setData({ ...data, service: interventionDetails.service.id, intervention });
         }
-    }, [queryClient, service]);
-
-    // If intervention is set but service is not, fetch intervention details to get serviceId
-    useEffect(() => {
-        if (intervention && !service) {
-            (async () => {
-                try {
-                    const res = await fetch(`/api/services/interventions/${intervention}`);
-                    if (!res.ok) throw new Error('Failed to fetch intervention details');
-                    const interventionData = await res.json();
-                    if (interventionData?.service?.id) {
-                        setData({ ...data, service: interventionData.service.id, intervention });
-                    }
-                } catch (error) {
-                    toast.error(error instanceof Error ? error.message : 'Failed to fetch intervention details');
-                }
-            })();
-        }
-    }, [intervention, service, setData, data]);
-
-    // Fetch services with caching and error handling
-    const { data: servicesData, isLoading: loadingServices, error: servicesError } = useQuery({
-        queryKey: ['services'],
-        queryFn: async () => {
-            const res = await fetch('/api/services?limit=50');
-            if (!res.ok) throw new Error('Failed to fetch services');
-            return res.json();
-        },
-        staleTime: 5 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
-        retry: 2,
-        retryDelay: 1000,
-    });
-
-    // Fetch interventions with caching and error handling
-    const { data: interventionsData, isLoading: loadingInterventions, error: interventionsError } = useQuery({
-        queryKey: ['interventions', service],
-        queryFn: async () => {
-            if (!service) return { data: [] };
-            const res = await fetch(`/api/services/interventions?serviceId=${service}&limit=50`);
-            if (!res.ok) throw new Error('Failed to fetch interventions');
-            return res.json();
-        },
-        enabled: !!service,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
-        retry: 2,
-        retryDelay: 1000,
-    });
+    }, [interventionDetails, service, intervention, setData, data]);
 
     // Handle service change
     const handleServiceChange = (newServiceId: string) => {
-        // Clear intervention when service changes
         setData({ ...data, service: newServiceId, intervention: '' });
-
-        // Prefetch interventions for the new service
-        queryClient.prefetchQuery({
-            queryKey: ['interventions', newServiceId],
-            queryFn: async () => {
-                const res = await fetch(`/api/services/interventions?serviceId=${newServiceId}&limit=50`);
-                if (!res.ok) throw new Error('Failed to fetch interventions');
-                return res.json();
-            },
-            staleTime: 5 * 60 * 1000,
-            gcTime: 30 * 60 * 1000,
-        });
     };
 
     // Reset intervention if not in new list
@@ -145,11 +68,7 @@ export function InterventionDetails({ data, setData }: InterventionDetailsProps)
                         <p>Error loading data. Please try again.</p>
                         <Button
                             onClick={() => {
-                                // Retry loading data
-                                queryClient.invalidateQueries({ queryKey: ['services'] });
-                                if (service) {
-                                    queryClient.invalidateQueries({ queryKey: ['interventions', service] });
-                                }
+                                window.location.reload();
                             }}
                             className="mt-4"
                         >

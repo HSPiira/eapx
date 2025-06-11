@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ProviderStaffModal } from '@/components/admin/providers/provider-staff-modal';
 import { useToast } from '@/components/ui/use-toast';
+import { useParams } from 'next/navigation';
 
 interface Provider {
     id: string;
@@ -20,8 +21,12 @@ interface StaffMember {
 }
 
 export default function ProvidersStaffPage() {
-    // Replace with actual providerId from context/router as needed
-    const providerId = '1';
+    const params = useParams();
+    const providerId = params.id as string;
+
+    if (!providerId) {
+        return <div className="text-red-500">Invalid provider ID</div>;
+    }
     const [staff, setStaff] = useState<StaffMember[]>([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -34,22 +39,23 @@ export default function ProvidersStaffPage() {
     const [services, setServices] = useState<{ id: string; name: string }[]>([]);
 
     // Fetch staff and providers from API
-    React.useEffect(() => {
-        async function fetchStaffAndProviders() {
-            // Fetch all providers
-            let allProviders: Provider[] = [];
+    useEffect(() => {
+        async function fetchData() {
+            // Fetch providers  
             try {
                 const res = await fetch('/api/providers');
                 const json = await res.json();
-                allProviders = (json.data || []).map((p: Provider) => ({ id: p.id, name: p.name, entityType: p.entityType }));
+                const allProviders = (json.data || [])
+                    .map((p: Provider) => ({ id: p.id, name: p.name, entityType: p.entityType }));
                 setProviders(allProviders);
             } catch (error) {
                 console.error('Error fetching providers:', error);
                 setProviders([]);
             }
-            // Fetch staff
+
+            // Fetch staff  
             try {
-                const res = await fetch(`/api/providers/staff`);
+                const res = await fetch('/api/providers/staff');
                 const json = await res.json();
                 console.log('Fetched staff:', json);
                 setStaff(json.data || []);
@@ -57,35 +63,24 @@ export default function ProvidersStaffPage() {
                 console.error('Error fetching staff:', error);
                 setStaff([]);
             }
-        }
-        fetchStaffAndProviders();
-    }, [providerId]);
 
-    useEffect(() => {
-        async function fetchData() {
-            // Fetch company-type providers
-            try {
-                const res = await fetch('/api/providers');
-                const json = await res.json();
-                const companyProviders = (json.data || [])
-                    .map((p: Provider) => ({ id: p.id, name: p.name, entityType: p.entityType }));
-                setProviders(companyProviders);
-            } catch (error) {
-                console.error('Error fetching providers:', error);
-                setProviders([]);
-            }
-            // Fetch interventions
+            // Fetch interventions  
             try {
                 const res = await fetch('/api/services/interventions?limit=200');
                 const json = await res.json();
                 const interventions = (json.data || [])
-                    .map((i: { id: string; name: string; service: string }) => ({ id: i.id, name: i.name, service: i.service }));
+                    .map((i: { id: string; name: string; service: string }) => ({
+                        id: i.id,
+                        name: i.name,
+                        service: i.service,
+                    }));
                 setInterventions(interventions);
             } catch (error) {
                 console.error('Error fetching interventions:', error);
                 setInterventions([]);
             }
-            // Fetch services
+
+            // Fetch services  
             try {
                 const res = await fetch('/api/services?limit=200');
                 const json = await res.json();
@@ -95,8 +90,9 @@ export default function ProvidersStaffPage() {
                 setServices([]);
             }
         }
+
         fetchData();
-    }, []);
+    }, [providerId]);
 
     const handleAdd = () => {
         setSelectedStaff(null);
@@ -132,7 +128,7 @@ export default function ProvidersStaffPage() {
             if (res && !res.ok) {
                 let errorData: { error?: string } = {};
                 const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
+                if (contentType?.includes('application/json')) {
                     errorData = await res.json();
                 }
                 setFormError(errorData.error || 'Failed to save staff');
@@ -143,7 +139,7 @@ export default function ProvidersStaffPage() {
             const refreshed = await fetch(`/api/providers/${staffProviderId}/staff`);
             let json: { data?: StaffMember[] } = {};
             const contentType = refreshed.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
+            if (contentType?.includes('application/json')) {
                 json = await refreshed.json();
             }
             setStaff(json.data || []);

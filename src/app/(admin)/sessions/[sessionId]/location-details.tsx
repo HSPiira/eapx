@@ -1,13 +1,9 @@
-import { useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Select } from "@/components/ui/select";
-import { SelectItem } from "@/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue, SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { LocationData } from "./types";
 import { MessageCircle, Video, Camera, Building, Briefcase, MapPin, Link2, Phone } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface LocationDetailsProps {
     data: LocationData;
@@ -84,65 +80,20 @@ export function LocationDetails({ data, setData }: LocationDetailsProps) {
     const { location = '', requirements = '' } = data || {};
     const queryClient = useQueryClient();
 
-    // Prefetch location data on mount
-    useEffect(() => {
-        // Prefetch location data
-        queryClient.prefetchQuery({
-            queryKey: ['locations'],
-            queryFn: async () => {
-                // Since we have static location data, we can just return it
-                return { data: locationGroups };
-            },
-            staleTime: 5 * 60 * 1000, // 5 minutes
-            gcTime: 30 * 60 * 1000, // 30 minutes
-        });
-    }, [queryClient]);
+    const locations = locationGroups;
+    const loadingLocations = false;
 
-    // Fetch locations with caching and error handling
-    const { data: locationsData, isLoading: loadingLocations, error: locationsError } = useQuery({
-        queryKey: ['locations'],
-        queryFn: async () => {
-            // Since we have static location data, we can just return it
-            return { data: locationGroups };
-        },
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        gcTime: 30 * 60 * 1000, // 30 minutes
-        retry: 2,
-        retryDelay: 1000,
-    });
-
-    // Show error states
-    if (locationsError) {
-        return (
-            <div className="w-full flex items-start justify-start mt-6">
-                <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
-                    <div className="text-center text-red-500">
-                        <p>Error loading location data. Please try again.</p>
-                        <Button
-                            onClick={() => {
-                                // Retry loading data
-                                queryClient.invalidateQueries({ queryKey: ['locations'] });
-                            }}
-                            className="mt-4"
-                        >
-                            Retry
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    const locations = locationsData?.data || locationGroups;
+    const handleLocationChange = (newLocationId: string) => {
+        setData({ ...data, location: newLocationId });
+    };
 
     return (
         <div className="w-full flex items-start justify-start mt-6">
             <div className="w-full rounded-sm p-8 border dark:border-gray-800 space-y-8">
-                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Location</h2>
-                {/* Location Combobox */}
+                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Location Details</h2>
                 <div className="space-y-1">
                     <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Location</Label>
-                    <Select value={location} onValueChange={v => setData({ ...data, location: v })}>
+                    <Select value={location} onValueChange={handleLocationChange}>
                         <SelectTrigger className="w-full border dark:border-gray-700 rounded-sm px-3 py-2 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-400 dark:focus:border-blue-600 transition bg-background">
                             <SelectValue placeholder={loadingLocations ? "Loading locations..." : "Select location"} />
                         </SelectTrigger>
@@ -161,7 +112,6 @@ export function LocationDetails({ data, setData }: LocationDetailsProps) {
                         </SelectContent>
                     </Select>
                 </div>
-                {/* Special Requirements */}
                 <div className="space-y-1">
                     <Label className="font-semibold text-sm text-gray-700 dark:text-gray-300">Special Requirements</Label>
                     <Textarea

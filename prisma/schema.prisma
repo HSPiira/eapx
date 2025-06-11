@@ -265,8 +265,8 @@ model Profile {
   image          String?
   address        String?
   nationality    String?
-  idNumber       String?
-  passportNumber String?
+  idNumber       String?   @unique
+  passportNumber String?   @unique
   idType         IdType?
 
   // Health & Support Info

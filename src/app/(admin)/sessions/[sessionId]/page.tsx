@@ -1,5 +1,5 @@
 'use client'
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { SessionHeader } from './session-header';
 import { FormData, SectionKey, sectionComponents, SessionData } from './types';
@@ -7,6 +7,8 @@ import { ReviewDetails } from './review-details';
 import { Sidebar, TabBar } from './session-sidebar';
 import { useSessionDetails } from '@/hooks/sessions/useSessionDetails';
 import { SessionType as PrismaSessionType } from '@prisma/client';
+import { useConfirmSession } from '@/hooks/sessions/useConfirmSession';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const ORG_SESSION_TYPES = [
     PrismaSessionType.TALK,
@@ -77,6 +79,7 @@ function Content({
 
 export default function SessionEditPage() {
     const { sessionId } = useParams();
+    const router = useRouter();
     const [selected, setSelected] = useState('client-setup');
     const [formData, setFormData] = useState<FormData>({
         client: {
@@ -89,6 +92,8 @@ export default function SessionEditPage() {
 
     const [sessionData, setSessionData] = useState<SessionData | null>(null);
     const [initialLoad, setInitialLoad] = useState(true);
+    const confirmSession = useConfirmSession();
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
     const { session, isLoading, isError, error } = useSessionDetails(
         sessionId as string,
@@ -174,6 +179,10 @@ export default function SessionEditPage() {
         });
     }, [formData.client.sessionFor]);
 
+    const handleConfirm = () => {
+        confirmSession.mutate(sessionId as string);
+    };
+
     if (isLoading) return <div>Loading...</div>;
     if (isError) return <div>Error loading session details: {error?.message}</div>;
 
@@ -188,10 +197,17 @@ export default function SessionEditPage() {
                         selected={selected}
                         formData={formData}
                         setFormData={setFormData}
-                        onConfirm={() => { }}
+                        onConfirm={handleConfirm}
                     />
                 </div>
             </div>
+            <ConfirmDialog
+                isOpen={isConfirmOpen}
+                onClose={() => setIsConfirmOpen(false)}
+                onConfirm={handleConfirm}
+                title="Confirm Session"
+                description="Are you sure you want to confirm this session? This action cannot be undone."
+            />
         </div>
     );
 }

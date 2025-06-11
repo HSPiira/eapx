@@ -7,7 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/providers/auth-provider";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { ReactScan } from "@/components/admin";
 
 const geistSans = Geist({
@@ -50,7 +50,7 @@ export default function RootLayout({
             </ThemeProvider>
           </ReactQueryProvider>
         </AuthProvider>
-        <Toaster />
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

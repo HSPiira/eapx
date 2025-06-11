@@ -16,7 +16,11 @@ export function SessionTypeSelect({ data, setData, validSessionTypes, isLoading 
             <Label htmlFor="sessionType">Session Type</Label>
             <Select
                 value={data.sessionType || ''}
-                onValueChange={value => setData((prev: ClientDetailsData) => ({ ...prev, sessionType: value as SessionType }))}
+                onValueChange={value => {
+                    if (validSessionTypes.includes(value as SessionType)) {
+                        setData((prev: ClientDetailsData) => ({ ...prev, sessionType: value as SessionType }));
+                    }
+                }}
                 disabled={isLoading}
             >
                 <SelectTrigger id="sessionType" className="w-full">

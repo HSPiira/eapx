@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { SessionType as PrismaSessionType } from '@prisma/client';
+import { ClientDetailsData } from './types';
 
 const ORG_SESSION_TYPES = [
     PrismaSessionType.TALK,
@@ -32,23 +33,10 @@ type SessionType = OrgSessionType | StaffSessionType;
 type SessionFor = 'organization' | 'staff';
 
 
-
-interface SessionData {
-    clientId?: string;
-    company?: string;
-    sessionFor?: 'organization' | 'staff';
-    whoFor?: 'self' | 'dependant';
-    sessionType?: SessionType;
-    numAttendees?: number;
-    staff?: string;
-    dependant?: string;
-    notes?: string;
-}
-
 interface ClientDetailsProps {
     sessionFor: SessionFor;
-    data: SessionData;
-    setData: (data: SessionData) => void;
+    data: ClientDetailsData;
+    setData: (data: ClientDetailsData) => void;
     clientId: string;
 }
 

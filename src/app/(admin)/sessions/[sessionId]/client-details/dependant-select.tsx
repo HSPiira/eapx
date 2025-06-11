@@ -20,7 +20,7 @@ export function DependantSelect({ dependants, data, setData, isLoading }: Depend
     const filteredDependants = React.useMemo(() => {
         if (!search) return dependants;
         return dependants.filter(dependant =>
-            dependant.profile?.fullName.toLowerCase().includes(search.toLowerCase())
+            dependant.profile?.fullName?.toLowerCase().includes(search.toLowerCase())
         );
     }, [dependants, search]);
 

@@ -52,14 +52,6 @@ export async function GET(request: NextRequest) {
                 where: { userId }
             });
 
-            console.log('Auth debug:', {
-                userId,
-                hasStaff: !!staff,
-                staffId: staff?.id,
-                status,
-                isAuthenticated: !!session?.user?.id
-            });
-
             const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}`;
             const cached = await cache.get(cacheKey);
             if (cached) return NextResponse.json(cached);

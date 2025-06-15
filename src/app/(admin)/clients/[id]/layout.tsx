@@ -5,10 +5,11 @@ import { usePathname, useParams, useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Users, FileText, Calendar, MessageSquare, BarChart, ArrowLeft, CheckCircle2, CircleOff, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const tabs = [
     { value: 'overview', label: 'Overview', icon: Building2, href: '' },
@@ -31,6 +32,7 @@ export default function ClientDetailsLayout({ children }: { children: React.Reac
     const pathname = usePathname();
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const clientId = params.id as string;
     const basePath = `/clients/${clientId}`;
 
@@ -38,17 +40,31 @@ export default function ClientDetailsLayout({ children }: { children: React.Reac
     const remainingPath = pathname.replace(basePath, '');
     const currentTab = remainingPath === '' ? 'overview' : remainingPath.split('/')[1];
 
-    console.log('Pathname:', pathname);
-    console.log('Base Path:', basePath);
-    console.log('Current Tab:', currentTab);
-
-    const { data: client } = useQuery({
+    const { data: client, error, isLoading } = useQuery({
         queryKey: ['client', clientId],
         queryFn: () => fetchClient(clientId),
+        retry: 2,
+        retryDelay: 1000,
     });
 
     return (
         <div className="container mx-auto p-6 space-y-6">
+            {error && (
+                <div className="text-center text-red-500 p-4">
+                    <p>Failed to load client details</p>
+                    <Button
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['client', clientId] })}
+                        className="mt-2"
+                    >
+                        Retry
+                    </Button>
+                </div>
+            )}
+            {isLoading && (
+                <div className="flex justify-center py-8">
+                    <LoadingSpinner className="w-8 h-8" />
+                </div>
+            )}
             {client && (
                 <div className="flex items-center gap-4 mb-6">
                     <Button

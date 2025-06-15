@@ -1,7 +1,6 @@
 'use client';
 
-import { StaffFormModal } from './_components/StaffFormModal';
-import { ClientStaffTable } from './client-staff-table';
+import StaffList from '@/components/admin/clients/staff/staff-list';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { use } from 'react';
@@ -13,7 +12,7 @@ interface Params {
 async function getClientStaff(clientId: string) {
     const response = await fetch(`/api/clients/${clientId}/staff`);
     if (!response.ok) {
-        throw new Error('Failed to fetch staff');
+        throw new Error(`Failed to fetch staff: ${response.status} ${response.statusText}`);
     }
     return response.json();
 }
@@ -48,10 +47,7 @@ export default function ClientStaffPage({
 
     return (
         <div className="container mx-auto">
-            <div className="flex justify-end mb-6">
-                <StaffFormModal clientId={id} onClose={() => { }} />
-            </div>
-            <ClientStaffTable staff={data?.data || []} />
+            <StaffList clientId={id} data={data.data} />
         </div>
     );
 } 

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui';
 import { LoadingSpinner } from '@/components/ui';
 import {
@@ -12,165 +12,45 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { InterventionForm, type InterventionFormData } from '@/components/admin/services/intervention-form';
+import { InterventionForm, InterventionFormData } from '@/components/admin/services/intervention-form';
 import { InterventionsTable } from '@/components/admin/services/interventions-table';
-import { toast } from "sonner"
-
-interface Intervention {
-    id: string;
-    name: string;
-    description: string | null;
-    service: {
-        id: string;
-        name: string;
-    };
-    status: string;
-    duration: number | null;
-    capacity: number | null;
-    prerequisites: string | null;
-    isPublic: boolean;
-    price: number | null;
-    metadata: Record<string, unknown>;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface Category {
-    id: string;
-    name: string;
-}
-
-async function fetchCategories(): Promise<{ data: Category[] }> {
-    const response = await fetch('/api/services');
-    if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-    }
-    return response.json();
-}
-
-async function createIntervention(data: unknown): Promise<unknown> {
-    const response = await fetch('/api/services/interventions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create intervention');
-    }
-    return response.json();
-}
-
-async function updateIntervention(data: unknown): Promise<unknown> {
-    const { id, ...rest } = data as { id: string };
-    const response = await fetch(`/api/services/interventions/${id}`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(rest),
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update intervention');
-    }
-    return response.json();
-}
-
-async function deleteIntervention(id: unknown): Promise<unknown> {
-    const response = await fetch(`/api/services/interventions/${id}`, {
-        method: 'DELETE',
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete intervention');
-    }
-    return response.json();
-}
+import { Intervention, CreateInterventionInput, UpdateInterventionInput } from '@/schema/intervention';
+import { useCreateIntervention, useDeleteIntervention, useInterventions, useUpdateIntervention } from '@/hooks/interventions';
+import { ConfirmDeleteCard } from '@/components/admin/services/confirm-delete';
+import { useServices } from '@/hooks/services';
 
 export default function InterventionsPage() {
     const [open, setOpen] = React.useState(false);
     const queryClient = useQueryClient();
-    const { data, isLoading } = useQuery({
-        queryKey: ['interventions'],
-        queryFn: async () => {
-            const res = await fetch('/api/services/interventions');
-            if (!res.ok) {
-                throw new Error('Failed to fetch interventions');
-            }
-            return res.json();
-        },
-    });
+    const [selected, setSelected] = React.useState<Intervention | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
 
-    const { data: categoriesData } = useQuery({
-        queryKey: ['categories'],
-        queryFn: fetchCategories,
-    });
+    // Queries
+    const { data: interventionsData, isLoading, error } = useInterventions();
+    const { data: servicesData, error: servicesError } = useServices();
 
-    const createInterventionMutation = useMutation({
-        mutationFn: createIntervention,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['interventions'] });
-            setOpen(false);
-            toast.success("Intervention created successfully!")
-        },
-        onError: (error) => {
-            console.error('Error creating intervention:', error);
-            toast.error("Failed to create intervention.")
-        }
-    });
+    // Mutations
+    const createInterventionMutation = useCreateIntervention(servicesData?.data ?? [], () => setOpen(false));
+    const updateInterventionMutation = useUpdateIntervention();
+    const deleteInterventionMutation = useDeleteIntervention();
 
-    const updateInterventionMutation = useMutation({
-        mutationFn: updateIntervention,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['interventions'] });
-            toast.success("Intervention updated successfully!")
-        },
-        onError: (error) => {
-            console.error('Error updating intervention:', error);
-            toast.error("Failed to update intervention.")
-        }
-    });
-
-    const deleteInterventionMutation = useMutation({
-        mutationFn: deleteIntervention,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['interventions'] });
-            toast.success("Intervention deleted successfully!")
-        },
-        onError: (error) => {
-            console.error('Error deleting intervention:', error);
-            toast.error("Failed to delete intervention.")
-        }
-    });
-
-    const handleSubmit = React.useCallback(async (data: InterventionFormData) => {
-        createInterventionMutation.mutate(data);
-    }, [createInterventionMutation]);
-
-    const handleEdit = React.useCallback((intervention: Intervention) => {
-        updateInterventionMutation.mutate({
-            id: intervention.id,
-            name: intervention.name,
-            description: intervention.description || '',
-            serviceId: intervention.service.id,
-            status: intervention.status as "ACTIVE" | "INACTIVE" | "PENDING" | "ARCHIVED",
-            duration: intervention.duration || 0,
-            capacity: intervention.capacity || 0,
-            prerequisites: intervention.prerequisites || '',
-            isPublic: intervention.isPublic,
-            price: intervention.price || 0,
-            metadata: intervention.metadata
-        });
-    }, [updateInterventionMutation]);
-
-    const handleDelete = React.useCallback((intervention: Intervention) => {
-        if (window.confirm(`Are you sure you want to delete the intervention "${intervention.name}"?`)) {
-            deleteInterventionMutation.mutate(intervention.id);
-        }
-    }, [deleteInterventionMutation]);
+    // Error fallback
+    if (error || servicesError) {
+        return (
+            <div className="text-center text-red-500 p-4">
+                <p>Error loading data. Please try again later.</p>
+                <Button
+                    onClick={() => {
+                        queryClient.invalidateQueries({ queryKey: ["interventions"] });
+                        queryClient.invalidateQueries({ queryKey: ["services"] });
+                    }}
+                    className="mt-4"
+                >
+                    Retry
+                </Button>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -180,7 +60,7 @@ export default function InterventionsPage() {
         );
     }
 
-    if (!data) {
+    if (!interventionsData) {
         return (
             <div className="text-center text-red-500">
                 Error loading interventions. Please try again later.
@@ -188,36 +68,90 @@ export default function InterventionsPage() {
         );
     }
 
+    const handleSubmit = (formData: InterventionFormData) => {
+        const createData: CreateInterventionInput = {
+            name: formData.name,
+            serviceId: formData.serviceId,
+            description: formData.description || null,
+            status: formData.status,
+            duration: formData.duration || null,
+            capacity: formData.capacity || null,
+            prerequisites: formData.prerequisites || null,
+            isPublic: formData.isPublic,
+            price: formData.price || null,
+            metadata: formData.metadata || {},
+            serviceProviderId: null,
+        };
+        createInterventionMutation.mutate(createData);
+    };
+
+    const handleEdit = (intervention: Intervention) => {
+        const updateData: UpdateInterventionInput = {
+            id: intervention.id,
+            name: intervention.name,
+            description: intervention.description || "",
+            serviceId: intervention.service.id,
+            status: intervention.status,
+            duration: intervention.duration || 0,
+            capacity: intervention.capacity || 0,
+            prerequisites: intervention.prerequisites || "",
+            isPublic: intervention.isPublic,
+            price: intervention.price || 0,
+            metadata: intervention.metadata,
+            serviceProviderId: null,
+        };
+        updateInterventionMutation.mutate(updateData);
+    };
+
+    const handleDeleteClick = (intervention: Intervention) => {
+        setSelected(intervention);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (selected) {
+            deleteInterventionMutation.mutate(selected.id);
+            setDeleteDialogOpen(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Service Interventions</h2>
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogTrigger asChild>
-                        <Button>Add Intervention</Button>
-                    </DialogTrigger>
-                    <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-                        <DialogHeader>
+                    <DialogTrigger asChild><Button>Add Intervention</Button></DialogTrigger>
+                    <DialogContent
+                        onPointerDownOutside={(e) => e.preventDefault()}
+                        onEscapeKeyDown={(e) => e.preventDefault()}
+                        className="sm:max-w-2xl max-h-[90vh] flex flex-col"
+                    >
+                        <DialogHeader className="flex-none">
                             <DialogTitle>Add New Intervention</DialogTitle>
-                            <DialogDescription>
-                                Create a new service intervention to provide specific services.
-                            </DialogDescription>
+                            <DialogDescription>Create a new service intervention to provide specific services.</DialogDescription>
                         </DialogHeader>
-                        <InterventionForm
-                            onSubmit={handleSubmit}
-                            isSubmitting={createInterventionMutation.isPending}
-                            onCancel={() => setOpen(false)}
-                            categories={categoriesData?.data || []}
-                        />
+                        <div className="flex-1 overflow-y-auto py-4">
+                            <InterventionForm
+                                onSubmit={handleSubmit}
+                                isSubmitting={createInterventionMutation.isPending}
+                                onCancel={() => setOpen(false)}
+                                services={servicesData?.data || []}
+                            />
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>
-
             <InterventionsTable
-                interventions={data?.data || []}
+                interventions={interventionsData.data}
                 onEdit={handleEdit}
-                onDelete={handleDelete}
+                onDelete={handleDeleteClick}
+            />
+            <ConfirmDeleteCard
+                open={deleteDialogOpen}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteDialogOpen(false)}
+                itemName={selected?.name ?? ""}
             />
         </div>
     );
-} 
+}

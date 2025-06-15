@@ -19,18 +19,16 @@ const tabs: { value: string; label: string; icon: IconKey; href: string; }[] = [
 export default function ServicesLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
-    // More precise tab matching logic
     const currentTab = tabs.find(tab => {
+        if (pathname === tab.href) return true;
+
         if (tab.href === '/services') {
-            // For the main interventions tab, only match exact path or direct children
-            return pathname === tab.href ||
-                (pathname.startsWith('/services/') && !pathname.startsWith('/services/interventions') &&
-                    !pathname.startsWith('/services/providers') && !pathname.startsWith('/services/sessions') &&
-                    !pathname.startsWith('/services/feedback') && !pathname.startsWith('/services/reports'));
+            return pathname.startsWith('/services/') &&
+                !tabs.some(t => t.href !== '/services' && pathname.startsWith(t.href));
         }
-        // For other tabs, match exact path or their sub-routes
-        return pathname === tab.href || pathname.startsWith(tab.href + '/');
-    })?.value || 'interventions';
+
+        return pathname.startsWith(tab.href + '/');
+    })?.value || 'services';
 
     return (
         <div className="container mx-auto p-6">

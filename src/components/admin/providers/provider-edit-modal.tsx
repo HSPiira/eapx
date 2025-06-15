@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ProviderForm, ProviderFormData } from './provider-form';
+import { ProviderForm } from './provider-form';
+import { CreateServiceProviderInput } from '@/schema/provider';
 
 type ProviderType = 'COUNSELOR' | 'CLINIC' | 'HOTLINE' | 'COACH' | 'OTHER';
 type ProviderEntityType = 'INDIVIDUAL' | 'COMPANY';
@@ -31,7 +32,7 @@ interface ProviderEditModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     provider: Provider | null;
-    onSubmit: (data: ProviderFormData) => void;
+    onSubmit: (data: CreateServiceProviderInput) => void;
     isSubmitting?: boolean;
 }
 
@@ -39,13 +40,13 @@ export function ProviderEditModal({ open, onOpenChange, provider, onSubmit, isSu
     if (!provider) return null;
 
     // Convert provider data to match form data structure
-    const formData: Partial<ProviderFormData> = {
+    const formData: Partial<CreateServiceProviderInput> = {
         name: provider.name,
         type: provider.type,
         entityType: provider.entityType,
         contactEmail: provider.contactEmail,
-        contactPhone: provider.contactPhone,
-        location: provider.location,
+        contactPhone: provider.contactPhone ?? undefined,
+        location: provider.location ?? undefined,
         qualifications: provider.qualifications,
         specializations: provider.specializations,
         isVerified: provider.isVerified,

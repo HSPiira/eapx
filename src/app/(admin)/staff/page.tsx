@@ -17,7 +17,7 @@ export default async function StaffPage() {
     const staff = await getStaff()
 
     return (
-        <div className="container mx-auto py-10">
+        <div className="container mx-auto py-5">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Staff</h1>
                 <Link href="/staff/new">
@@ -27,7 +27,7 @@ export default async function StaffPage() {
                     </Button>
                 </Link>
             </div>
-            <div className="mt-8">
+            <div className="mt-4">
                 <StaffTable data={staff} />
             </div>
         </div>

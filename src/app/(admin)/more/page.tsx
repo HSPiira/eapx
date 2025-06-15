@@ -1,15 +1,10 @@
-'use client';
 
 import React from 'react';
-import {adminNavItems} from '@/config';
+import { adminNavItems } from '@/config';
 import MoreNavItem from '@/components/admin/more-nav-item';
-import {usePathname} from 'next/navigation';
 
 export default function MorePage() {
-    usePathname();
-// Re-calculate extra items based on the same logic as ClientNav
     const maxVisible = 4;
-     // Use the shared config
     const extraNavItems = adminNavItems.slice(maxVisible - 1);
     return (
         <div className="container mx-auto p-6 space-y-6">

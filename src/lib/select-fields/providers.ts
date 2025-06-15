@@ -16,7 +16,7 @@ export const providerSelectFields = {
     updatedAt: true,
     _count: {
         select: {
-            services: true,
+            interventions: true,
             sessions: true,
         },
     },
@@ -24,7 +24,7 @@ export const providerSelectFields = {
 
 export const providerWithRelationsSelectFields = {
     ...providerSelectFields,
-    services: {
+    interventions: {
         select: {
             id: true,
             name: true,

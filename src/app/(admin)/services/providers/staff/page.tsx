@@ -2,6 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { ProviderStaffModal } from '@/components/admin/providers/provider-staff-modal';
 import { useToast } from '@/components/ui/use-toast';
+import { fetchProviders } from '@/api/providers';
+import { fetchServices } from '@/api/services';
+import { fetchInterventions } from '@/api/interventions';
+import { useProviderStaff } from '@/hooks/providers/useProviderStaff';
+import { ProviderStaff } from '@/types/provider-staff';
 
 interface Provider {
     id: string;
@@ -9,94 +14,76 @@ interface Provider {
     entityType: string;
 }
 
-interface StaffMember {
-    id: string;
-    providerId?: string;
-    serviceProviderId?: string;
+interface CreateStaffInput {
     fullName: string;
-    role: string;
-    email: string;
-    status?: string;
+    role: string | null;
+    email: string | null;
+    phone: string | null;
+    serviceProviderId?: string;
+    qualifications: string[];
+    specializations: string[];
+    isPrimaryContact: boolean;
+}
+
+interface UpdateStaffInput extends Partial<CreateStaffInput> {
+    id: string;
 }
 
 export default function ProvidersStaffPage() {
-    // Replace with actual providerId from context/router as needed
-    const providerId = '1';
-    const [staff, setStaff] = useState<StaffMember[]>([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-    const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const { toast } = useToast();
+    const [selectedStaff, setSelectedStaff] = useState<ProviderStaff | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [providers, setProviders] = useState<Provider[]>([]);
     const [interventions, setInterventions] = useState<{ id: string; name: string; service: string }[]>([]);
     const [services, setServices] = useState<{ id: string; name: string }[]>([]);
+    const { toast } = useToast();
 
-    // Fetch staff and providers from API
-    React.useEffect(() => {
-        async function fetchStaffAndProviders() {
-            // Fetch all providers
-            let allProviders: Provider[] = [];
-            try {
-                const res = await fetch('/api/providers');
-                const json = await res.json();
-                allProviders = (json.data || []).map((p: Provider) => ({ id: p.id, name: p.name, entityType: p.entityType }));
-                setProviders(allProviders);
-            } catch (error) {
-                console.error('Error fetching providers:', error);
-                setProviders([]);
-            }
-            // Fetch staff
-            try {
-                const res = await fetch(`/api/providers/staff`);
-                const json = await res.json();
-                console.log('Fetched staff:', json);
-                setStaff(json.data || []);
-            } catch (error) {
-                console.error('Error fetching staff:', error);
-                setStaff([]);
-            }
-        }
-        fetchStaffAndProviders();
-    }, [providerId]);
+    const {
+        staff,
+        isLoading: isLoadingStaff,
+        error: staffError,
+        createStaff,
+        updateStaff,
+        deleteStaff,
+        isCreating,
+        isUpdating,
+        isDeleting
+    } = useProviderStaff();
+
+    // Debug logs
+    console.log('Staff Data:', { staff, isLoadingStaff, staffError });
 
     useEffect(() => {
         async function fetchData() {
-            // Fetch company-type providers
             try {
-                const res = await fetch('/api/providers');
-                const json = await res.json();
-                const companyProviders = (json.data || [])
+                const providersResponse = await fetchProviders();
+                const allProviders = (providersResponse.data || [])
                     .map((p: Provider) => ({ id: p.id, name: p.name, entityType: p.entityType }));
-                setProviders(companyProviders);
-            } catch (error) {
-                console.error('Error fetching providers:', error);
-                setProviders([]);
-            }
-            // Fetch interventions
-            try {
-                const res = await fetch('/api/services/interventions?limit=200');
-                const json = await res.json();
-                const interventions = (json.data || [])
-                    .map((i: { id: string; name: string; service: string }) => ({ id: i.id, name: i.name, service: i.service }));
+                setProviders(allProviders);
+
+                const interventionsResponse = await fetchInterventions();
+                const interventions = (interventionsResponse.data || [])
+                    .map((i) => ({
+                        id: i.id,
+                        name: i.name,
+                        service: i.service.name,
+                    }));
                 setInterventions(interventions);
+
+                const servicesResponse = await fetchServices();
+                setServices(servicesResponse.data || []);
             } catch (error) {
-                console.error('Error fetching interventions:', error);
-                setInterventions([]);
-            }
-            // Fetch services
-            try {
-                const res = await fetch('/api/services?limit=200');
-                const json = await res.json();
-                setServices(json.data || []);
-            } catch (error) {
-                console.error('Error fetching services:', error);
-                setServices([]);
+                console.error('Error fetching data:', error);
+                toast({
+                    title: 'Error',
+                    description: 'Failed to fetch data. Please try again.',
+                    variant: 'destructive'
+                });
             }
         }
         fetchData();
-    }, []);
+    }, [toast]);
 
     const handleAdd = () => {
         setSelectedStaff(null);
@@ -104,83 +91,90 @@ export default function ProvidersStaffPage() {
         setModalOpen(true);
     };
 
-    const handleEdit = (member: StaffMember) => {
+    const handleEdit = (member: ProviderStaff) => {
         setSelectedStaff(member);
         setModalMode('edit');
         setModalOpen(true);
     };
 
-    const handleSubmit = async (data: Partial<StaffMember>) => {
-        setIsSubmitting(true);
+    const handleSubmit = async (data: Partial<ProviderStaff>) => {
         setFormError(null);
         try {
-            let res;
-            const staffProviderId = data.providerId || providerId;
+            const staffProviderId = data.serviceProviderId || selectedStaff?.serviceProviderId;
+            if (!staffProviderId) throw new Error('Provider is required');
+
             if (modalMode === 'add') {
-                res = await fetch(`/api/providers/${staffProviderId}/staff`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
-                });
+                const createData: CreateStaffInput = {
+                    fullName: data.fullName || '',
+                    role: data.role || null,
+                    email: data.email || null,
+                    phone: data.phone || null,
+                    serviceProviderId: staffProviderId,
+                    qualifications: data.qualifications || [],
+                    specializations: data.specializations || [],
+                    isPrimaryContact: data.isPrimaryContact || false,
+                };
+                await createStaff({ providerId: staffProviderId, data: createData });
+                toast({ title: 'Success', description: 'Staff added.' });
             } else if (modalMode === 'edit' && selectedStaff) {
-                res = await fetch(`/api/providers/${staffProviderId}/staff/${selectedStaff.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
-                });
+                const updateData: UpdateStaffInput = {
+                    id: selectedStaff.id,
+                    fullName: data.fullName || selectedStaff.fullName,
+                    role: data.role || selectedStaff.role,
+                    email: data.email || selectedStaff.email,
+                    phone: data.phone || selectedStaff.phone,
+                    serviceProviderId: staffProviderId,
+                    qualifications: data.qualifications || selectedStaff.qualifications,
+                    specializations: data.specializations || selectedStaff.specializations,
+                    isPrimaryContact: data.isPrimaryContact || selectedStaff.isPrimaryContact,
+                };
+                await updateStaff({ providerId: staffProviderId, data: updateData });
+                toast({ title: 'Success', description: 'Staff updated.' });
             }
-            if (res && !res.ok) {
-                let errorData: { error?: string } = {};
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    errorData = await res.json();
-                }
-                setFormError(errorData.error || 'Failed to save staff');
-                toast({ title: 'Error', description: errorData.error || 'Failed to save staff', variant: 'destructive' });
-                return;
-            }
-            // Refresh staff list
-            const refreshed = await fetch(`/api/providers/${staffProviderId}/staff`);
-            let json: { data?: StaffMember[] } = {};
-            const contentType = refreshed.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                json = await refreshed.json();
-            }
-            setStaff(json.data || []);
             setModalOpen(false);
-            toast({ title: 'Success', description: modalMode === 'add' ? 'Staff added.' : 'Staff updated.' });
         } catch (error) {
             console.error('Error submitting staff:', error);
-            setFormError('An unexpected error occurred');
-            toast({ title: 'Error', description: 'An unexpected error occurred', variant: 'destructive' });
-        } finally {
-            setIsSubmitting(false);
+            setFormError(error instanceof Error ? error.message : 'An unexpected error occurred');
+            toast({
+                title: 'Error',
+                description: error instanceof Error ? error.message : 'An unexpected error occurred',
+                variant: 'destructive'
+            });
         }
     };
 
-    const handleRemove = async (id: string) => {
+    const handleRemove = async (id: string, serviceProviderId: string) => {
         try {
-            const res = await fetch(`/api/providers/${providerId}/staff/${id}`, { method: 'DELETE' });
-            if (!res.ok) {
-                const errorData = await res.json();
-                toast({ title: 'Error', description: errorData.error || 'Failed to remove staff', variant: 'destructive' });
-                return;
-            }
-            const refreshed = await fetch(`/api/providers/${providerId}/staff`);
-            const json = await refreshed.json();
-            setStaff(json.data || []);
+            await deleteStaff({ providerId: serviceProviderId, id });
             toast({ title: 'Success', description: 'Staff removed.' });
         } catch (error) {
             console.error('Error removing staff:', error);
-            toast({ title: 'Error', description: 'An unexpected error occurred', variant: 'destructive' });
+            toast({
+                title: 'Error',
+                description: error instanceof Error ? error.message : 'An unexpected error occurred',
+                variant: 'destructive'
+            });
         }
     };
+
+    if (staffError) {
+        return (
+            <div className="text-red-500">
+                Error loading staff: {staffError instanceof Error ? staffError.message : 'Unknown error'}
+            </div>
+        );
+    }
 
     return (
         <div className="text-gray-900 dark:text-gray-100">
             <div className="flex items-center justify-between mb-2">
                 <h1 className="text-2xl font-bold">Provider Staff</h1>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800" onClick={handleAdd}>Add Staff</button>
+                <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                    onClick={handleAdd}
+                >
+                    Add Staff
+                </button>
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-200 dark:border-gray-700 text-sm">
@@ -195,9 +189,16 @@ export default function ProvidersStaffPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {staff.map((member: StaffMember) => {
-                            // Find the provider name for this staff member
-                            const provider = providers.find(p => p.id === (member.providerId || member.serviceProviderId));
+                        {isLoadingStaff ? (
+                            <tr>
+                                <td colSpan={6} className="p-4 text-center">Loading staff...</td>
+                            </tr>
+                        ) : staff.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="p-4 text-center">No staff members found</td>
+                            </tr>
+                        ) : staff.map((member: ProviderStaff) => {
+                            const provider = providers.find(p => p.id === member.serviceProviderId);
                             return (
                                 <tr key={member.id} className="even:bg-gray-50 dark:even:bg-gray-800/50">
                                     <td className="p-2 border border-gray-200 dark:border-gray-700">{provider ? provider.name : ''}</td>
@@ -206,8 +207,20 @@ export default function ProvidersStaffPage() {
                                     <td className="p-2 border border-gray-200 dark:border-gray-700">{member.email}</td>
                                     <td className="p-2 border border-gray-200 dark:border-gray-700">{member.status || ''}</td>
                                     <td className="p-2 border border-gray-200 dark:border-gray-700 space-x-2">
-                                        <button className="px-2 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded hover:bg-yellow-300 dark:hover:bg-yellow-700" onClick={() => handleEdit(member)}>Edit</button>
-                                        <button className="px-2 py-1 bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 rounded hover:bg-red-300 dark:hover:bg-red-700" onClick={() => handleRemove(member.id)}>Remove</button>
+                                        <button
+                                            className="px-2 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded hover:bg-yellow-300 dark:hover:bg-yellow-700"
+                                            onClick={() => handleEdit(member)}
+                                            disabled={isUpdating}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            className="px-2 py-1 bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 rounded hover:bg-red-300 dark:hover:bg-red-700"
+                                            onClick={() => handleRemove(member.id, member.serviceProviderId!)}
+                                            disabled={isDeleting}
+                                        >
+                                            Remove
+                                        </button>
                                     </td>
                                 </tr>
                             );
@@ -219,7 +232,7 @@ export default function ProvidersStaffPage() {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
+                isSubmitting={isCreating || isUpdating}
                 initialData={selectedStaff || undefined}
                 mode={modalMode}
                 error={formError}

@@ -17,7 +17,8 @@ export const publicPaths = [
     '/window.svg',
     '/file.svg',
     '/microsoft.svg',
-    '/dark-logo.png'
+    '/dark-logo.png',
+    '/session-feedback'
 ] as const;
 
 // Helper to determine if a path is a static asset

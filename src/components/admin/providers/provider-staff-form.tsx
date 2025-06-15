@@ -26,11 +26,11 @@ import {
 import { Check, ChevronsUpDown, ChevronDown } from "lucide-react";
 
 const staffSchema = z.object({
-    providerId: z.string().min(1, 'Provider is required'),
+    id: z.string().min(1, 'Provider is required'),
     fullName: z.string().min(1, "Full name is required"),
-    email: z.string().email("Must be a valid email").optional().or(z.literal('')),
-    phone: z.string().optional().or(z.literal('')),
-    role: z.string().optional().or(z.literal('')),
+    email: z.string().email("Must be a valid email").nullable().optional(),
+    phone: z.string().nullable().optional(),
+    role: z.string().nullable().optional(),
     qualifications: z.array(z.string()),
     specializations: z.array(z.string()),
     isPrimaryContact: z.boolean(),
@@ -66,11 +66,11 @@ export function ProviderStaffForm({
 }: ProviderStaffFormProps) {
     const [step, setStep] = useState(1);
     const [providerOpen, setProviderOpen] = useState(false);
-    const isEditMode = Boolean(initialData && initialData.providerId);
+    const isEditMode = Boolean(initialData && initialData.id);
     const form = useForm<ProviderStaffFormData>({
         resolver: zodResolver(staffSchema),
         defaultValues: {
-            providerId: initialData?.providerId || '',
+            id: initialData?.id || '',
             fullName: initialData?.fullName || '',
             email: initialData?.email || '',
             phone: initialData?.phone || '',
@@ -124,7 +124,7 @@ export function ProviderStaffForm({
 
     const handleNext = async () => {
         // Only validate step 1 fields before advancing
-        const valid = await form.trigger(['providerId', 'fullName']);
+        const valid = await form.trigger(['id', 'fullName']);
         if (valid) setStep(2);
     };
 
@@ -144,7 +144,7 @@ export function ProviderStaffForm({
                         <div className="space-y-4">
                             {/* Provider Combobox */}
                             <div className="space-y-2">
-                                <Label htmlFor="providerId">Provider</Label>
+                                <Label htmlFor="id">Provider</Label>
                                 <Popover open={providerOpen} onOpenChange={setProviderOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -154,8 +154,8 @@ export function ProviderStaffForm({
                                             className="w-full justify-between"
                                             disabled={isEditMode}
                                         >
-                                            {form.watch('providerId')
-                                                ? (Array.isArray(providers) ? providers.find((p) => p.id === form.watch('providerId'))?.name : '')
+                                            {form.watch('id')
+                                                ? (Array.isArray(providers) ? providers.find((p) => p.id === form.watch('id'))?.name : '')
                                                 : 'Select provider'}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -172,7 +172,7 @@ export function ProviderStaffForm({
                                                             value={provider.name}
                                                             onSelect={() => {
                                                                 if (!isEditMode) {
-                                                                    form.setValue('providerId', provider.id);
+                                                                    form.setValue('id', provider.id);
                                                                     setProviderOpen(false);
                                                                 }
                                                             }}
@@ -180,7 +180,7 @@ export function ProviderStaffForm({
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    form.watch('providerId') === provider.id
+                                                                    form.watch('id') === provider.id
                                                                         ? 'opacity-100'
                                                                         : 'opacity-0'
                                                                 )}
@@ -193,9 +193,9 @@ export function ProviderStaffForm({
                                         </Command>
                                     </PopoverContent>
                                 </Popover>
-                                {form.formState.errors.providerId && (
+                                {form.formState.errors.id && (
                                     <p className="text-sm text-red-500">
-                                        {form.formState.errors.providerId.message}
+                                        {form.formState.errors.id.message}
                                     </p>
                                 )}
                             </div>

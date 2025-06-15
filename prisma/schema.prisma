@@ -356,8 +356,9 @@ model Client {
   serviceAssignments ServiceAssignment[]
   staff              Staff[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  CareSession CareSession[]
 
   @@index([status])
   @@index([name])
@@ -477,7 +478,7 @@ model Intervention {
   assignments       ServiceAssignment[]
   ServiceProvider   ServiceProvider?    @relation(fields: [serviceProviderId], references: [id])
   serviceProviderId String?
-  ServiceSession    ServiceSession[]
+  CareSession       CareSession[]
 
   @@index([status])
   @@index([isPublic])
@@ -526,7 +527,7 @@ model ServiceProvider {
   status          WorkStatus           @default(ACTIVE)
 
   interventions     Intervention[]
-  sessions          ServiceSession[]
+  CareSession       CareSession[]
   availabilitySlots CounselorAvailability[]
 
   createdAt                DateTime                   @default(now())
@@ -543,14 +544,14 @@ model ServiceProvider {
 }
 
 model ServiceProviderService {
-  id                String           @id @default(cuid())
-  serviceProvider   ServiceProvider  @relation(fields: [serviceProviderId], references: [id])
+  id                String          @id @default(cuid())
+  serviceProvider   ServiceProvider @relation(fields: [serviceProviderId], references: [id])
   serviceProviderId String
-  service           Service          @relation(fields: [serviceId], references: [id])
+  service           Service         @relation(fields: [serviceId], references: [id])
   serviceId         String
   notes             String?
-  isApproved        Boolean          @default(false)
-  ServiceSession    ServiceSession[]
+  isApproved        Boolean         @default(false)
+  CareSession       CareSession[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -589,7 +590,7 @@ enum ProviderEntityType {
 }
 
 model ProviderStaff {
-  id                String     @id @default(cuid())
+  id                String        @id @default(cuid())
   serviceProviderId String
   fullName          String
   email             String?
@@ -598,8 +599,9 @@ model ProviderStaff {
   qualifications    String[]
   specializations   String[]
   documents         Document[]
-  isPrimaryContact  Boolean    @default(false)
+  isPrimaryContact  Boolean       @default(false)
   metadata          Json?
+  careSessions      CareSession[]
 
   serviceProvider ServiceProvider @relation(fields: [serviceProviderId], references: [id])
 
@@ -628,13 +630,33 @@ model CounselorAvailability {
   @@index([deletedAt])
 }
 
-model ServiceSession {
+/// Session type enum for care sessions
+enum SessionType {
+  // Organization session types
+  TALK       @map("Talk")
+  WEBINAR    @map("Webinar")
+  TRAINING   @map("Training")
+  WORKSHOP   @map("Workshop")
+  SEMINAR    @map("Seminar")
+  CONFERENCE @map("Conference")
+  // Staff session types
+  INDIVIDUAL @map("Individual")
+  COUPLE     @map("Couple")
+  FAMILY     @map("Family")
+  GROUP      @map("Group")
+}
+
+model CareSession {
   id                 String        @id @default(cuid())
-  serviceId          String
+  clientId           String
+  client             Client        @relation(fields: [clientId], references: [id])
+  interventionId     String?
   providerId         String?
-  scheduledAt        DateTime
+  providerStaffId    String?
+  scheduledAt        DateTime?
   completedAt        DateTime?
-  status             SessionStatus @default(SCHEDULED)
+  sessionType        SessionType?
+  status             SessionStatus @default(UNCONFIRMED)
   notes              String?
   feedback           String?
   duration           Int?
@@ -652,13 +674,13 @@ model ServiceSession {
 
   staffId           String?
   beneficiaryId     String?
-  providerStaffId   String?
   providerServiceId String?
 
   staff           Staff?                  @relation(fields: [staffId], references: [id])
   beneficiary     Beneficiary?            @relation(fields: [beneficiaryId], references: [id])
-  service         Intervention            @relation(fields: [serviceId], references: [id])
+  intervention    Intervention?           @relation(fields: [interventionId], references: [id])
   provider        ServiceProvider?        @relation(fields: [providerId], references: [id])
+  providerStaff   ProviderStaff?          @relation(fields: [providerStaffId], references: [id])
   providerService ServiceProviderService? @relation(fields: [providerServiceId], references: [id])
   SessionFeedback SessionFeedback[]
   forms           SessionForm[]
@@ -672,8 +694,9 @@ model ServiceSession {
   @@index([scheduledAt])
   @@index([isGroupSession])
   @@index([providerId])
-  @@index([serviceId])
+  @@index([interventionId])
   @@index([deletedAt])
+  @@index([status, providerId, interventionId, beneficiaryId, deletedAt])
 }
 
 model SessionFeedback {
@@ -685,7 +708,7 @@ model SessionFeedback {
   deletedAt DateTime?
   createdAt DateTime  @default(now())
 
-  session ServiceSession @relation(fields: [sessionId], references: [id])
+  session CareSession @relation(fields: [sessionId], references: [id])
 
   @@index([deletedAt])
 }
@@ -703,7 +726,7 @@ model SessionForm {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  session   ServiceSession  @relation(fields: [sessionId], references: [id])
+  session   CareSession     @relation(fields: [sessionId], references: [id])
   counselor ServiceProvider @relation(fields: [counselorId], references: [id])
 
   @@index([sessionId])
@@ -725,6 +748,7 @@ model Staff {
   clientId              String
   jobTitle              String
   companyId             String
+  companyStaffId        String?
   managementLevel       ManagementLevel
   employmentType        EmploymentType?
   educationLevel        EducationLevel?
@@ -741,11 +765,11 @@ model Staff {
   userId String
 
   // Relations
-  user           User             @relation(fields: [userId], references: [id])
-  profile        Profile          @relation(fields: [profileId], references: [id])
-  client         Client           @relation(fields: [clientId], references: [id])
-  beneficiaries  Beneficiary[]
-  ServiceSession ServiceSession[]
+  user          User          @relation(fields: [userId], references: [id])
+  profile       Profile       @relation(fields: [profileId], references: [id])
+  client        Client        @relation(fields: [clientId], references: [id])
+  beneficiaries Beneficiary[]
+  CareSession   CareSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -785,14 +809,14 @@ model Beneficiary {
   deletedAt           DateTime?
 
   // Relations
-  profile  Profile @relation(fields: [profileId], references: [id])
-  staff    Staff   @relation(fields: [staffId], references: [id])
-  guardian User?   @relation("UserGuardians", fields: [guardianId], references: [id])
-  userLink User?   @relation("UserBeneficiaries", fields: [userLinkId], references: [id])
+  profile     Profile       @relation(fields: [profileId], references: [id])
+  staff       Staff         @relation(fields: [staffId], references: [id])
+  guardian    User?         @relation("UserGuardians", fields: [guardianId], references: [id])
+  userLink    User?         @relation("UserBeneficiaries", fields: [userLinkId], references: [id])
+  CareSession CareSession[]
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  ServiceSession ServiceSession[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([relation])
@@ -1047,6 +1071,8 @@ enum ContractStatus {
 
 /// Status enum for service sessions
 enum SessionStatus {
+  DRAFT       @map("Draft") // Session is in draft
+  UNCONFIRMED @map("Unconfirmed") // Session is unconfirmed
   SCHEDULED   @map("Scheduled") // Session is scheduled
   RESCHEDULED @map("Rescheduled") // Session was rescheduled
   COMPLETED   @map("Completed") // Session was completed

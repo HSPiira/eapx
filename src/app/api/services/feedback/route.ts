@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search } = getPaginationParams(searchParams);
         const sessionId = searchParams.get('sessionId') || undefined;
-        const serviceId = searchParams.get('serviceId') || undefined;
+        const interventionId = searchParams.get('interventionId') || undefined;
         const providerId = searchParams.get('providerId') || undefined;
         const minRating = searchParams.get('minRating') ? parseInt(searchParams.get('minRating')!) : undefined;
         const maxRating = searchParams.get('maxRating') ? parseInt(searchParams.get('maxRating')!) : undefined;
@@ -33,13 +33,13 @@ export async function GET(request: NextRequest) {
             OR: search
                 ? [
                     { comment: { contains: search, mode: Prisma.QueryMode.insensitive } },
-                    { session: { service: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
+                    { session: { intervention: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
                     { session: { provider: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
                 ]
                 : undefined,
             sessionId: sessionId || undefined,
             session: {
-                serviceId: serviceId || undefined,
+                interventionId: interventionId || undefined,
                 providerId: providerId || undefined,
             },
             rating: {
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
             },
         };
 
-        const cacheKey = `feedback:${page}:${limit}:${search}:${sessionId}:${serviceId}:${providerId}:${minRating}:${maxRating}`;
+        const cacheKey = `feedback:${page}:${limit}:${search}:${sessionId}:${interventionId}:${providerId}:${minRating}:${maxRating}`;
         const cached = await cache.get(cacheKey);
         if (cached) return NextResponse.json(cached);
 

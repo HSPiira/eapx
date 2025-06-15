@@ -2,19 +2,7 @@
 'use client';
 
 import React from 'react';
-import {
-    Table,
-    TableBody,
-    TableCaption,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle2, Globe, Phone, Mail } from 'lucide-react';
-import { format } from 'date-fns';
+import { CheckCircle2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -31,12 +19,14 @@ interface Client {
     } | null;
     status: string;
     isVerified: boolean;
-    activeContracts: number;
     totalStaff: number;
     contactPerson: string | null;
     preferredContactMethod: string | null;
     timezone: string | null;
     updatedAt: Date;
+    _count?: {
+        staff: number;
+    };
 }
 
 interface ClientListProps {
@@ -51,98 +41,65 @@ export function ClientList({ clients }: ClientListProps) {
     };
 
     return (
-        <div className="w-full">
-            <Table>
-                <TableCaption>A list of your clients and their details.</TableCaption>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[300px]">Client</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Industry</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Active Contracts</TableHead>
-                        <TableHead className="text-right">Staff</TableHead>
-                        <TableHead className="text-right">Last Updated</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
+        <div className="w-full overflow-x-auto rounded-sm border border-border bg-background">
+            <table className="min-w-full text-sm text-left whitespace-nowrap">
+                <thead className="bg-muted">
+                    <tr>
+                        <th className="px-6 py-4 font-semibold tracking-wide">Name</th>
+                        <th className="px-6 py-4 font-semibold tracking-wide">Email</th>
+                        <th className="px-6 py-4 font-semibold tracking-wide">Phone</th>
+                        <th className="px-6 py-4 font-semibold tracking-wide">Industry</th>
+                        <th className="px-6 py-4 font-semibold tracking-wide">Status</th>
+                        <th className="px-6 py-4 font-semibold tracking-wide">Verified</th>
+                        <th className="px-6 py-4 font-semibold tracking-wide text-right">Staff</th>
+                    </tr>
+                </thead>
+                <tbody>
                     {clients.map((client) => (
-                        <TableRow
+                        <tr
                             key={client.id}
                             className={cn(
-                                "cursor-pointer hover:bg-muted/50",
-                                "transition-colors"
+                                "hover:bg-muted/50 cursor-pointer transition-colors border-b border-border",
                             )}
                             onClick={() => handleRowClick(client.id)}
                         >
-                            <TableCell className="font-medium">
+                            <td className="px-6 py-3 font-medium max-w-[200px] truncate">{client.name}</td>
+                            <td className="px-6 py-3 max-w-[200px] truncate">{client.email || '-'}</td>
+                            <td className="px-6 py-3 max-w-[140px] truncate">{client.phone || '-'}</td>
+                            <td className="px-6 py-3 max-w-[200px] truncate">{client.industry?.name || '-'}</td>
+                            <td className="px-6 py-3">
                                 <div className="flex items-center gap-2">
-                                    <div>
-                                        <div>{client.name}</div>
-                                        {client.contactPerson && (
-                                            <div className="text-sm text-muted-foreground">
-                                                Contact: {client.contactPerson}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {client.isVerified && (
-                                        <Badge variant="outline" className="flex items-center gap-1">
-                                            <CheckCircle2 className="h-3 w-3" />
-                                            Verified
-                                        </Badge>
-                                    )}
+                                    {client.status === 'ACTIVE' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                    <span className={cn(
+                                        client.status === 'ACTIVE' ? 'text-green-500' : 'text-gray-500'
+                                    )}>
+                                        {client.status.charAt(0) + client.status.slice(1).toLowerCase()}
+                                    </span>
                                 </div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="flex flex-col gap-1">
-                                    {client.email && (
-                                        <div className="flex items-center gap-1 text-sm">
-                                            <Mail className="h-3 w-3" />
-                                            {client.email}
-                                        </div>
+                            </td>
+                            <td className="px-6 py-3">
+                                <div className="flex items-center gap-2">
+                                    {client.isVerified ? (
+                                        <ShieldCheck className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                        <ShieldAlert className="h-4 w-4 text-yellow-500" />
                                     )}
-                                    {client.phone && (
-                                        <div className="flex items-center gap-1 text-sm">
-                                            <Phone className="h-3 w-3" />
-                                            {client.phone}
-                                        </div>
-                                    )}
-                                    {client.website && (
-                                        <div className="flex items-center gap-1 text-sm">
-                                            <Globe className="h-3 w-3" />
-                                            {client.website}
-                                        </div>
-                                    )}
+                                    <span className={cn(
+                                        client.isVerified ? "text-green-500" : "text-yellow-500"
+                                    )}>
+                                        {client.isVerified ? "Verified" : "Pending"}
+                                    </span>
                                 </div>
-                            </TableCell>
-                            <TableCell>{client.industry?.name || '-'}</TableCell>
-                            <TableCell>
-                                <Badge variant={client.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                                    {client.status}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{client.activeContracts}</TableCell>
-                            <TableCell className="text-right">{client.totalStaff}</TableCell>
-                            <TableCell className="text-right">
-                                {format(new Date(client.updatedAt), 'MMM d, yyyy')}
-                            </TableCell>
-                            <TableCell>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        // TODO: Implement actions menu
-                                    }}
-                                >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </TableCell>
-                        </TableRow>
+                            </td>
+                            <td className="px-6 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                    <span className="font-medium">{client.totalStaff}</span>
+                                </div>
+                            </td>
+                        </tr>
                     ))}
-                </TableBody>
-            </Table>
+                </tbody>
+            </table>
         </div>
     );
 }

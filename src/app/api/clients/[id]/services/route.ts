@@ -59,7 +59,7 @@ export async function GET(
             },
             ...(hasSessions !== undefined && {
                 service: {
-                    ServiceSession: hasSessions ? { some: {} } : { none: {} },
+                    CareSession: hasSessions ? { some: {} } : { none: {} },
                 },
             }),
         };
@@ -74,7 +74,7 @@ export async function GET(
             include: {
                 service: {
                     include: {
-                        ServiceSession: true,
+                        CareSession: true,
                     },
                 },
             },
@@ -159,7 +159,7 @@ export async function POST(
             include: {
                 service: {
                     include: {
-                        ServiceSession: true,
+                        CareSession: true,
                     },
                 },
             },

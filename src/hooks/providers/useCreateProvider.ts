@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createProvider } from "@/api/providers";
-import { ProvidersResponse, Provider } from "@/types/provider";
+import { ProvidersResponse, Provider } from "@/types";
 import { toast } from "sonner";
 import { CreateServiceProviderInput } from "@/schema/provider";
 

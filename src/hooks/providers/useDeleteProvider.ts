@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, UseMutationOptions } from "@tanstack/react-query";
 import { deleteProvider } from "@/api/providers";
-import { ProvidersResponse } from "@/types/provider";
+import { ProvidersResponse } from "@/types";
 import { toast } from "sonner";
 
 type DeleteProviderContext = { previousData?: ProvidersResponse };

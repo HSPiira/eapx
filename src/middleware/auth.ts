@@ -48,6 +48,21 @@ declare module "@auth/core/jwt" {
 
 export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
     adapter: PrismaAdapter(prismaClient),
+    debug: false,
+    logger: {
+        error(error: Error) {
+            console.error(error)
+        },
+        warn(message: string) {
+            console.warn(message)
+        },
+        debug(message: string, metadata?: unknown) {
+            // Only log critical debug messages
+            if (message === 'CHUNKING_SESSION_COOKIE') {
+                console.warn('Session cookie size exceeded limit')
+            }
+        }
+    },
     providers: [
         MicrosoftEntraID({
             clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
@@ -306,7 +321,6 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
             }
         }
     },
-    debug: process.env.NODE_ENV === 'development',
 })
 
 export const { auth, handlers, signIn, signOut } = NextAuth(createConfig())

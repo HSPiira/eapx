@@ -1,10 +1,9 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { MeetingProgressDialog } from "@/components/MeetingProgressDialog";
-import { PrismaClient } from "@prisma/client";
 import {
     Dialog,
     DialogContent,
@@ -15,8 +14,9 @@ import {
     DialogClose
 } from "@/components/ui/dialog";
 import { CheckCircle2, Loader2 } from "lucide-react";
-
-const prisma = new PrismaClient();
+import { createMeeting } from "@/api/meetings";
+import { createCalendar } from "@/api/calendars";
+import { sendEmail } from "@/api/email";
 
 export default function ProvidersPage() {
     // Meeting creation states
@@ -27,28 +27,35 @@ export default function ProvidersPage() {
     const [emailError, setEmailError] = useState<string | null>(null);
     const [emailSuccess, setEmailSuccess] = useState(false);
     const { data: session } = useSession();
-    const [meetingStages, setMeetingStages] = useState<Array<{ name: string; status: 'pending' | 'loading' | 'complete' | 'error' }>>([
-        { name: 'Creating Teams meeting link', status: 'pending' },
-        { name: 'Creating calendar event', status: 'pending' }
+    const [meetingStages, setMeetingStages] = useState<Array<{ id: string; name: string; status: 'pending' | 'loading' | 'complete' | 'error' }>>([
+        { id: 'teams-meeting', name: 'Creating Teams meeting link', status: 'pending' },
+        { id: 'teams-calendar', name: 'Creating calendar event', status: 'pending' }
     ]);
+    const [zoomMeetingStages, setZoomMeetingStages] = useState<Array<{ id: string; name: string; status: 'pending' | 'loading' | 'complete' | 'error' }>>([
+        { id: 'zoom-meeting', name: 'Creating Zoom meeting', status: 'pending' },
+        { id: 'zoom-calendar', name: 'Creating calendar event', status: 'pending' }
+    ]);
+    const [zoomMeetingLoading, setZoomMeetingLoading] = useState(false);
+    const [zoomMeetingError, setZoomMeetingError] = useState<string | null>(null);
+    const [zoomMeetingLink, setZoomMeetingLink] = useState<string | null>(null);
     const [calendarEventError, setCalendarEventError] = useState<string | null>(null);
     const [feedbackLoading, setFeedbackLoading] = useState(false);
     const [feedbackError, setFeedbackError] = useState<string | null>(null);
     const [feedbackSuccess, setFeedbackSuccess] = useState(false);
-    const sessionSimSteps = [
+    const [simDialogOpen, setSimDialogOpen] = useState(false);
+    const sessionSimSteps = useMemo(() => [
         "Checking session details validity",
         "Generating session MS Teams meeting link",
         "Creating calendar event for the session",
         "Confirming session"
-    ];
-    const confirmingSubSteps = [
+    ], []);
+    const confirmingSubSteps = useMemo(() => [
         "Generating client booking confirmation email",
         "Generating provider confirmation booking email",
         "Generating provider session feedback email",
         "Sending client confirmation email",
         "Sending provider confirmation email"
-    ];
-    const [simDialogOpen, setSimDialogOpen] = useState(false);
+    ], []);
     const [simSteps, setSimSteps] = useState(
         sessionSimSteps.map((name) => ({ name, status: "pending" as 'pending' | 'loading' | 'complete' }))
     );
@@ -117,22 +124,33 @@ export default function ProvidersPage() {
             setSimSteps(sessionSimSteps.map((name) => ({ name, status: "pending" })));
             setSubSteps(confirmingSubSteps.map((name) => ({ name, status: "pending" })));
         }
-    }, [simDialogOpen]);
+    }, [simDialogOpen, sessionSimSteps, confirmingSubSteps]);
 
     // Helper function to handle API errors
-    const handleApiError = (error: any, defaultMessage: string) => {
+    const handleApiError = (error: unknown, defaultMessage: string) => {
         console.error('API Error:', error);
-        if (error.response?.status === 401) {
-            return 'Your session has expired. Please sign in again.';
+        // Check if it's a Zoom API error
+        if (typeof error === 'object' && error !== null && 'code' in error && 'message' in error) {
+            return `Zoom API Error: ${error.message}`;
         }
-        if (error.response?.status === 403) {
-            return 'You do not have permission to perform this action.';
+        if (typeof error === 'object' && error !== null && 'response' in error &&
+            typeof error.response === 'object' && error.response !== null && 'status' in error.response) {
+            if (error.response.status === 401) {
+                return 'Your session has expired. Please sign in again.';
+            }
+            if (error.response.status === 403) {
+                return 'You do not have permission to perform this action.';
+            }
         }
-        if (error.message?.includes('access token')) {
+        if (typeof error === 'object' && error !== null && 'message' in error &&
+            typeof error.message === 'string' && error.message.includes('access token')) {
             return 'Authentication failed. Please sign in again.';
         }
         // Return the full error message if available
-        return error.error || error.message || defaultMessage;
+        if (typeof error === 'object' && error !== null) {
+            return (error as { error?: string; message?: string }).error || (error as { error?: string; message?: string }).message || defaultMessage;
+        }
+        return defaultMessage;
     };
 
     // Handler to create MS Teams meeting
@@ -142,8 +160,8 @@ export default function ProvidersPage() {
         setMeetingLink(null);
         setCalendarEventError(null);
         setMeetingStages([
-            { name: 'Creating Teams meeting link', status: 'loading' },
-            { name: 'Creating calendar event', status: 'pending' }
+            { id: 'teams-meeting', name: 'Creating Teams meeting link', status: 'loading' },
+            { id: 'teams-calendar', name: 'Creating calendar event', status: 'pending' }
         ]);
 
         try {
@@ -157,93 +175,161 @@ export default function ProvidersPage() {
             const endDateTime = new Date(Date.now() + 60 * 60000).toISOString(); // 60 minutes duration
 
             // Step 1: Create Teams meeting
-            const teamsRequestBody = {
-                accessToken,
+            const meetingData = {
                 subject: 'Test Session with Dr. Sarah Johnson',
                 startDateTime,
                 endDateTime,
-                attendees: [],
+                attendees: ['sekiboh@gmail.com', 'henry.ssekibo@minet.co.ug'],
                 body: 'This is a test meeting created from the providers page.',
-                location: 'Virtual Meeting Room',
-                reminderMinutes: 15
+                location: 'Virtual Meeting Room (MS Teams)',
+                platform: 'teams' as const
             };
 
-            const teamsRes = await fetch('/api/ms-teams', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(teamsRequestBody)
-            });
-
-            const teamsData = await teamsRes.json();
-            if (!teamsRes.ok) {
-                throw new Error(handleApiError(teamsData, 'Failed to create Teams meeting. Please try again.'));
-            }
-
-            const meetingUrl = teamsData.joinUrl || teamsData.joinWebUrl || teamsData.join_url || teamsData.join_web_url || teamsData.joinLink;
+            const meeting = await createMeeting(meetingData, accessToken);
+            const meetingUrl = meeting.joinUrl;
             if (!meetingUrl) {
                 throw new Error('Teams meeting was created but no join link was returned.');
             }
 
             setMeetingStages([
-                { name: 'Creating Teams meeting link', status: 'complete' },
-                { name: 'Creating calendar event', status: 'loading' }
+                { id: 'teams-meeting', name: 'Creating Teams meeting link', status: 'complete' },
+                { id: 'teams-calendar', name: 'Creating calendar event', status: 'loading' }
             ]);
 
             // Step 2: Create Calendar event
-            const calendarRequestBody = {
-                subject: teamsRequestBody.subject,
+            const calendarData = {
+                subject: meetingData.subject,
                 startDateTime,
                 endDateTime,
-                attendees: teamsRequestBody.attendees,
-                body: teamsRequestBody.body,
-                location: teamsRequestBody.location,
+                attendees: meetingData.attendees,
+                body: meetingData.body,
+                location: meetingData.location,
                 joinUrl: meetingUrl
             };
 
-            const calendarRes = await fetch('/api/ms-calendar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(calendarRequestBody)
-            });
-
-            const calendarData = await calendarRes.json();
-            if (!calendarRes.ok) {
-                setCalendarEventError('Calendar event creation failed, but Teams meeting was created successfully.');
-                setMeetingStages([
-                    { name: 'Creating Teams meeting link', status: 'complete' },
-                    { name: 'Creating calendar event', status: 'error' }
-                ]);
-            } else {
-                setMeetingStages([
-                    { name: 'Creating Teams meeting link', status: 'complete' },
-                    { name: 'Creating calendar event', status: 'complete' }
-                ]);
-            }
+            await createCalendar(calendarData);
+            setMeetingStages([
+                { id: 'teams-meeting', name: 'Creating Teams meeting link', status: 'complete' },
+                { id: 'teams-calendar', name: 'Creating calendar event', status: 'complete' }
+            ]);
 
             setMeetingLink(meetingUrl);
 
             // Wait a bit before closing the dialog
             await new Promise(resolve => setTimeout(resolve, 1000));
             setMeetingStages([
-                { name: 'Creating Teams meeting link', status: 'pending' },
-                { name: 'Creating calendar event', status: 'pending' }
+                { id: 'teams-meeting', name: 'Creating Teams meeting link', status: 'pending' },
+                { id: 'teams-calendar', name: 'Creating calendar event', status: 'pending' }
             ]);
 
-        } catch (err: any) {
+        } catch (err) {
             console.error('Meeting creation error:', err);
             setMeetingStages([
-                { name: 'Creating Teams meeting link', status: 'error' },
-                { name: 'Creating calendar event', status: 'error' }
+                { id: 'teams-meeting', name: 'Creating Teams meeting link', status: 'error' },
+                { id: 'teams-calendar', name: 'Creating calendar event', status: 'error' }
             ]);
             setMeetingError(handleApiError(err, 'Failed to create meeting. Please try again.'));
         } finally {
             setMeetingLoading(false);
+        }
+    };
+
+    // Handler to create Zoom meeting
+    const handleCreateZoomMeeting = async () => {
+        setZoomMeetingLoading(true);
+        setZoomMeetingError(null);
+        setZoomMeetingLink(null);
+        setCalendarEventError(null);
+        setZoomMeetingStages([
+            { id: 'zoom-meeting', name: 'Creating Zoom meeting', status: 'loading' },
+            { id: 'zoom-calendar', name: 'Creating calendar event', status: 'pending' }
+        ]);
+
+        try {
+            const accessToken = session?.user.access_token;
+            if (!accessToken) {
+                throw new Error('No access token found. Please sign in again.');
+            }
+
+            // Prepare meeting times (ISO8601)
+            const startDateTime = new Date().toISOString();
+            const endDateTime = new Date(Date.now() + 60 * 60000).toISOString(); // 60 minutes duration
+
+            // Step 1: Create Zoom meeting
+            const meetingData = {
+                subject: 'Test Session with Dr. Sarah Johnson',
+                startDateTime,
+                endDateTime,
+                attendees: [
+                    'sekiboh@gmail.com',
+                    'henry.ssekibo@minet.co.ug'
+                ],
+                platform: 'zoom' as const,
+                settings: {
+                    hostVideo: true,
+                    participantVideo: true,
+                    joinBeforeHost: false,
+                    muteUponEntry: true,
+                    waitingRoom: false,
+                    meetingAuthentication: false
+                }
+            };
+
+            const meeting = await createMeeting(meetingData, accessToken);
+            const meetingUrl = meeting.joinUrl;
+            if (!meetingUrl) {
+                throw new Error('Zoom meeting was created but no join link was returned.');
+            }
+
+            setZoomMeetingStages([
+                { id: 'zoom-meeting', name: 'Creating Zoom meeting', status: 'complete' },
+                { id: 'zoom-calendar', name: 'Creating calendar event', status: 'loading' }
+            ]);
+
+            // Step 2: Create Calendar event
+            const calendarData = {
+                subject: meetingData.subject,
+                startDateTime,
+                endDateTime,
+                attendees: meetingData.attendees,
+                body: `This is a Zoom meeting created from the providers page.
+                
+Join Zoom Meeting
+${meetingUrl}
+
+Meeting ID: ${meeting.id}
+Password: ${meeting.settings?.password || 'No password required'}
+Host: Hope Minet
+
+If you have any questions, please contact the meeting organizer.`,
+                location: 'Virtual Meeting Room (Zoom)',
+                joinUrl: meetingUrl
+            };
+
+            await createCalendar(calendarData);
+            setZoomMeetingStages([
+                { id: 'zoom-meeting', name: 'Creating Zoom meeting', status: 'complete' },
+                { id: 'zoom-calendar', name: 'Creating calendar event', status: 'complete' }
+            ]);
+
+            setZoomMeetingLink(meetingUrl);
+
+            // Wait a bit before closing the dialog
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setZoomMeetingStages([
+                { id: 'zoom-meeting', name: 'Creating Zoom meeting', status: 'pending' },
+                { id: 'zoom-calendar', name: 'Creating calendar event', status: 'pending' }
+            ]);
+
+        } catch (err) {
+            console.error('Zoom meeting creation error:', err);
+            setZoomMeetingStages([
+                { id: 'zoom-meeting', name: 'Creating Zoom meeting', status: 'error' },
+                { id: 'zoom-calendar', name: 'Creating calendar event', status: 'error' }
+            ]);
+            setZoomMeetingError(handleApiError(err, 'Failed to create Zoom meeting. Please try again.'));
+        } finally {
+            setZoomMeetingLoading(false);
         }
     };
 
@@ -253,36 +339,24 @@ export default function ProvidersPage() {
         setEmailError(null);
         setEmailSuccess(false);
         try {
-            const accessToken = session?.user.access_token;
-            if (!accessToken) {
-                throw new Error('No access token found. Please sign in again.');
-            }
             if (!session?.user?.email) {
                 throw new Error('No email address found. Please sign in with an email address.');
             }
 
-            const res = await fetch('/api/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: session.user.email,
-                    subject: 'Test Email from Providers Page',
-                    template: 'vercel-invite-user',
-                    templateProps: {
-                        username: session.user.name || 'User',
-                        invitedByUsername: 'System',
-                        inviteLink: 'https://example.com/invite',
-                        invitedByEmail: 'system@example.com'
-                    }
-                }),
+            await sendEmail({
+                to: session.user.email,
+                subject: 'Test Email from Providers Page',
+                template: 'vercel-invite-user',
+                templateProps: {
+                    username: session.user.name || 'User',
+                    invitedByUsername: 'System',
+                    inviteLink: 'https://example.com/invite',
+                    invitedByEmail: 'system@example.com'
+                }
             });
-            const data = await res.json();
-            if (!res.ok) {
-                console.error('Email sending failed:', data);
-                throw new Error(handleApiError(data, 'Failed to send email. Please try again.'));
-            }
+
             setEmailSuccess(true);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Email sending error:', err);
             setEmailError(handleApiError(err, 'Failed to send email. Please try again.'));
         } finally {
@@ -304,6 +378,9 @@ export default function ProvidersPage() {
             // Create a test session
             const createResponse = await fetch('/api/test/create-test-session', {
                 method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
             });
 
             const createData = await createResponse.json();
@@ -314,6 +391,9 @@ export default function ProvidersPage() {
             // Send feedback request
             const response = await fetch(`/api/sessions/${createData.sessionId}/send-feedback-link`, {
                 method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
             });
 
             const data = await response.json();
@@ -322,7 +402,7 @@ export default function ProvidersPage() {
             }
 
             setFeedbackSuccess(true);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Feedback link error:', err);
             setFeedbackError(handleApiError(err, 'Failed to send feedback link. Please try again.'));
         } finally {
@@ -351,7 +431,7 @@ export default function ProvidersPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
-                        {simSteps.map((step, idx) => (
+                        {simSteps.map((step) => (
                             <div key={step.name} className="flex flex-col">
                                 <div className="flex items-center gap-3">
                                     {step.status === 'loading' && <Loader2 className="animate-spin text-blue-500" />}
@@ -364,7 +444,7 @@ export default function ProvidersPage() {
                                 {/* Show sub-steps indented under Confirming session */}
                                 {step.name === 'Confirming session' && (step.status === 'loading' || step.status === 'complete') && (
                                     <div className="ml-8 mt-2 space-y-2">
-                                        {subSteps.map((sub, subIdx) => (
+                                        {subSteps.map((sub) => (
                                             <div key={sub.name} className="flex items-center gap-3">
                                                 {sub.status === 'loading' && <Loader2 className="animate-spin text-blue-500" />}
                                                 {sub.status === 'complete' && <CheckCircle2 className="text-green-600" />}
@@ -388,20 +468,45 @@ export default function ProvidersPage() {
             </Dialog>
             {/* Meeting Creation */}
             <div className="space-y-4">
-                <Button
-                    onClick={handleCreateMeeting}
-                    disabled={meetingLoading}
-                >
-                    {meetingLoading ? 'Creating Meeting...' : 'Create Meeting'}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                        onClick={handleCreateMeeting}
+                        disabled={meetingLoading}
+                    >
+                        {meetingLoading ? 'Creating Teams Meeting...' : 'Create Teams Meeting'}
+                    </Button>
+                    <Button
+                        onClick={handleCreateZoomMeeting}
+                        disabled={zoomMeetingLoading}
+                        variant="secondary"
+                    >
+                        {zoomMeetingLoading ? 'Creating Zoom Meeting...' : 'Create Zoom Meeting'}
+                    </Button>
+                </div>
                 {meetingError && (
                     <div className="text-red-500">{meetingError}</div>
                 )}
                 {meetingLink && (
                     <div className="text-green-700 text-sm bg-green-50 p-2 rounded">
-                        Meeting created successfully!{' '}
+                        Teams meeting created successfully!{' '}
                         <a
                             href={meetingLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline font-medium"
+                        >
+                            Join Meeting
+                        </a>
+                    </div>
+                )}
+                {zoomMeetingError && (
+                    <div className="text-red-500">{zoomMeetingError}</div>
+                )}
+                {zoomMeetingLink && (
+                    <div className="text-green-700 text-sm bg-green-50 p-2 rounded">
+                        Zoom meeting created successfully!{' '}
+                        <a
+                            href={zoomMeetingLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="underline font-medium"
@@ -473,8 +578,9 @@ export default function ProvidersPage() {
             )}
 
             <MeetingProgressDialog
-                isOpen={meetingStages.some(stage => stage.status === 'loading' || stage.status === 'complete')}
-                stages={meetingStages}
+                isOpen={meetingStages.some(stage => stage.status === 'loading' || stage.status === 'complete') ||
+                    zoomMeetingStages.some(stage => stage.status === 'loading' || stage.status === 'complete')}
+                stages={[...meetingStages, ...zoomMeetingStages]}
             />
         </div>
     );

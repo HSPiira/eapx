@@ -29,22 +29,23 @@ interface VercelInviteUserEmailProps {
     inviteFromLocation?: string;
 }
 
-const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : '';
+// Use local static directory for images
+const LOGO_URL = '@/emails/static/logo.svg';
+const DEFAULT_AVATAR = '@/emails/static/avatar.png';
+const DEFAULT_TEAM = '@/emails/static/team.png';
 
 export const VercelInviteUserEmail = ({
     username,
-    userImage,
+    userImage = DEFAULT_AVATAR,
     invitedByUsername,
     invitedByEmail,
     teamName,
-    teamImage,
+    teamImage = DEFAULT_TEAM,
     inviteLink,
     inviteFromIp,
     inviteFromLocation,
 }: VercelInviteUserEmailProps) => {
-    const previewText = `Join ${invitedByUsername} on Vercel`;
+    const previewText = `Join ${invitedByUsername} on Axis`;
 
     return (
         <Html>
@@ -55,15 +56,15 @@ export const VercelInviteUserEmail = ({
                     <Container className="mx-auto my-[40px] max-w-[465px] rounded border border-[#eaeaea] border-solid p-[20px]">
                         <Section className="mt-[32px]">
                             <Img
-                                src={`${baseUrl}/static/logo.svg`}
+                                src={LOGO_URL}
                                 width="40"
                                 height="37"
-                                alt="careAxis Logo"
+                                alt="Axis Logo"
                                 className="mx-auto my-0"
                             />
                         </Section>
                         <Heading className="mx-0 my-[30px] p-0 text-center font-normal text-[24px] text-black">
-                            Join <strong>{teamName}</strong> on <strong>careAxis</strong>
+                            Join <strong>{teamName}</strong> on <strong>Axis</strong>
                         </Heading>
                         <Text className="text-[14px] text-black leading-[24px]">
                             Hello {username},
@@ -77,7 +78,7 @@ export const VercelInviteUserEmail = ({
                                 {invitedByEmail}
                             </Link>
                             ) has invited you to the <strong>{teamName}</strong> team on{' '}
-                            <strong>careAxis</strong>.
+                            <strong>Axis</strong>.
                         </Text>
                         <Section>
                             <Row>
@@ -126,7 +127,7 @@ export const VercelInviteUserEmail = ({
                             located in{' '}
                             <span className="text-black">{inviteFromLocation}</span>. If you
                             were not expecting this invitation, you can ignore this email. If
-                            you are concerned about your account's safety, please reply to
+                            you are concerned about your account&apos;s safety, please reply to
                             this email to get in touch with us.
                         </Text>
                     </Container>
@@ -138,12 +139,12 @@ export const VercelInviteUserEmail = ({
 
 VercelInviteUserEmail.PreviewProps = {
     username: 'piira-aegis',
-    userImage: `${baseUrl}/static/avatar.png`,
+    userImage: DEFAULT_AVATAR,
     invitedByUsername: 'Piira',
     invitedByEmail: 'piira@aegis.com',
     teamName: 'Piira',
-    teamImage: `${baseUrl}/static/team.png`,
-    inviteLink: 'https://piira.com',
+    teamImage: DEFAULT_TEAM,
+    inviteLink: 'https://axis.com',
     inviteFromIp: '238.56.12.1',
     inviteFromLocation: 'São Paulo, Brazil',
 } as VercelInviteUserEmailProps;

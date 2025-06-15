@@ -1,5 +1,5 @@
 'use client'
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { SessionHeader } from './session-header';
 import { FormData, SectionKey, sectionComponents, SessionData } from './types';
@@ -79,7 +79,6 @@ function Content({
 
 export default function SessionEditPage() {
     const { sessionId } = useParams();
-    const router = useRouter();
     const [selected, setSelected] = useState('client-setup');
     const [formData, setFormData] = useState<FormData>({
         client: {

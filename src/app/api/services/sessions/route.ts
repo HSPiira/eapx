@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
                 );
             }
 
-            const userId = session.user.id;
-            const staff = await prisma.staff.findFirst({
-                where: { userId }
-            });
+            // const userId = session.user.id;
+            // const staff = await prisma.staff.findFirst({
+            //     where: { userId }
+            // });
 
             const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}`;
             const cached = await cache.get(cacheKey);

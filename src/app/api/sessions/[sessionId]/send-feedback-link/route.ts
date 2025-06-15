@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/middleware/auth';
 import { prisma } from '@/lib/prisma';
 import { generateFeedbackToken } from '@/lib/feedback-token';
 import { sendReactEmail } from '@/lib/email-utils';
 import { SessionFeedbackRequest } from '@/emails';
-import { auth } from '@/middleware/auth';
 
-export async function POST(req: NextRequest, context: { params: { sessionId: string } }) {
+export async function POST(request: NextRequest) {
     try {
-        const { params } = context;
+        const sessionId = request.url.split('/').pop();
+        if (!sessionId) {
+            return NextResponse.json(
+                { error: 'Session ID is required' },
+                { status: 400 }
+            );
+        }
+
         const session = await auth();
         if (!session?.user?.access_token) {
             return NextResponse.json(
-                { error: 'No access token found. Please sign in again.' },
+                { error: 'Unauthorized' },
                 { status: 401 }
             );
         }
 
-        const sessionId = params.sessionId;
-
-        // Get session details
+        // Get session details from database
         const careSession = await prisma.careSession.findUnique({
             where: { id: sessionId },
             include: {
@@ -62,8 +67,8 @@ export async function POST(req: NextRequest, context: { params: { sessionId: str
     } catch (error) {
         console.error('Error sending feedback link:', error);
         return NextResponse.json(
-            { error: 'Failed to send feedback link' },
+            { error: error instanceof Error ? error.message : 'Failed to send feedback link' },
             { status: 500 }
         );
     }
-} 
+}

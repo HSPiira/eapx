@@ -3,7 +3,6 @@ import { Select, SelectContent, SelectTrigger, SelectValue, SelectItem } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { LocationData } from "./types";
 import { MessageCircle, Video, Camera, Building, Briefcase, MapPin, Link2, Phone } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface LocationDetailsProps {
     data: LocationData;
@@ -78,7 +77,6 @@ export const locationGroups = [
 
 export function LocationDetails({ data, setData }: LocationDetailsProps) {
     const { location = '', requirements = '' } = data || {};
-    const queryClient = useQueryClient();
 
     const locations = locationGroups;
     const loadingLocations = false;

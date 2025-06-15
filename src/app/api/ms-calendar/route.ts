@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json();
     } catch (e) {
-        return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+        return NextResponse.json({ error: `Invalid JSON in request body: ${e}` }, { status: 400 });
     }
     const {
         subject,
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         subject,
         body: {
             contentType: 'HTML',
-            content: `${eventBody}${joinUrl ? `<br><br>Teams Meeting Link: ${joinUrl}` : ''}`
+            content: `${eventBody}${joinUrl ? `<br><br>${location && location.toLowerCase().includes('zoom') ? 'Zoom Meeting Link' : 'Teams Meeting Link'}: ${joinUrl}` : ''}`
         },
         start: {
             dateTime: startDateTime,

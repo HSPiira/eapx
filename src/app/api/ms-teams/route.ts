@@ -1,21 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/middleware/auth';
 
-interface TeamsMeetingBody {
-    subject: string;
-    startDateTime: string;
-    endDateTime: string;
-    participants: {
-        attendees: Array<{
-            upn: string;
-            role: string;
-        }>;
-    };
-    body?: {
-        contentType: string;
-        content: string;
-    };
-}
 
 export async function POST(req: NextRequest) {
     try {
@@ -57,11 +42,7 @@ export async function POST(req: NextRequest) {
             subject,
             startDateTime,
             endDateTime,
-            attendees = [],
-            body: meetingBody = '',
-            location = '',
-            reminderMinutes = 15
-        } = body;
+            attendees = [] } = body;
 
         // Validate required fields
         if (!subject || !startDateTime || !endDateTime) {

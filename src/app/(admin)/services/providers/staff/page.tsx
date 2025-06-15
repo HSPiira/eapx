@@ -23,10 +23,6 @@ interface StaffMember {
 export default function ProvidersStaffPage() {
     const params = useParams();
     const providerId = params.id as string;
-
-    if (!providerId) {
-        return <div className="text-red-500">Invalid provider ID</div>;
-    }
     const [staff, setStaff] = useState<StaffMember[]>([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -93,6 +89,10 @@ export default function ProvidersStaffPage() {
 
         fetchData();
     }, [providerId]);
+
+    if (!providerId) {
+        return <div className="text-red-500">Invalid provider ID</div>;
+    }
 
     const handleAdd = () => {
         setSelectedStaff(null);

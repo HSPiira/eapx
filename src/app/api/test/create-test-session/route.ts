@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/middleware/auth';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
     try {
         const session = await auth();
         if (!session?.user?.access_token) {
@@ -22,12 +22,13 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        // Create a test provider
+        // Create a test provider with a unique ID based on the user's email
+        const providerId = `test-provider-${session.user.email?.replace(/[^a-zA-Z0-9]/g, '-')}`;
         const testProvider = await prisma.serviceProvider.upsert({
-            where: { id: 'test-provider-id' },
+            where: { id: providerId },
             update: {
-                name: 'Henry Ssekibo',
-                contactEmail: session.user.email || 'henry.ssekibo@minet.co.ug',
+                name: 'Test Provider',
+                contactEmail: session.user.email || 'test@example.com',
                 type: 'COUNSELOR',
                 entityType: 'INDIVIDUAL',
                 status: 'ACTIVE',
@@ -35,9 +36,9 @@ export async function POST(req: NextRequest) {
                 specializations: ['Individual Counseling'],
             },
             create: {
-                id: 'test-provider-id',
-                name: 'Henry Ssekibo',
-                contactEmail: session.user.email || 'henry.ssekibo@minet.co.ug',
+                id: providerId,
+                name: 'Test Provider',
+                contactEmail: session.user.email || 'test@example.com',
                 type: 'COUNSELOR',
                 entityType: 'INDIVIDUAL',
                 status: 'ACTIVE',
@@ -47,8 +48,19 @@ export async function POST(req: NextRequest) {
         });
 
         // Create a test intervention
-        const testIntervention = await prisma.intervention.create({
-            data: {
+        const testIntervention = await prisma.intervention.upsert({
+            where: {
+                id: 'test-intervention-id'
+            },
+            update: {
+                name: 'Individual Counseling',
+                description: 'One-on-one counseling session',
+                serviceId: testService.id,
+                status: 'ACTIVE',
+                duration: 60,
+            },
+            create: {
+                id: 'test-intervention-id',
                 name: 'Individual Counseling',
                 description: 'One-on-one counseling session',
                 serviceId: testService.id,
@@ -79,6 +91,16 @@ export async function POST(req: NextRequest) {
                 sessionType: 'INDIVIDUAL',
             },
         });
+
+        // Verify the session was created with the provider
+        const createdSession = await prisma.careSession.findUnique({
+            where: { id: testSession.id },
+            include: { provider: true }
+        });
+
+        if (!createdSession?.provider) {
+            throw new Error('Failed to create session with provider');
+        }
 
         return NextResponse.json({ sessionId: testSession.id });
     } catch (error) {

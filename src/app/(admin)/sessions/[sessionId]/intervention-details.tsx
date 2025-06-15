@@ -1,8 +1,5 @@
 import { useEffect } from "react";
-import { SelectContent } from "@/components/ui/select";
-import { SelectTrigger } from "@/components/ui/select";
-import { SelectValue } from "@/components/ui/select";
-import { SelectItem } from "@/components/ui/select";
+import { SelectContent, SelectTrigger, SelectValue, SelectItem } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +8,6 @@ import { useServices } from "@/hooks/services";
 import { useInterventions } from "@/hooks/interventions";
 import { useInterventionDetails } from "@/hooks/interventions/useInterventionDetails";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 
 interface Service {
     id: string;

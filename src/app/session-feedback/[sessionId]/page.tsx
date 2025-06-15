@@ -34,7 +34,7 @@ export default function FeedbackPage({ params }: FeedbackPageProps) {
             } catch (error) {
                 toast({
                     title: "Access Denied",
-                    description: "This feedback page is not accessible. Please use the link provided in your email.",
+                    description: `This feedback page is not accessible. Please use the link provided in your email. ${error}`,
                     variant: "destructive",
                 });
             } finally {

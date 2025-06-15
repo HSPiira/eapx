@@ -56,7 +56,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
         warn(message: string) {
             console.warn(message)
         },
-        debug(message: string, metadata?: unknown) {
+        debug(message: string) {
             // Only log critical debug messages
             if (message === 'CHUNKING_SESSION_COOKIE') {
                 console.warn('Session cookie size exceeded limit')

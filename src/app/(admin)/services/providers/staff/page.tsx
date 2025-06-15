@@ -14,6 +14,21 @@ interface Provider {
     entityType: string;
 }
 
+interface CreateStaffInput {
+    fullName: string;
+    role: string | null;
+    email: string | null;
+    phone: string | null;
+    serviceProviderId?: string;
+    qualifications: string[];
+    specializations: string[];
+    isPrimaryContact: boolean;
+}
+
+interface UpdateStaffInput extends Partial<CreateStaffInput> {
+    id: string;
+}
+
 export default function ProvidersStaffPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -89,10 +104,31 @@ export default function ProvidersStaffPage() {
             if (!staffProviderId) throw new Error('Provider is required');
 
             if (modalMode === 'add') {
-                await createStaff({ providerId: staffProviderId, data: data as any });
+                const createData: CreateStaffInput = {
+                    fullName: data.fullName || '',
+                    role: data.role || null,
+                    email: data.email || null,
+                    phone: data.phone || null,
+                    serviceProviderId: staffProviderId,
+                    qualifications: data.qualifications || [],
+                    specializations: data.specializations || [],
+                    isPrimaryContact: data.isPrimaryContact || false,
+                };
+                await createStaff({ providerId: staffProviderId, data: createData });
                 toast({ title: 'Success', description: 'Staff added.' });
             } else if (modalMode === 'edit' && selectedStaff) {
-                await updateStaff({ providerId: staffProviderId, data: { ...data, id: selectedStaff.id } });
+                const updateData: UpdateStaffInput = {
+                    id: selectedStaff.id,
+                    fullName: data.fullName || selectedStaff.fullName,
+                    role: data.role || selectedStaff.role,
+                    email: data.email || selectedStaff.email,
+                    phone: data.phone || selectedStaff.phone,
+                    serviceProviderId: staffProviderId,
+                    qualifications: data.qualifications || selectedStaff.qualifications,
+                    specializations: data.specializations || selectedStaff.specializations,
+                    isPrimaryContact: data.isPrimaryContact || selectedStaff.isPrimaryContact,
+                };
+                await updateStaff({ providerId: staffProviderId, data: updateData });
                 toast({ title: 'Success', description: 'Staff updated.' });
             }
             setModalOpen(false);

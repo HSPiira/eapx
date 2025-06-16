@@ -30,7 +30,7 @@ const basicInformationSchema = z.object({
 const emergencyContactSchema = z.object({
     emergencyContactName: z.string().min(1, 'Emergency contact name is required'),
     emergencyContactPhone: z.string().min(1, 'Emergency contact phone is required'),
-    emergencyContactEmail: z.string().email('Invalid email address'),
+    emergencyContactEmail: z.string().email('Invalid email address').optional(),
     preferredLanguage: z.nativeEnum(Language).optional(),
     preferredContactMethod: z.nativeEnum(ContactMethod).optional(),
 });

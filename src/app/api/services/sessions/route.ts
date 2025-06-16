@@ -7,6 +7,31 @@ import { Prisma, SessionStatus } from '@prisma/client';
 import { sessionSelectFields } from '@/lib/select-fields';
 import { sendSessionRequestEmail } from '@/services/email.service';
 import { auth } from '@/middleware/auth'; // Auth.js v5 universal import
+import { z } from 'zod';
+
+const sessionRequestSchema = z.object({
+    clientId: z.string(),
+    staffId: z.string(),
+    counselorId: z.string().optional(),
+    interventionId: z.string(),
+    preferredDate: z.string().optional(),
+    requestMethod: z.string().optional(),
+    requestNotes: z.string().optional(),
+    companyId: z.string().optional(),
+    sessionMethod: z.string().optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    sessionType: z.string().optional(),
+    companyName: z.string().optional(),
+    staffName: z.string().optional(),
+    counselorName: z.string().optional(),
+    duration: z.number().optional(),
+    isGroupSession: z.boolean().optional(),
+    staffEmail: z.string().optional(),
+    counselorEmail: z.string().optional(),
+    adminEmail: z.string().optional(),
+    adminName: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
     return withRouteMiddleware(request, async () => {
@@ -47,12 +72,23 @@ export async function GET(request: NextRequest) {
                 );
             }
 
-            // const userId = session.user.id;
-            // const staff = await prisma.staff.findFirst({
-            //     where: { userId }
-            // });
+            // Get user's client ID for tenant isolation
+            const staff = await prisma.staff.findFirst({
+                where: { userId: session.user.id },
+                select: { clientId: true }
+            });
 
-            const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}`;
+            if (!staff?.clientId) {
+                return NextResponse.json(
+                    { error: 'User not associated with any client' },
+                    { status: 401 }
+                );
+            }
+
+            // Add client ID to where clause for tenant isolation
+            where.clientId = staff.clientId;
+
+            const cacheKey = `sessions:${staff.clientId}:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}`;
             const cached = await cache.get(cacheKey);
             if (cached) return NextResponse.json(cached);
 
@@ -167,8 +203,19 @@ export async function POST(request: NextRequest) {
 
             // Handle session request from staff
             if (body.staffId) {
+                // Validate request body
+                const validationResult = sessionRequestSchema.safeParse(body);
+                if (!validationResult.success) {
+                    return NextResponse.json(
+                        { error: 'Invalid request body', details: validationResult.error.format() },
+                        { status: 400 }
+                    );
+                }
+
+                const validatedBody = validationResult.data;
+
                 const staff = await prisma.staff.findUnique({
-                    where: { id: body.staffId }
+                    where: { id: validatedBody.staffId }
                 });
                 if (!staff) {
                     return NextResponse.json(
@@ -178,9 +225,9 @@ export async function POST(request: NextRequest) {
                 }
 
                 // Validate counselor if specified
-                if (body.counselorId) {
+                if (validatedBody.counselorId) {
                     const counselor = await prisma.serviceProvider.findUnique({
-                        where: { id: body.counselorId }
+                        where: { id: validatedBody.counselorId }
                     });
 
                     if (!counselor) {
@@ -193,7 +240,7 @@ export async function POST(request: NextRequest) {
 
                 // Get the default counseling intervention
                 const counselingIntervention = await prisma.intervention.findFirst({
-                    where: { id: body.interventionId }
+                    where: { id: validatedBody.interventionId }
                 });
                 if (!counselingIntervention) {
                     return NextResponse.json(
@@ -205,16 +252,16 @@ export async function POST(request: NextRequest) {
                 // Create the session request
                 const sessionRequest = await prisma.careSession.create({
                     data: {
-                        clientId: body.clientId,
-                        staffId: body.staffId,
-                        providerId: body.counselorId || '',
+                        clientId: validatedBody.clientId,
+                        staffId: validatedBody.staffId,
+                        providerId: validatedBody.counselorId || '',
                         interventionId: counselingIntervention.id,
-                        scheduledAt: body.preferredDate || new Date(),
+                        scheduledAt: validatedBody.preferredDate ? new Date(validatedBody.preferredDate) : new Date(),
                         status: SessionStatus.SCHEDULED,
                         duration: 60,
                         metadata: {
-                            requestMethod: body.requestMethod,
-                            requestNotes: body.requestNotes
+                            requestMethod: validatedBody.requestMethod,
+                            requestNotes: validatedBody.requestNotes
                         }
                     },
                     select: sessionSelectFields,
@@ -229,8 +276,8 @@ export async function POST(request: NextRequest) {
                         userId: session.user.id,
                         data: {
                             status: SessionStatus.SCHEDULED,
-                            requestMethod: body.requestMethod,
-                            requestNotes: body.requestNotes
+                            requestMethod: validatedBody.requestMethod,
+                            requestNotes: validatedBody.requestNotes
                         }
                     }
                 });
@@ -239,26 +286,26 @@ export async function POST(request: NextRequest) {
                 try {
                     await sendSessionRequestEmail(
                         {
-                            companyId: body.companyId,
-                            staffId: body.staffId,
-                            counselorId: body.counselorId,
-                            interventionId: body.interventionId,
-                            sessionMethod: body.sessionMethod,
+                            companyId: validatedBody.companyId || '',
+                            staffId: validatedBody.staffId,
+                            counselorId: validatedBody.counselorId || '',
+                            interventionId: validatedBody.interventionId,
+                            sessionMethod: validatedBody.sessionMethod || '',
                             date: sessionRequest.scheduledAt ? new Date(sessionRequest.scheduledAt).toISOString() : '',
-                            startTime: body.startTime,
-                            endTime: body.endTime,
-                            sessionType: body.sessionType,
-                            companyName: body.companyName,
-                            staffName: body.staffName,
-                            counselorName: body.counselorName,
+                            startTime: validatedBody.startTime || '',
+                            endTime: validatedBody.endTime || '',
+                            sessionType: validatedBody.sessionType || '',
+                            companyName: validatedBody.companyName || '',
+                            staffName: validatedBody.staffName || '',
+                            counselorName: validatedBody.counselorName || '',
                             notes: (typeof sessionRequest.metadata === 'object' && sessionRequest.metadata !== null && 'requestNotes' in sessionRequest.metadata && typeof sessionRequest.metadata.requestNotes === 'string') ? sessionRequest.metadata.requestNotes : '',
-                            duration: body.duration,
-                            isGroupSession: body.isGroupSession
+                            duration: validatedBody.duration || 60,
+                            isGroupSession: validatedBody.isGroupSession || false
                         },
                         {
-                            staff: { email: body.staffEmail, name: body.staffName },
-                            counselor: { email: body.counselorEmail, name: body.counselorName },
-                            admin: { email: body.adminEmail, name: body.adminName },
+                            staff: { email: validatedBody.staffEmail || '', name: validatedBody.staffName || '' },
+                            counselor: { email: validatedBody.counselorEmail || '', name: validatedBody.counselorName || '' },
+                            admin: { email: validatedBody.adminEmail || '', name: validatedBody.adminName || '' },
                         }
                     );
                 } catch (e) {

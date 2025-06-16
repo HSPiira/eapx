@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/middleware/auth';
 
+// Helper function for development-only logging
+const devLog = (...args: any[]) => {
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(...args);
+    }
+};
 
 export async function POST(req: NextRequest) {
     try {
@@ -14,7 +20,7 @@ export async function POST(req: NextRequest) {
 
         // Get the raw request body as text first
         const rawBody = await req.text();
-        console.log('Raw request body:', rawBody);
+        devLog('Raw request body:', rawBody);
 
         if (!rawBody) {
             return NextResponse.json(
@@ -35,10 +41,9 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        console.log('Parsed request body:', body);
+        devLog('Parsed request body:', body);
 
         const {
-            accessToken,
             subject,
             startDateTime,
             endDateTime,
@@ -66,12 +71,12 @@ export async function POST(req: NextRequest) {
         };
 
         const requestBody = JSON.stringify(teamsMeetingBody);
-        console.log('Creating Teams meeting with body:', requestBody);
+        devLog('Creating Teams meeting with body:', requestBody);
 
         const teamsResponse = await fetch('https://graph.microsoft.com/v1.0/me/onlineMeetings', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${session.user.access_token}`,
                 'Content-Type': 'application/json'
             },
             body: requestBody
@@ -97,7 +102,7 @@ export async function POST(req: NextRequest) {
         }
 
         const teamsData = await teamsResponse.json();
-        console.log('Teams API Response:', teamsData);
+        devLog('Teams API Response:', teamsData);
         return NextResponse.json(teamsData);
     } catch (error) {
         console.error('Error in Teams meeting creation:', error);

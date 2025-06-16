@@ -5,15 +5,54 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw, Video, MapPin, Copy, UserCircle } from 'lucide-react';
-import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useToast } from "@/components/ui/use-toast";
 
-interface FeedbackPageProps {
-    params: { sessionId: string };
+interface FeedbackFormProps {
+    sessionId: string;
 }
 
-export default function FeedbackPage({ params }: FeedbackPageProps) {
-    const { sessionId } = params;
+export function FeedbackForm({ sessionId }: FeedbackFormProps) {
+    const searchParams = useSearchParams();
+    const token = searchParams.get('token');
+    const { toast } = useToast();
+    const [isAuthorized, setIsAuthorized] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [symptoms, setSymptoms] = useState('');
+
+    // Verify token on page load
+    useEffect(() => {
+        const verifyToken = async () => {
+            try {
+                const response = await fetch(`/api/verify-feedback-token?sessionId=${sessionId}&token=${token}`);
+                if (!response.ok) {
+                    throw new Error('Invalid or expired token');
+                }
+                setIsAuthorized(true);
+            } catch (error) {
+                toast({
+                    title: "Access Denied",
+                    description: `This feedback page is not accessible. Please use the link provided in your email. ${error}`,
+                    variant: "destructive",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (token) {
+            verifyToken();
+        } else {
+            setIsLoading(false);
+            toast({
+                title: "Access Denied",
+                description: "This feedback page is not accessible. Please use the link provided in your email.",
+                variant: "destructive",
+            });
+        }
+    }, [sessionId, token, toast]);
+
     // TODO: Fetch session data using sessionId
     const sessionData = {
         id: sessionId,
@@ -55,7 +94,29 @@ export default function FeedbackPage({ params }: FeedbackPageProps) {
     const [serviceValue, setServiceValue] = useState(sessionData.service.name);
     const [interventionValue, setInterventionValue] = useState(sessionData.service.intervention);
 
-    const { data: session } = useSession();
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto"></div>
+                    <p className="mt-4 text-gray-600 dark:text-gray-400">Verifying access...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isAuthorized) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center max-w-md p-6">
+                    <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Access Denied</h1>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        This feedback page is not accessible. Please use the link provided in your email.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto max-w-3xl">
@@ -254,7 +315,7 @@ export default function FeedbackPage({ params }: FeedbackPageProps) {
                                     <SelectContent>
                                         <SelectItem value="counseling">Counseling</SelectItem>
                                         <SelectItem value="therapy">Therapy</SelectItem>
-                                        <SelectItem value="consultation">Consultation</SelectItem>
+                                        <SelectItem value="coaching">Coaching</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 {interventionEdit ? (
@@ -278,42 +339,9 @@ export default function FeedbackPage({ params }: FeedbackPageProps) {
                                 )}
                             </div>
                         </div>
-
-                        {/* Rate Input */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Rate:</label>
-                            <Input
-                                type="number"
-                                placeholder="Enter rate"
-                                className="rounded-sm"
-                            />
-                        </div>
-
-                        {/* Issue Textarea */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Issue:</label>
-                            <Textarea
-                                placeholder="Describe the issue"
-                                className="min-h-[100px] rounded-sm"
-                            />
-                        </div>
-
-                        {/* Diagnosis Textarea */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Diagnosis:</label>
-                            <Textarea
-                                placeholder="Enter diagnosis"
-                                className="min-h-[100px] rounded-sm"
-                            />
-                        </div>
                     </div>
-                </div>
-
-                {/* Feedback Form will go here */}
-                <div className="mt-8">
-                    {/* TODO: Add feedback form */}
                 </div>
             </div>
         </div>
     );
-}
+} 

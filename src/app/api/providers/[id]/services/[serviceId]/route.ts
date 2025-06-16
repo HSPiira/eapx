@@ -1,28 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withRouteMiddleware } from '@/middleware/api-middleware';
 
 type Params = Promise<{ id: string, serviceProviderServiceId: string }>;
 
 export async function GET(request: NextRequest, { params }: { params: Params }) {
-    try {
-        const { id: providerId, serviceProviderServiceId } = await params;
-        const service = await prisma.serviceProviderService.findFirst({
-            where: {
-                id: serviceProviderServiceId,
-                serviceProviderId: providerId
+    return withRouteMiddleware(request, async () => {
+        try {
+            const { id: providerId, serviceProviderServiceId } = await params;
+            const service = await prisma.serviceProviderService.findFirst({
+                where: {
+                    id: serviceProviderServiceId,
+                    serviceProviderId: providerId
+                }
+            });
+            if (!service) {
+                return NextResponse.json({ error: 'Provider service not found' }, { status: 404 });
             }
-        });
-        if (!service) {
-            return NextResponse.json({ error: 'Provider service not found' }, { status: 404 });
+            return NextResponse.json(service);
+        } catch (error) {
+            console.error('Error fetching provider service:', error);
+            return NextResponse.json(
+                { error: 'Failed to fetch provider service' },
+                { status: 500 }
+            );
         }
-        return NextResponse.json(service);
-    } catch (error) {
-        console.error('Error fetching provider service:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch provider service' },
-            { status: 500 }
-        );
-    }
+    });
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Params }) {

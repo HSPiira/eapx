@@ -138,7 +138,7 @@ export async function updateMeeting(data: UpdateMeetingInput, accessToken?: stri
     return meeting;
 }
 
-export async function deleteMeeting(id: string, platform: MeetingPlatform, accessToken?: string): Promise<unknown> {
+export async function deleteMeeting(id: string, platform: MeetingPlatform, accessToken?: string): Promise<void> {
     const endpoint = `${PLATFORM_ENDPOINTS[platform]}/${id}`;
 
     const headers: Record<string, string> = {
@@ -158,6 +158,4 @@ export async function deleteMeeting(id: string, platform: MeetingPlatform, acces
         const errorData = await res.json();
         throw new Error(errorData.message || `Failed to delete ${platform} meeting`);
     }
-
-    return res.json();
 }

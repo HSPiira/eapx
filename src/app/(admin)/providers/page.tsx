@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { MeetingProgressDialog } from "@/components/MeetingProgressDialog";
 import {
@@ -63,6 +63,9 @@ export default function ProvidersPage() {
         confirmingSubSteps.map((name) => ({ name, status: "pending" as 'pending' | 'loading' | 'complete' }))
     );
 
+    // Store active timeout IDs
+    const timeoutRef = useRef<number[]>([]);
+
     // Start simulation when dialog opens
     useEffect(() => {
         if (simDialogOpen) {
@@ -70,6 +73,7 @@ export default function ProvidersPage() {
             let subStep = 0;
             setSimSteps(sessionSimSteps.map((name, i) => ({ name, status: i === 0 ? 'loading' : 'pending' })));
             setSubSteps(confirmingSubSteps.map((name) => ({ name, status: 'pending' })));
+
             const runStep = () => {
                 if (step < 3) { // Main steps before confirming session
                     setSimSteps((prev) =>
@@ -81,10 +85,11 @@ export default function ProvidersPage() {
                                     : { ...s, status: 'pending' }
                         )
                     );
-                    setTimeout(() => {
+                    const timeoutId = window.setTimeout(() => {
                         step++;
                         runStep();
                     }, 1200);
+                    timeoutRef.current.push(timeoutId);
                 } else if (step === 3) { // Confirming session
                     setSimSteps((prev) =>
                         prev.map((s, i) =>
@@ -106,7 +111,7 @@ export default function ProvidersPage() {
                                         : { ...s, status: 'pending' }
                             )
                         );
-                        setTimeout(() => {
+                        const timeoutId = window.setTimeout(() => {
                             if (subStep < confirmingSubSteps.length - 1) {
                                 subStep++;
                                 runSubStep();
@@ -115,6 +120,7 @@ export default function ProvidersPage() {
                                 setSimSteps((prev) => prev.map((s, i) => i < step ? { ...s, status: 'complete' } : i === step ? { ...s, status: 'complete' } : s));
                             }
                         }, 1200);
+                        timeoutRef.current.push(timeoutId);
                     };
                     runSubStep();
                 }
@@ -124,6 +130,12 @@ export default function ProvidersPage() {
             setSimSteps(sessionSimSteps.map((name) => ({ name, status: "pending" })));
             setSubSteps(confirmingSubSteps.map((name) => ({ name, status: "pending" })));
         }
+
+        // Cleanup function to clear all timeouts
+        return () => {
+            timeoutRef.current.forEach(timeoutId => window.clearTimeout(timeoutId));
+            timeoutRef.current = [];
+        };
     }, [simDialogOpen, sessionSimSteps, confirmingSubSteps]);
 
     // Helper function to handle API errors

@@ -232,30 +232,32 @@ export async function seedIndustries(prisma: PrismaClient) {
             throw new Error(`Invalid industry data: ${validationResult.error.message}`);
         }
 
-        // Create industries with their children  
-        for (const industry of validationResult.data) {
-            const { children, ...parentData } = industry;
+        // Create all industries in a single transaction
+        await prisma.$transaction(async (tx) => {
+            for (const industry of validationResult.data) {
+                const { children, ...parentData } = industry;
 
-            // Create parent industry  
-            console.log(`Creating parent industry: ${parentData.name}`);
-            const parent = await prisma.industry.upsert({
-                where: { code: parentData.code },
-                update: parentData,
-                create: parentData
-            });
+                // Create parent industry  
+                console.log(`Creating parent industry: ${parentData.name}`);
+                const parent = await tx.industry.upsert({
+                    where: { code: parentData.code },
+                    update: parentData,
+                    create: parentData
+                });
 
-            // Create child industries  
-            if (children) {
-                console.log(`Creating children for ${parentData.name}...`);
-                for (const child of children) {
-                    await prisma.industry.upsert({
-                        where: { code: child.code },
-                        update: { ...child, parentId: parent.id },
-                        create: { ...child, parentId: parent.id }
-                    });
+                // Create child industries  
+                if (children) {
+                    console.log(`Creating children for ${parentData.name}...`);
+                    for (const child of children) {
+                        await tx.industry.upsert({
+                            where: { code: child.code },
+                            update: { ...child, parentId: parent.id },
+                            create: { ...child, parentId: parent.id }
+                        });
+                    }
                 }
             }
-        }
+        });
 
         console.log('✅ Industries seeded successfully');
     } catch (error) {

@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
                     data: {
                         clientId: validatedBody.clientId,
                         staffId: validatedBody.staffId,
-                        providerId: validatedBody.counselorId || '',
+                        providerId: validatedBody.counselorId || null,
                         interventionId: counselingIntervention.id,
                         scheduledAt: validatedBody.preferredDate ? new Date(validatedBody.preferredDate) : new Date(),
                         status: SessionStatus.SCHEDULED,

@@ -7,13 +7,10 @@ import { Button } from '@/components/ui/button';
 import { RefreshCcw, Video, MapPin, Copy, UserCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useParams } from 'next/navigation';
 
-interface FeedbackPageProps {
-    params: { sessionId: string };
-}
-
-export default function FeedbackPage({ params }: FeedbackPageProps) {
-    const { sessionId } = params;
+export default function FeedbackPage() {
+    const { sessionId } = useParams();
     // TODO: Fetch session data using sessionId
     const sessionData = {
         id: sessionId,
@@ -55,7 +52,7 @@ export default function FeedbackPage({ params }: FeedbackPageProps) {
     const [serviceValue, setServiceValue] = useState(sessionData.service.name);
     const [interventionValue, setInterventionValue] = useState(sessionData.service.intervention);
 
-    const { data: session } = useSession();
+    useSession();
 
     return (
         <div className="container mx-auto max-w-3xl">

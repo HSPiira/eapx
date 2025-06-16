@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/middleware/auth';
 
 // Helper function for development-only logging
-const devLog = (...args: any[]) => {
+const devLog = (...args: unknown[]) => {
     if (process.env.NODE_ENV !== 'production') {
         console.log(...args);
     }

@@ -1,7 +1,5 @@
 'use client';
 import { format } from 'date-fns';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw, Video, MapPin, Copy, UserCircle } from 'lucide-react';
@@ -19,38 +17,55 @@ export function FeedbackForm({ sessionId }: FeedbackFormProps) {
     const { toast } = useToast();
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [symptoms, setSymptoms] = useState('');
 
     // Verify token on page load
     useEffect(() => {
+        const abortController = new AbortController();
+
         const verifyToken = async () => {
+            if (!token) {
+                setIsLoading(false);
+                toast({
+                    title: "Access Denied",
+                    description: "This feedback page is not accessible. Please use the link provided in your email.",
+                    variant: "destructive",
+                });
+                return;
+            }
+
             try {
-                const response = await fetch(`/api/verify-feedback-token?sessionId=${sessionId}&token=${token}`);
+                const encodedSessionId = encodeURIComponent(sessionId);
+                const encodedToken = encodeURIComponent(token);
+                const response = await fetch(
+                    `/api/verify-feedback-token?sessionId=${encodedSessionId}&token=${encodedToken}`,
+                    { signal: abortController.signal }
+                );
                 if (!response.ok) {
                     throw new Error('Invalid or expired token');
                 }
                 setIsAuthorized(true);
             } catch (error) {
+                if (error instanceof Error && error.name === 'AbortError') {
+                    // Ignore abort errors
+                    return;
+                }
                 toast({
                     title: "Access Denied",
                     description: `This feedback page is not accessible. Please use the link provided in your email. ${error}`,
                     variant: "destructive",
                 });
             } finally {
-                setIsLoading(false);
+                if (!abortController.signal.aborted) {
+                    setIsLoading(false);
+                }
             }
         };
 
-        if (token) {
-            verifyToken();
-        } else {
-            setIsLoading(false);
-            toast({
-                title: "Access Denied",
-                description: "This feedback page is not accessible. Please use the link provided in your email.",
-                variant: "destructive",
-            });
-        }
+        verifyToken();
+
+        return () => {
+            abortController.abort();
+        };
     }, [sessionId, token, toast]);
 
     // TODO: Fetch session data using sessionId

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ProviderTable } from '@/components/admin/providers/provider-table';
 import {
     Dialog,
@@ -10,146 +10,93 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { ProviderForm, ProviderFormData } from '@/components/admin/providers/provider-form';
+import { ProviderForm } from '@/components/admin/providers/provider-form';
 import { ProviderEditModal } from '@/components/admin/providers/provider-edit-modal';
-
-type ProviderType = 'COUNSELOR' | 'CLINIC' | 'HOTLINE' | 'COACH' | 'OTHER';
-type ProviderEntityType = 'INDIVIDUAL' | 'COMPANY';
-type ProviderStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED' | 'RESIGNED';
-
-interface Provider {
-    id: string;
-    name: string;
-    type: ProviderType;
-    entityType: ProviderEntityType;
-    contactEmail: string;
-    contactPhone: string | null;
-    location: string | null;
-    qualifications: string[];
-    specializations: string[];
-    status: ProviderStatus;
-    isVerified: boolean;
-    rating: number | null;
-    createdAt: string;
-    updatedAt?: string;
-    _count?: {
-        services: number;
-        sessions: number;
-    };
-}
-
-interface Intervention {
-    id: string;
-    name: string;
-    serviceId?: string;
-    service?: { id: string; name: string };
-}
-
-interface Service {
-    id: string;
-    name: string;
-}
+import { useProviders } from '@/hooks/providers/useProviders';
+import { useInterventions } from '@/hooks/interventions';
+import { useServices } from '@/hooks/services';
+import { useCreateProvider } from '@/hooks/providers/useCreateProvider';
+import { useUpdateProvider } from '@/hooks/providers/useUpdateProvider';
+import { useDeleteProvider } from '@/hooks/providers/useDeleteProvider';
+import { Provider } from '@/types/provider';
+import { CreateServiceProviderInput, UpdateServiceProviderInput } from '@/schema/provider';
+import { ConfirmDeleteCard } from '@/components/admin/services/confirm-delete';
 
 export default function ProvidersListPage() {
-    const [providers, setProviders] = useState<Provider[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [isEditSubmitting, setIsEditSubmitting] = useState(false);
-    const [services, setServices] = useState<Service[]>([]);
-    const [interventions, setInterventions] = useState<Intervention[]>([]);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    useEffect(() => {
-        async function fetchProviders() {
-            setLoading(true);
-            setError(null);
-            try {
-                const res = await fetch('/api/providers');
-                if (!res.ok) throw new Error('Failed to fetch providers');
-                const json = await res.json();
-                setProviders(json.data || []);
-            } catch (error: unknown) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                setError(errorMessage);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchProviders();
-    }, []);
+    const { data: providersData, isLoading, error: providersError } = useProviders();
+    const { data: servicesData, error: servicesError } = useServices();
+    const { data: interventionsData, error: interventionsError } = useInterventions();
 
-    useEffect(() => {
-        async function fetchServicesAndInterventions() {
-            try {
-                const resServices = await fetch('/api/services?limit=200');
-                const jsonServices = await resServices.json();
-                setServices(jsonServices.data || []);
-                const resInterventions = await fetch('/api/services/interventions?limit=200');
-                const jsonInterventions = await resInterventions.json();
-                setInterventions((jsonInterventions.data || []).map((i: Intervention) => ({ ...i, service: i.service })));
-            } catch (error) {
-                console.error('Error fetching services and interventions:', error);
-                setServices([]);
-                setInterventions([]);
-            }
+    const createProviderMutation = useCreateProvider(() => setIsDialogOpen(false));
+    const updateProviderMutation = useUpdateProvider();
+    const deleteProviderMutation = useDeleteProvider();
+
+    const handleCreateProvider = async (data: CreateServiceProviderInput) => {
+        try {
+            const { ...payload } = data;
+            createProviderMutation.mutate(payload);
+        } catch (error) {
+            console.error('Failed to add provider:', error);
+            alert('Failed to add provider');
         }
-        fetchServicesAndInterventions();
-    }, []);
+    };
 
     const handleEdit = (provider: Provider) => {
         setEditingProvider(provider);
         setIsEditDialogOpen(true);
     };
 
-    const handleUpdateProvider = async (data: ProviderFormData) => {
+    const handleUpdateProvider = async (data: CreateServiceProviderInput) => {
         if (!editingProvider) return;
-        setIsEditSubmitting(true);
         try {
-            const res = await fetch(`/api/providers/${editingProvider.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            if (!res.ok) throw new Error('Failed to update provider');
-            const updated = await res.json();
-            setProviders(prev => prev.map(p => p.id === updated.id ? updated : p));
+            const updateData: UpdateServiceProviderInput = {
+                id: editingProvider.id,
+                ...data
+            };
+            updateProviderMutation.mutate(updateData);
             setIsEditDialogOpen(false);
             setEditingProvider(null);
         } catch (error) {
             console.error('Failed to update provider:', error);
             alert('Failed to update provider');
-        } finally {
-            setIsEditSubmitting(false);
         }
     };
 
-    const handleDelete = (id: string) => {
-        // TODO: Implement delete logic
-        alert(`Delete provider with id: ${id}`);
-    };
-
-    const handleAddProvider = async (data: ProviderFormData & { documents: Record<string, File | File[] | null>; interventionsOffered: string[] }) => {
-        try {
-            const payload = {
-                ...data,
-                type: data.type ? data.type : null,
-            };
-            const res = await fetch('/api/providers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) throw new Error('Failed to add provider');
-            const json = await res.json();
-            setProviders(prev => [json, ...prev]);
-            setIsDialogOpen(false);
-        } catch (error) {
-            console.error('Failed to add provider:', error);
-            alert('Failed to add provider');
+    const handleDeleteClick = (id: string) => {
+        const provider = providersData?.data.find(p => p.id === id);
+        if (provider) {
+            setEditingProvider(provider);
+            setDeleteDialogOpen(true);
         }
     };
+
+    const confirmDelete = () => {
+        if (editingProvider) {
+            deleteProviderMutation.mutate(editingProvider.id);
+            setDeleteDialogOpen(false);
+        }
+    };
+
+    if (providersError || servicesError || interventionsError) {
+        return (
+            <div className="text-center text-red-500 p-4">
+                <p>Error loading data. Please try again later.</p>
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -172,18 +119,20 @@ export default function ProvidersListPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <ProviderForm
-                            onSubmitAction={handleAddProvider}
-                            isSubmitting={false}
+                            onSubmitAction={handleCreateProvider}
+                            isSubmitting={createProviderMutation.isPending}
                             onCancel={() => setIsDialogOpen(false)}
-                            services={services}
-                            interventions={interventions}
+                            services={servicesData?.data || []}
+                            interventions={interventionsData?.data || []}
                         />
                     </DialogContent>
                 </Dialog>
             </div>
-            {loading && <div className="p-4 text-gray-500">Loading...</div>}
-            {error && <div className="p-4 text-red-500">{error}</div>}
-            <ProviderTable providers={providers} onEdit={handleEdit} onDelete={handleDelete} />
+            <ProviderTable
+                providers={providersData?.data || []}
+                onEdit={handleEdit}
+                onDelete={handleDeleteClick}
+            />
             <ProviderEditModal
                 open={isEditDialogOpen}
                 onOpenChange={open => {
@@ -192,7 +141,13 @@ export default function ProvidersListPage() {
                 }}
                 provider={editingProvider}
                 onSubmit={handleUpdateProvider}
-                isSubmitting={isEditSubmitting}
+                isSubmitting={updateProviderMutation.isPending}
+            />
+            <ConfirmDeleteCard
+                open={deleteDialogOpen}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteDialogOpen(false)}
+                itemName={editingProvider?.name ?? ""}
             />
         </div>
     );

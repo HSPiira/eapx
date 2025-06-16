@@ -22,45 +22,14 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown, ChevronDown, FileText, FileSignature, FileSpreadsheet, FileCode, FileArchive } from "lucide-react";
 import { cn } from '@/lib/utils';
+import { ServiceProviderType, ProviderEntityType } from '@/schema/enums';
+import { CreateServiceProviderInput } from '@/schema/provider';
+import { Intervention } from '@/types/interventions';
 
-// Define enums to match your Prisma schema
-const ServiceProviderTypeEnum = z.enum(["COUNSELOR", "CLINIC", "HOTLINE", "COACH", "OTHER"]);
-const ProviderEntityTypeEnum = z.enum(["INDIVIDUAL", "COMPANY"]);
+// Use the CreateServiceProviderInput schema directly
+const providerSchema = CreateServiceProviderInput;
 
-const providerSchema = z.object({
-    name: z.string().min(1, "Name is required"),
-    type: ServiceProviderTypeEnum.optional(),
-    entityType: ProviderEntityTypeEnum,
-    contactEmail: z.string({
-        required_error: "Contact email is required"
-    }).email("Must be a valid email"),
-    contactPhone: z.string().nullable(),
-    location: z.string().nullable(),
-    qualifications: z.array(z.string()),
-    specializations: z.array(z.string()),
-    isVerified: z.boolean(),
-    status: z.string(),
-}) satisfies z.ZodType<ProviderFormData>;
-
-export type ProviderFormData = {
-    name: string;
-    type?: z.infer<typeof ServiceProviderTypeEnum>;
-    entityType: z.infer<typeof ProviderEntityTypeEnum>;
-    contactEmail: string;
-    contactPhone: string | null;
-    location: string | null;
-    qualifications: string[];
-    specializations: string[];
-    isVerified: boolean;
-    status: string;
-};
-
-interface Intervention {
-    id: string;
-    name: string;
-    serviceId?: string;
-    service?: { id: string; name: string };
-}
+type ProviderFormData = z.infer<typeof providerSchema>;
 
 interface ProviderFormProps {
     onSubmitAction: (data: ProviderFormData & { documents: Record<string, File | File[] | null>; interventionsOffered: string[] }) => void;
@@ -79,20 +48,20 @@ export function ProviderForm({
     interventions = [],
     onCancel,
 }: ProviderFormProps) {
-    const form = useForm<ProviderFormData>({
+    const form = useForm({
         resolver: zodResolver(providerSchema),
         mode: 'onChange',
         defaultValues: {
-            name: initialData?.name || '',
-            type: initialData?.type || undefined,
-            entityType: initialData?.entityType || 'INDIVIDUAL',
-            contactEmail: initialData?.contactEmail || '',
-            contactPhone: initialData?.contactPhone || null,
-            location: initialData?.location || null,
-            qualifications: initialData?.qualifications || [],
-            specializations: initialData?.specializations || [],
-            isVerified: initialData?.isVerified || false,
-            status: initialData?.status || 'ACTIVE',
+            name: initialData?.name ?? '',
+            type: initialData?.type,
+            entityType: initialData?.entityType ?? undefined,
+            contactEmail: initialData?.contactEmail ?? '',
+            contactPhone: initialData?.contactPhone,
+            location: initialData?.location,
+            qualifications: initialData?.qualifications ?? [],
+            specializations: initialData?.specializations ?? [],
+            isVerified: initialData?.isVerified ?? false,
+            status: initialData?.status ?? 'ACTIVE',
         },
     });
 
@@ -163,12 +132,18 @@ export function ProviderForm({
         onSubmitAction({ ...data, documents, interventionsOffered });
     };
 
-    const [typeOpen, setTypeOpen] = useState(false);
-    const [entityTypeOpen, setEntityTypeOpen] = useState(false);
+    const [providerCategoryOpen, setProviderCategoryOpen] = useState(false);
+    const [providerTypeOpen, setProviderTypeOpen] = useState(false);
 
     // Use these enums for dropdown options in the form UI
-    const providerTypes = ServiceProviderTypeEnum.options.map(value => ({ value, label: value.charAt(0) + value.slice(1).toLowerCase() }));
-    const entityTypes = ProviderEntityTypeEnum.options.map(value => ({ value, label: value.charAt(0) + value.slice(1).toLowerCase() }));
+    const providerTypes = ServiceProviderType.options.map((value: z.infer<typeof ServiceProviderType>) => ({
+        value,
+        label: value.charAt(0) + value.slice(1).toLowerCase()
+    }));
+    const entityTypes = ProviderEntityType.options.map((value: z.infer<typeof ProviderEntityType>) => ({
+        value,
+        label: value.charAt(0) + value.slice(1).toLowerCase()
+    }));
 
     const [emptyServiceChecked, setEmptyServiceChecked] = useState<Record<string, boolean>>({});
 
@@ -177,7 +152,7 @@ export function ProviderForm({
             <div className="mb-4 text-sm font-medium text-muted-foreground">
                 Step {step} of 3: {step === 1 ? 'Provider Info' : step === 2 ? 'Documents' : 'Services & Interventions'}
             </div>
-            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+            <form id="provider-form" onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
                 {step === 1 && (
                     <div className="space-y-4">
                         <div className="space-y-2">
@@ -195,76 +170,24 @@ export function ProviderForm({
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Type</Label>
-                            <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+                            <Label>Provider Type</Label>
+                            <Popover open={providerTypeOpen} onOpenChange={setProviderTypeOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         variant="outline"
                                         role="combobox"
-                                        aria-expanded={typeOpen}
+                                        aria-expanded={providerTypeOpen}
                                         className="w-full justify-between"
                                     >
-                                        {form.watch("type") || "Select type..."}
+                                        {form.watch("entityType") || "Select provider type..."}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-full p-0">
                                     <Command>
-                                        <CommandInput placeholder="Search type..." />
+                                        <CommandInput className="text-gray-800 placeholder-gray-400" placeholder="Search provider type..." />
                                         <CommandList>
-                                            <CommandEmpty>No type found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {providerTypes.map((type) => (
-                                                    <CommandItem
-                                                        key={type.value}
-                                                        value={type.value}
-                                                        onSelect={() => {
-                                                            form.setValue("type", type.value);
-                                                            setTypeOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                form.watch("type") === type.value
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {type.label}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                            {form.formState.errors.type && (
-                                <p className="text-sm text-red-500">
-                                    {form.formState.errors.type.message}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Entity Type</Label>
-                            <Popover open={entityTypeOpen} onOpenChange={setEntityTypeOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={entityTypeOpen}
-                                        className="w-full justify-between"
-                                    >
-                                        {form.watch("entityType") || "Select entity type..."}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search entity type..." />
-                                        <CommandList>
-                                            <CommandEmpty>No entity type found.</CommandEmpty>
+                                            <CommandEmpty>No provider type found.</CommandEmpty>
                                             <CommandGroup>
                                                 {entityTypes.map((type) => (
                                                     <CommandItem
@@ -272,7 +195,7 @@ export function ProviderForm({
                                                         value={type.value}
                                                         onSelect={() => {
                                                             form.setValue("entityType", type.value);
-                                                            setEntityTypeOpen(false);
+                                                            setProviderTypeOpen(false);
                                                         }}
                                                     >
                                                         <Check
@@ -294,6 +217,58 @@ export function ProviderForm({
                             {form.formState.errors.entityType && (
                                 <p className="text-sm text-red-500">
                                     {form.formState.errors.entityType.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Provider Category</Label>
+                            <Popover open={providerCategoryOpen} onOpenChange={setProviderCategoryOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={providerCategoryOpen}
+                                        className="w-full justify-between"
+                                    >
+                                        {form.watch("type") || "Select provider category..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-full p-0">
+                                    <Command>
+                                        <CommandInput className="text-gray-800 placeholder-gray-400" placeholder="Search provider category..." />
+                                        <CommandList>
+                                            <CommandEmpty>No provider category found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {providerTypes.map((type) => (
+                                                    <CommandItem
+                                                        key={type.value}
+                                                        value={type.value}
+                                                        onSelect={() => {
+                                                            form.setValue("type", type.value);
+                                                            setProviderCategoryOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                form.watch("type") === type.value
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {type.label}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            {form.formState.errors.type && (
+                                <p className="text-sm text-red-500">
+                                    {form.formState.errors.type.message}
                                 </p>
                             )}
                         </div>

@@ -72,7 +72,7 @@ export function AddClientModal({ isOpen, onClose, onSuccess }: AddClientModalPro
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent
-                className="max-w-2xl max-h-[90vh] overflow-y-auto"
+                className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
                 onPointerDownOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
             >

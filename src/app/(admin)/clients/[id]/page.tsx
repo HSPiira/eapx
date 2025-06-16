@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -48,6 +48,7 @@ async function fetchClient(id: string): Promise<Client> {
 export default function ClientOverviewPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const clientId = params.id as string;
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -179,7 +180,7 @@ export default function ClientOverviewPage() {
                 onClose={() => setIsEditModalOpen(false)}
                 onSuccess={() => {
                     setIsEditModalOpen(false);
-                    router.refresh();
+                    queryClient.invalidateQueries({ queryKey: ['client', clientId] });
                 }}
                 clientId={clientId}
             />

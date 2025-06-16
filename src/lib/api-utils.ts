@@ -1,6 +1,6 @@
 import { NextApiRequest } from "next";
 import { NextRequest } from 'next/server';
-import { ServiceProviderType, WorkStatus, PaymentStatus, ContractStatus, SessionStatus } from '@prisma/client';
+import { ServiceProviderType, WorkStatus, PaymentStatus, ContractStatus, SessionStatus, SessionType } from '@prisma/client';
 
 interface PaginationParams {
     page: number;
@@ -39,9 +39,12 @@ interface ContractData {
 }
 
 interface SessionData {
-    serviceId: string;
+    interventionId: string;
     providerId: string;
+    providerStaffId?: string | null;
     beneficiaryId: string;
+    clientId: string;
+    staffId?: string;
     scheduledAt: Date | null;
     completedAt: Date | null;
     status?: SessionStatus;
@@ -52,6 +55,7 @@ interface SessionData {
     cancellationReason?: string | null;
     rescheduleCount?: number | null;
     isGroupSession?: boolean | null;
+    sessionType?: SessionType | null;
     metadata?: Record<string, unknown> | null;
 }
 
@@ -297,9 +301,12 @@ export function validateSessionData(body: Record<string, unknown>): ValidationRe
     return {
         isValid: true,
         data: {
-            serviceId: body.serviceId as string,
+            interventionId: body.interventionId as string,
             providerId: body.providerId as string,
+            providerStaffId: body.providerStaffId as string | null | undefined,
             beneficiaryId: body.beneficiaryId as string,
+            clientId: body.clientId as string,
+            staffId: body.staffId as string | undefined,
             scheduledAt: scheduledAtResult.date,
             completedAt: completedAtResult.date,
             status: body.status as SessionStatus | undefined,
@@ -310,6 +317,7 @@ export function validateSessionData(body: Record<string, unknown>): ValidationRe
             cancellationReason: body.cancellationReason as string | null,
             rescheduleCount: body.rescheduleCount as number | null,
             isGroupSession: body.isGroupSession as boolean | null,
+            sessionType: body.sessionType as SessionType | null,
             metadata: body.metadata as Record<string, unknown> | null,
         }
     };

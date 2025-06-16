@@ -1,9 +1,11 @@
 // Define a constant for session selection fields
 export const sessionSelectFields = {
     id: true,
-    serviceId: true,
+    interventionId: true,
     providerId: true,
+    providerStaffId: true,
     beneficiaryId: true,
+    clientId: true,
     scheduledAt: true,
     completedAt: true,
     status: true,
@@ -14,10 +16,17 @@ export const sessionSelectFields = {
     cancellationReason: true,
     rescheduleCount: true,
     isGroupSession: true,
+    sessionType: true,
     metadata: true,
     createdAt: true,
     updatedAt: true,
-    service: {
+    client: {
+        select: {
+            id: true,
+            name: true,
+        },
+    },
+    intervention: {
         select: {
             id: true,
             name: true,
@@ -29,6 +38,16 @@ export const sessionSelectFields = {
             id: true,
             name: true,
             type: true,
+            entityType: true,
+        },
+    },
+    providerStaff: {
+        select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            role: true,
         },
     },
     beneficiary: {

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { z } from 'zod';
 
 const industries = [
     {
@@ -208,32 +209,55 @@ const industries = [
     }
 ];
 
+const industrySchema = z.object({
+    name: z.string().min(1),
+    code: z.string().min(1),
+    description: z.string().min(1),
+    children: z
+        .array(
+            z.object({
+                name: z.string().min(1),
+                code: z.string().min(1),
+                description: z.string().min(1),
+            })
+        )
+        .optional(),
+});
+
 export async function seedIndustries(prisma: PrismaClient) {
     try {
-        // Create industries with their children
-        for (const industry of industries) {
-            const { children, ...parentData } = industry;
+        // Validate industry data  
+        const validationResult = z.array(industrySchema).safeParse(industries);
+        if (!validationResult.success) {
+            throw new Error(`Invalid industry data: ${validationResult.error.message}`);
+        }
 
-            // Create parent industry
-            console.log(`Creating parent industry: ${parentData.name}`);
-            const parent = await prisma.industry.upsert({
-                where: { code: parentData.code },
-                update: parentData,
-                create: parentData
-            });
+        // Create all industries in a single transaction
+        await prisma.$transaction(async (tx) => {
+            for (const industry of validationResult.data) {
+                const { children, ...parentData } = industry;
 
-            // Create child industries
-            if (children) {
-                console.log(`Creating children for ${parentData.name}...`);
-                for (const child of children) {
-                    await prisma.industry.upsert({
-                        where: { code: child.code },
-                        update: { ...child, parentId: parent.id },
-                        create: { ...child, parentId: parent.id }
-                    });
+                // Create parent industry  
+                console.log(`Creating parent industry: ${parentData.name}`);
+                const parent = await tx.industry.upsert({
+                    where: { code: parentData.code },
+                    update: parentData,
+                    create: parentData
+                });
+
+                // Create child industries  
+                if (children) {
+                    console.log(`Creating children for ${parentData.name}...`);
+                    for (const child of children) {
+                        await tx.industry.upsert({
+                            where: { code: child.code },
+                            update: { ...child, parentId: parent.id },
+                            create: { ...child, parentId: parent.id }
+                        });
+                    }
                 }
             }
-        }
+        });
 
         console.log('✅ Industries seeded successfully');
     } catch (error) {
@@ -243,16 +267,18 @@ export async function seedIndustries(prisma: PrismaClient) {
 }
 
 // Execute the seed function if this file is run directly
-const prisma = new PrismaClient();
-seedIndustries(prisma)
-    .then(() => {
-        console.log('Seeding completed');
-        process.exit(0);
-    })
-    .catch((error) => {
-        console.error('Seeding failed:', error);
-        process.exit(1);
-    })
-    .finally(() => {
-        prisma.$disconnect();
-    });
+if (require.main === module) {
+    const prisma = new PrismaClient();
+    seedIndustries(prisma)
+        .then(() => {
+            console.log('Seeding completed');
+            process.exit(0);
+        })
+        .catch((error) => {
+            console.error('Seeding failed:', error);
+            process.exit(1);
+        })
+        .finally(() => {
+            prisma.$disconnect();
+        });
+} 

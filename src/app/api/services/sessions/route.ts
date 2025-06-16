@@ -7,86 +7,156 @@ import { Prisma, SessionStatus } from '@prisma/client';
 import { sessionSelectFields } from '@/lib/select-fields';
 import { sendSessionRequestEmail } from '@/services/email.service';
 import { auth } from '@/middleware/auth'; // Auth.js v5 universal import
+import { z } from 'zod';
+
+const sessionRequestSchema = z.object({
+    clientId: z.string(),
+    staffId: z.string(),
+    counselorId: z.string().optional(),
+    interventionId: z.string(),
+    preferredDate: z.string().optional(),
+    requestMethod: z.string().optional(),
+    requestNotes: z.string().optional(),
+    companyId: z.string().optional(),
+    sessionMethod: z.string().optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    sessionType: z.string().optional(),
+    companyName: z.string().optional(),
+    staffName: z.string().optional(),
+    counselorName: z.string().optional(),
+    duration: z.number().optional(),
+    isGroupSession: z.boolean().optional(),
+    staffEmail: z.string().optional(),
+    counselorEmail: z.string().optional(),
+    adminEmail: z.string().optional(),
+    adminName: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
     return withRouteMiddleware(request, async () => {
         const { searchParams } = new URL(request.url);
         const { page, limit, offset, search } = getPaginationParams(searchParams);
         const status = searchParams.get('status') as SessionStatus | undefined;
-        const serviceId = searchParams.get('serviceId') || undefined;
+        const interventionId = searchParams.get('interventionId') || undefined;
         const providerId = searchParams.get('providerId') || undefined;
         const beneficiaryId = searchParams.get('beneficiaryId') || undefined;
-        const staffId = searchParams.get('staffId') || undefined;
-        request.headers.get('x-user-role');
-        if (status && !Object.values(SessionStatus).includes(status)) {
-            return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-        }
 
-        // Build the where clause based on user role and filters
-        const where: Prisma.ServiceSessionWhereInput = {
-            OR: search
-                ? [
-                    { service: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
-                    { provider: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
-                    { beneficiary: { profile: { fullName: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
-                ]
-                : undefined,
-            status: status || undefined,
-            serviceId: serviceId || undefined,
-            providerId: providerId || undefined,
-            beneficiaryId: beneficiaryId || undefined,
-            deletedAt: null,
-        };
+        try {
+            if (status && !Object.values(SessionStatus).includes(status)) {
+                return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+            }
 
-        // If not admin, only show sessions for the authenticated user's staff
-        // if (userRole !== 'ADMIN') {
-        const session = await auth();
-        if (!session?.user?.id) {
+            // Build the where clause based on user role and filters
+            const where: Prisma.CareSessionWhereInput = {
+                OR: search
+                    ? [
+                        { intervention: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+                        { provider: { name: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+                        { beneficiary: { profile: { fullName: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
+                    ]
+                    : undefined,
+                status: status || undefined,
+                interventionId: interventionId || undefined,
+                providerId: providerId || undefined,
+                beneficiaryId: beneficiaryId || undefined,
+                deletedAt: null,
+            };
+
+            // Get authenticated user's session
+            const session = await auth();
+            if (!session?.user?.id) {
+                return NextResponse.json(
+                    { error: 'User ID not found in session' },
+                    { status: 401 }
+                );
+            }
+
+            // Get user's client ID for tenant isolation
+            const staff = await prisma.staff.findFirst({
+                where: { userId: session.user.id },
+                select: { clientId: true }
+            });
+
+            if (!staff?.clientId) {
+                return NextResponse.json(
+                    { error: 'User not associated with any client' },
+                    { status: 401 }
+                );
+            }
+
+            // Add client ID to where clause for tenant isolation
+            where.clientId = staff.clientId;
+
+            const cacheKey = `sessions:${staff.clientId}:${page}:${limit}:${search}:${status}:${interventionId}:${providerId}:${beneficiaryId}`;
+            const cached = await cache.get(cacheKey);
+            if (cached) return NextResponse.json(cached);
+
+            const totalCount = await prisma.careSession.count({ where });
+            const sessions = await prisma.careSession.findMany({
+                where,
+                select: sessionSelectFields,
+                skip: offset,
+                take: limit,
+                orderBy: { scheduledAt: 'desc' },
+            });
+
+            // Get creator information from audit logs
+            const sessionIds = sessions.map(s => s.id);
+            const auditLogs = await prisma.auditLog.findMany({
+                where: {
+                    entityType: 'CareSession',
+                    entityId: { in: sessionIds },
+                    action: 'CREATE'
+                },
+                select: {
+                    entityId: true,
+                    userId: true,
+                    User: {
+                        select: {
+                            email: true,
+                            profile: {
+                                select: {
+                                    fullName: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Map creator information to sessions
+            const sessionsWithCreator = sessions.map(session => {
+                const auditLog = auditLogs.find(log => log.entityId === session.id);
+                return {
+                    ...session,
+                    creator: auditLog ? {
+                        id: auditLog.userId,
+                        email: auditLog.User?.email,
+                        name: auditLog.User?.profile?.fullName
+                    } : null
+                };
+            });
+
+            const response = {
+                data: sessionsWithCreator,
+                metadata: {
+                    total: totalCount,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(totalCount / limit),
+                },
+            };
+
+            await cache.set(cacheKey, response);
+            return NextResponse.json(response);
+        } catch (error) {
+            console.error('Error fetching sessions:', error);
             return NextResponse.json(
-                { error: 'User ID not found in session' },
-                { status: 401 }
+                { error: 'Failed to fetch sessions' },
+                { status: 500 }
             );
         }
-        const userId = session.user.id;
-        const staff = await prisma.staff.findFirst({
-            where: { userId }
-        });
-        if (!staff) {
-            return NextResponse.json(
-                { error: 'Staff member not found' },
-                { status: 404 }
-            );
-        }
-        where.staffId = staff.id;
-        // } else if (staffId) {
-        //     where.staffId = staffId;
-        // }
-
-        const cacheKey = `sessions:${page}:${limit}:${search}:${status}:${serviceId}:${providerId}:${beneficiaryId}:${staffId}`;
-        const cached = await cache.get(cacheKey);
-        if (cached) return NextResponse.json(cached);
-
-        const totalCount = await prisma.serviceSession.count({ where });
-        const sessions = await prisma.serviceSession.findMany({
-            where,
-            select: sessionSelectFields,
-            skip: offset,
-            take: limit,
-            orderBy: { scheduledAt: 'desc' },
-        });
-
-        const response = {
-            data: sessions,
-            metadata: {
-                total: totalCount,
-                page,
-                limit,
-                totalPages: Math.ceil(totalCount / limit),
-            },
-        };
-
-        await cache.set(cacheKey, response);
-        return NextResponse.json(response);
     });
 }
 
@@ -95,127 +165,171 @@ export async function POST(request: NextRequest) {
         let body;
         try {
             body = await request.json();
-            console.log('body', body);
         } catch {
             return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
         }
 
-        // Use Auth.js v5 universal auth() to get session
-        const session = await auth();
-        if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: 'User ID not found in session' },
-                { status: 401 }
-            );
-        }
-        // Handle session request from staff
-        if (body.staffId) {
-            // Only check that the staff exists
-            const staff = await prisma.staff.findUnique({
-                where: { id: body.staffId }
-            });
-            if (!staff) {
+        try {
+            const session = await auth();
+            if (!session?.user?.id) {
                 return NextResponse.json(
-                    { error: 'Staff member not found' },
-                    { status: 404 }
+                    { error: 'User ID not found in session' },
+                    { status: 401 }
                 );
             }
 
-            // Validate counselor if specified
-            if (body.counselorId) {
-                console.log('body.counselorId', body.counselorId);
-                const counselor = await prisma.serviceProvider.findUnique({
-                    where: { id: body.counselorId }
+            // DRAFT CREATION: Only clientId provided
+            if (body.clientId && Object.keys(body).length === 1) {
+                const draft = await prisma.careSession.create({
+                    data: {
+                        clientId: body.clientId,
+                        status: 'UNCONFIRMED',
+                    },
                 });
-                console.log('counselor', counselor);
 
-                if (!counselor) {
+                // Create audit log for draft creation
+                await prisma.auditLog.create({
+                    data: {
+                        action: 'CREATE',
+                        entityType: 'CareSession',
+                        entityId: draft.id,
+                        userId: session.user.id,
+                        data: { status: 'UNCONFIRMED' }
+                    }
+                });
+
+                return NextResponse.json({ data: draft }, { status: 201 });
+            }
+
+            // Handle session request from staff
+            if (body.staffId) {
+                // Validate request body
+                const validationResult = sessionRequestSchema.safeParse(body);
+                if (!validationResult.success) {
                     return NextResponse.json(
-                        { error: 'Preferred counselor not found' },
+                        { error: 'Invalid request body', details: validationResult.error.format() },
+                        { status: 400 }
+                    );
+                }
+
+                const validatedBody = validationResult.data;
+
+                const staff = await prisma.staff.findUnique({
+                    where: { id: validatedBody.staffId }
+                });
+                if (!staff) {
+                    return NextResponse.json(
+                        { error: 'Staff member not found' },
                         { status: 404 }
                     );
                 }
-            }
-            console.log('counselorId', body.counselorId);
 
-            // Get the default counseling intervention
-            const counselingIntervention = await prisma.intervention.findFirst({
-                where: { id: body.interventionId }
-            });
-            if (!counselingIntervention) {
-                return NextResponse.json(
-                    { error: 'Counseling intervention not found' },
-                    { status: 404 }
-                );
-            }
-            console.log('counselingIntervention', counselingIntervention);
-            // Create the session request
-            const sessionRequest = await prisma.serviceSession.create({
-                data: {
-                    staffId: body.staffId,
-                    providerId: body.counselorId || '',
-                    serviceId: counselingIntervention.id, // Use Intervention id
-                    scheduledAt: body.preferredDate || new Date(),
-                    status: SessionStatus.SCHEDULED,
-                    duration: 60, // Default 1-hour session
-                    metadata: {
-                        requestMethod: body.requestMethod,
-                        requestNotes: body.requestNotes
+                // Validate counselor if specified
+                if (validatedBody.counselorId) {
+                    const counselor = await prisma.serviceProvider.findUnique({
+                        where: { id: validatedBody.counselorId }
+                    });
+
+                    if (!counselor) {
+                        return NextResponse.json(
+                            { error: 'Preferred counselor not found' },
+                            { status: 404 }
+                        );
                     }
-                },
-                select: sessionSelectFields,
-            });
-            console.log('sessionRequest', sessionRequest);
+                }
 
-            // Send email notification (replace mock data with real mapping as needed)
-            try {
-                await sendSessionRequestEmail(
-                    {
-                        companyId: body.companyId,
-                        staffId: body.staffId,
-                        counselorId: body.counselorId,
-                        interventionId: body.interventionId,
-                        sessionMethod: body.sessionMethod,
-                        date: new Date(sessionRequest.scheduledAt).toISOString(),
-                        startTime: body.startTime,
-                        endTime: body.endTime,
-                        sessionType: body.sessionType,
-                        companyName: body.companyName,
-                        staffName: body.staffName,
-                        counselorName: body.counselorName,
-                        notes: (typeof sessionRequest.metadata === 'object' && sessionRequest.metadata !== null && 'requestNotes' in sessionRequest.metadata && typeof sessionRequest.metadata.requestNotes === 'string') ? sessionRequest.metadata.requestNotes : '',
-                        duration: body.duration,
-                        isGroupSession: body.isGroupSession
+                // Get the default counseling intervention
+                const counselingIntervention = await prisma.intervention.findFirst({
+                    where: { id: validatedBody.interventionId }
+                });
+                if (!counselingIntervention) {
+                    return NextResponse.json(
+                        { error: 'Counseling intervention not found' },
+                        { status: 404 }
+                    );
+                }
+
+                // Create the session request
+                const sessionRequest = await prisma.careSession.create({
+                    data: {
+                        clientId: validatedBody.clientId,
+                        staffId: validatedBody.staffId,
+                        providerId: validatedBody.counselorId || null,
+                        interventionId: counselingIntervention.id,
+                        scheduledAt: validatedBody.preferredDate ? new Date(validatedBody.preferredDate) : new Date(),
+                        status: SessionStatus.SCHEDULED,
+                        duration: 60,
+                        metadata: {
+                            requestMethod: validatedBody.requestMethod,
+                            requestNotes: validatedBody.requestNotes
+                        }
                     },
-                    {
-                        staff: { email: body.staffEmail, name: body.staffName },
-                        counselor: { email: body.counselorEmail, name: body.counselorName },
-                        admin: { email: body.adminEmail, name: body.adminName }, // TODO: Map real admin
+                    select: sessionSelectFields,
+                });
+
+                // Create audit log for session request
+                await prisma.auditLog.create({
+                    data: {
+                        action: 'CREATE',
+                        entityType: 'CareSession',
+                        entityId: sessionRequest.id,
+                        userId: session.user.id,
+                        data: {
+                            status: SessionStatus.SCHEDULED,
+                            requestMethod: validatedBody.requestMethod,
+                            requestNotes: validatedBody.requestNotes
+                        }
                     }
-                );
-                console.log('email sent');
-            } catch (e) {
-                console.error('Failed to send session request email:', e);
+                });
+
+                // Send email notification
+                try {
+                    await sendSessionRequestEmail(
+                        {
+                            companyId: validatedBody.companyId || '',
+                            staffId: validatedBody.staffId,
+                            counselorId: validatedBody.counselorId || '',
+                            interventionId: validatedBody.interventionId,
+                            sessionMethod: validatedBody.sessionMethod || '',
+                            date: sessionRequest.scheduledAt ? new Date(sessionRequest.scheduledAt).toISOString() : '',
+                            startTime: validatedBody.startTime || '',
+                            endTime: validatedBody.endTime || '',
+                            sessionType: validatedBody.sessionType || '',
+                            companyName: validatedBody.companyName || '',
+                            staffName: validatedBody.staffName || '',
+                            counselorName: validatedBody.counselorName || '',
+                            notes: (typeof sessionRequest.metadata === 'object' && sessionRequest.metadata !== null && 'requestNotes' in sessionRequest.metadata && typeof sessionRequest.metadata.requestNotes === 'string') ? sessionRequest.metadata.requestNotes : '',
+                            duration: validatedBody.duration || 60,
+                            isGroupSession: validatedBody.isGroupSession || false
+                        },
+                        {
+                            staff: { email: validatedBody.staffEmail || '', name: validatedBody.staffName || '' },
+                            counselor: { email: validatedBody.counselorEmail || '', name: validatedBody.counselorName || '' },
+                            admin: { email: validatedBody.adminEmail || '', name: validatedBody.adminName || '' },
+                        }
+                    );
+                } catch (e) {
+                    console.error('Failed to send session request email:', e);
+                }
+
+                await cache.deleteByPrefix('sessions:');
+                return NextResponse.json(sessionRequest);
             }
 
-            await cache.deleteByPrefix('sessions:');
-            return NextResponse.json(sessionRequest);
-        }
+            // Handle direct session creation
+            if (!body.interventionId || !body.providerId || !body.beneficiaryId || !body.scheduledAt) {
+                return NextResponse.json({ error: 'Intervention, provider, beneficiary, and scheduled date are required' }, { status: 400 });
+            }
 
-        // Handle direct session creation
-        if (!body.serviceId || !body.providerId || !body.beneficiaryId || !body.scheduledAt) {
-            return NextResponse.json({ error: 'Service, provider, beneficiary, and scheduled date are required' }, { status: 400 });
-        }
+            const scheduledAt = new Date(body.scheduledAt);
+            if (isNaN(scheduledAt.getTime())) {
+                return NextResponse.json({ error: 'Invalid scheduledAt' }, { status: 400 });
+            }
 
-        const scheduledAt = new Date(body.scheduledAt);
-        if (isNaN(scheduledAt.getTime())) {
-            return NextResponse.json({ error: 'Invalid scheduledAt' }, { status: 400 });
-        }
-
-        try {
-            const newSession = await prisma.serviceSession.create({
+            const newSession = await prisma.careSession.create({
                 data: {
-                    serviceId: body.serviceId,
+                    clientId: body.clientId,
+                    interventionId: body.interventionId,
                     providerId: body.providerId,
                     beneficiaryId: body.beneficiaryId,
                     scheduledAt,
@@ -230,11 +344,30 @@ export async function POST(request: NextRequest) {
                 select: sessionSelectFields,
             });
 
+            // Create audit log for direct session creation
+            await prisma.auditLog.create({
+                data: {
+                    action: 'CREATE',
+                    entityType: 'CareSession',
+                    entityId: newSession.id,
+                    userId: session.user.id,
+                    data: {
+                        status: SessionStatus.SCHEDULED,
+                        interventionId: body.interventionId,
+                        providerId: body.providerId,
+                        beneficiaryId: body.beneficiaryId
+                    }
+                }
+            });
+
             await cache.deleteByPrefix('sessions:');
             return NextResponse.json(newSession, { status: 201 });
         } catch (error) {
             console.error('Error creating session:', error);
-            return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
+            return NextResponse.json(
+                { error: 'Failed to create session' },
+                { status: 500 }
+            );
         }
     });
 } 

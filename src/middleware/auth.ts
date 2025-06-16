@@ -7,6 +7,7 @@ import type { DefaultSession } from "next-auth"
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getAllScopes } from "@/lib/ms-graph";
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -40,11 +41,28 @@ declare module "@auth/core/jwt" {
         picture?: string | null
         sub?: string
         access_token?: string
+        refresh_token?: string
+        expires_at?: number
     }
 }
 
 export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
     adapter: PrismaAdapter(prismaClient),
+    debug: false,
+    logger: {
+        error(error: Error) {
+            console.error(error)
+        },
+        warn(message: string) {
+            console.warn(message)
+        },
+        debug(message: string) {
+            // Only log critical debug messages
+            if (message === 'CHUNKING_SESSION_COOKIE') {
+                console.warn('Session cookie size exceeded limit')
+            }
+        }
+    },
     providers: [
         MicrosoftEntraID({
             clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
@@ -52,7 +70,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
             issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
             authorization: {
                 params: {
-                    scope: "openid profile email",
+                    scope: getAllScopes(),
                     prompt: "select_account",
                     response_type: "code",
                     response_mode: "query",
@@ -202,8 +220,21 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
                     token.id = user.id
                     token.email = user.email
                 }
-                if (account?.access_token) {
+                if (account) {
                     token.access_token = account.access_token
+                    token.refresh_token = account.refresh_token
+                    // expires_at is in seconds since epoch
+                    token.expires_at = account.expires_at || (account.expires_in ? Math.floor(Date.now() / 1000) + account.expires_in : undefined)
+                }
+                // If token is expired, try to refresh
+                if (token.expires_at && Date.now() / 1000 > token.expires_at - 60) { // refresh 1 min before expiry
+                    const { refreshAccessToken } = await import("@/lib/refresh-ms-token");
+                    const refreshed = await refreshAccessToken(token.refresh_token ?? "");
+                    if (refreshed) {
+                        token.access_token = refreshed.access_token;
+                        token.expires_at = refreshed.expires_at;
+                        token.refresh_token = refreshed.refresh_token ?? token.refresh_token;
+                    }
                 }
                 return token
             } catch (error) {
@@ -290,7 +321,6 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
             }
         }
     },
-    debug: process.env.NODE_ENV === 'development',
 })
 
 export const { auth, handlers, signIn, signOut } = NextAuth(createConfig())

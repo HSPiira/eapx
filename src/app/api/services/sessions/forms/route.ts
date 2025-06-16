@@ -28,7 +28,7 @@ export const POST = withAuth(async (request: Request) => {
         }
 
         // Verify the session exists and belongs to the counselor
-        const session = await prisma.serviceSession.findFirst({
+        const session = await prisma.careSession.findFirst({
             where: {
                 id: formData.sessionId,
                 providerId: formData.counselorId,

@@ -3,33 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, DollarSign, Users, Calendar, Info, Trash2, Circle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-
-interface Intervention {
-    id: string;
-    name: string;
-    description: string | null;
-    service: {
-        id: string;
-        name: string;
-    };
-    status: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'ARCHIVED' | 'DELETED';
-    capacity: number | null;
-    price: number | null;
-    metadata: Record<string, unknown>;
-    createdAt: string;
-    deletedAt: string | null;
-    serviceId: string;
-    duration: number | null;
-    prerequisites: string | null;
-    isPublic: boolean;
-    updatedAt: string;
-    serviceProviderId: string | null;
-    ServiceProvider?: {
-        id: string;
-        name: string;
-        type: string;
-    } | null;
-}
+import { Intervention } from '@/schema/intervention';
 
 interface InterventionDetailsCardProps {
     intervention: Intervention;

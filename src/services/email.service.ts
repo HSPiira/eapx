@@ -1,6 +1,10 @@
 import { Resend } from 'resend';
 import { SessionRequestFormData } from '@/components/session-booking/sessionRequestSchema';
 
+if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not set in environment variables');
+}
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface EmailRecipient {
@@ -12,6 +16,26 @@ interface SessionEmailData extends SessionRequestFormData {
     companyName: string;
     staffName: string;
     counselorName: string;
+}
+
+async function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function sendEmail(to: string, subject: string, html: string) {
+    try {
+        const result = await resend.emails.send({
+            from: 'Axis Counseling <noreply@minet.co.ug>',
+            to,
+            subject,
+            html,
+        });
+        console.log(`Email sent to ${to}:`, result);
+        return result;
+    } catch (error) {
+        console.error(`Failed to send email to ${to}:`, error);
+        throw error;
+    }
 }
 
 export async function sendSessionRequestEmail(
@@ -38,12 +62,14 @@ export async function sendSessionRequestEmail(
     const sessionDate = new Date(data.date).toLocaleDateString();
     const sessionTime = `${data.startTime} - ${data.endTime}`;
 
-    // Email to staff member
-    await resend.emails.send({
-        from: 'Axis Counseling <sessions@axis.com>',
-        to: staff.email,
-        subject: 'Session Request Confirmation',
-        html: `
+    // Send emails sequentially with delays to avoid rate limits
+    const results = [];
+
+    // Send to staff
+    results.push(await sendEmail(
+        staff.email,
+        'Session Request Confirmation',
+        `
             <h2>Session Request Confirmation</h2>
             <p>Dear ${staff.name},</p>
             <p>Your session request has been received and is pending confirmation.</p>
@@ -57,15 +83,16 @@ export async function sendSessionRequestEmail(
             </ul>
             ${data.notes ? `<p><strong>Additional Notes:</strong><br>${data.notes}</p>` : ''}
             <p>You will receive another email once the session is confirmed.</p>
-        `,
-    });
+        `
+    ));
 
-    // Email to counselor
-    await resend.emails.send({
-        from: 'Axis Counseling <sessions@axis.com>',
-        to: counselor.email,
-        subject: 'New Session Request',
-        html: `
+    await delay(1000); // Wait 1 second between sends
+
+    // Send to counselor
+    results.push(await sendEmail(
+        counselor.email,
+        'New Session Request',
+        `
             <h2>New Session Request</h2>
             <p>Dear ${counselor.name},</p>
             <p>You have received a new session request that requires your attention.</p>
@@ -79,15 +106,16 @@ export async function sendSessionRequestEmail(
             </ul>
             ${data.notes ? `<p><strong>Additional Notes:</strong><br>${data.notes}</p>` : ''}
             <p>Please log in to your dashboard to confirm or reschedule this session.</p>
-        `,
-    });
+        `
+    ));
 
-    // Email to admin
-    await resend.emails.send({
-        from: 'Axis Counseling <sessions@axis.com>',
-        to: admin.email,
-        subject: 'New Session Request Notification',
-        html: `
+    await delay(1000); // Wait 1 second between sends
+
+    // Send to admin
+    results.push(await sendEmail(
+        admin.email,
+        'New Session Request Notification',
+        `
             <h2>New Session Request</h2>
             <p>A new session request has been submitted and requires attention.</p>
             <p><strong>Session Details:</strong></p>
@@ -101,8 +129,20 @@ export async function sendSessionRequestEmail(
             </ul>
             ${data.notes ? `<p><strong>Additional Notes:</strong><br>${data.notes}</p>` : ''}
             <p>Please review this request in the admin dashboard.</p>
-        `,
+        `
+    ));
+
+    // Log results
+    results.forEach((result, index) => {
+        const recipient = [staff, counselor, admin][index];
+        if (result.error) {
+            console.error(`Failed to send email to ${recipient.email}:`, result.error);
+        } else {
+            console.log(`Successfully sent email to ${recipient.email}`);
+        }
     });
+
+    return results;
 }
 
 export async function sendSessionConfirmationEmail(
@@ -118,7 +158,7 @@ export async function sendSessionConfirmationEmail(
 
     // Email to staff member
     await resend.emails.send({
-        from: 'Axis Counseling <sessions@axis.com>',
+        from: 'Axis Counseling <noreply@minet.co.ug>',
         to: staff.email,
         subject: 'Session Confirmed',
         html: `
@@ -140,7 +180,7 @@ export async function sendSessionConfirmationEmail(
 
     // Email to counselor
     await resend.emails.send({
-        from: 'Axis Counseling <sessions@axis.com>',
+        from: 'Axis Counseling <noreply@minet.co.ug>',
         to: counselor.email,
         subject: 'Session Confirmation',
         html: `
@@ -191,7 +231,7 @@ export async function sendSessionCancellationEmail(
 
     // Email to staff member
     await resend.emails.send({
-        from: 'Axis Counseling <sessions@axis.com>',
+        from: 'Axis Counseling <noreply@minet.co.ug>',
         to: staff.email,
         subject: 'Session Cancelled',
         html: emailContent.replace('{recipient}', staff.name),
@@ -199,7 +239,7 @@ export async function sendSessionCancellationEmail(
 
     // Email to counselor
     await resend.emails.send({
-        from: 'Axis Counseling <sessions@axis.com>',
+        from: 'Axis Counseling <noreply@minet.co.ug>',
         to: counselor.email,
         subject: 'Session Cancelled',
         html: emailContent.replace('{recipient}', counselor.name),

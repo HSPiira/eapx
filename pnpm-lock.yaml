@@ -7856,7 +7856,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
-  brace-expansion@1.1.12:
+  brace-expansion@1.1.11:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1

@@ -29,7 +29,9 @@ export async function createMeeting(data: CreateMeetingInput, accessToken?: stri
             attendees: data.attendees,
             body: data.body,
             location: data.location,
-            reminderMinutes: 15
+            reminderMinutes: 15,
+            isOnlineMeeting: true,
+            onlineMeetingProvider: 'teamsForBusiness'
         };
     } else if (data.platform === 'zoom') {
         requestBody = {
@@ -38,7 +40,9 @@ export async function createMeeting(data: CreateMeetingInput, accessToken?: stri
             duration: Math.round((new Date(data.endDateTime).getTime() - new Date(data.startDateTime).getTime()) / 60000),
             hostName: data.attendees?.[0], // First attendee is the host
             attendees: data.attendees,
-            settings: data.settings
+            settings: data.settings,
+            isOnlineMeeting: true,
+            onlineMeetingProvider: 'zoom'
         };
     }
 

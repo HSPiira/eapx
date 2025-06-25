@@ -22,4 +22,18 @@ export async function updateSession(sessionId: string, data: Partial<SessionData
     });
     if (!response.ok) throw new Error('Failed to update session');
     return response.json();
+}
+
+export async function confirmSession(sessionId: string) {
+    const response = await fetch(`/api/services/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            status: 'SCHEDULED'
+        }),
+    });
+    if (!response.ok) throw new Error('Failed to confirm session');
+    return response.json();
 } 

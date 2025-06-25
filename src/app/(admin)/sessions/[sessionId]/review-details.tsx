@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
-import { FormData } from "./types";
+import { FormData, ClientDetailsData, CounselorAvailabilityData, InterventionData, LocationData } from "./types";
 import { locationGroups } from "./location-details";
 import { Building, User, Users, FileText, ClipboardList, Briefcase, MapPin, Calendar, Clock4 } from "lucide-react";
 import { toast } from "sonner";
 import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { MeetingPlatform } from "@/schema/meeting";
+import { useCalendar } from "@/hooks/calendar/useCalendar";
+import { useMeetings } from "@/hooks/meetings/useMeetings";
+import type { CalendarEventData } from '@/hooks/calendar/useCalendar';
+import type { CreateMeetingData } from '@/hooks/meetings/useMeetings';
 
 interface StaffMember {
     id: string;
     name: string;
     profile?: {
         fullName: string;
+        email?: string;
     };
 }
 
@@ -27,6 +34,7 @@ interface Provider {
 interface ProviderStaff {
     id: string;
     fullName: string;
+    email?: string;
 }
 
 interface Service {
@@ -41,6 +49,13 @@ interface Intervention {
 
 interface DisplayObject {
     [key: string]: string | number;
+}
+
+interface Counselor {
+    staff: string;
+    date: string;
+    selectedSlot: string;
+    duration: number;
 }
 
 // Helper to map location value to label
@@ -104,8 +119,92 @@ const styleOptions = [
     { label: "Minimalist", value: "minimalist" },
 ];
 
+// Helper function to get attendee emails
+async function getAttendeeEmails(formData: FormData, staffList: StaffMember[], providerStaff: ProviderStaff[]) {
+    const attendees: string[] = [];
+
+    // Add counselor email
+    const counselor = providerStaff.find(s => s.id === formData.counselor.staff);
+    if (counselor?.email) {
+        attendees.push(counselor.email);
+    }
+
+    // Add client email based on session type
+    if (formData.client.sessionFor === 'organization') {
+        // For organization sessions, use the organization contact person
+        const staff = staffList.find(s => s.id === formData.client.staff);
+        if (staff?.profile?.email) {
+            attendees.push(staff.profile.email);
+        }
+    } else {
+        // For staff sessions, use the staff member's email
+        const staff = staffList.find(s => s.id === formData.client.staff);
+        if (staff?.profile?.email) {
+            attendees.push(staff.profile.email);
+        }
+    }
+
+    return attendees;
+}
+
+// Helper function to create a valid date from date and time strings
+function createValidDate(dateStr: string | undefined, timeStr: string | undefined): string {
+    if (!dateStr || !timeStr) {
+        throw new Error('Date and time are required');
+    }
+
+    console.log('Date string:', dateStr, 'Time string:', timeStr);
+
+    // Parse the date string
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid date format');
+    }
+
+    // Parse the time string (handle 12-hour format)
+    const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})\s?(AM|PM|am|pm)?$/);
+    if (!timeMatch) {
+        throw new Error('Invalid time format');
+    }
+
+    let hours = parseInt(timeMatch[1]);
+    const minutes = parseInt(timeMatch[2]);
+    const period = timeMatch[3]?.toUpperCase();
+
+    // Convert 12-hour format to 24-hour format
+    if (period === 'PM' && hours < 12) {
+        hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+    }
+
+    // Validate ranges
+    if (hours < 0 || hours > 23) throw new Error('Invalid hours');
+    if (minutes < 0 || minutes > 59) throw new Error('Invalid minutes');
+
+    // Set the time on the date
+    date.setHours(hours, minutes, 0, 0);
+
+    // Validate the final date
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid date or time values');
+    }
+
+    return date.toISOString();
+}
+
+// Helper function to add minutes to an ISO string and return a new ISO string
+function addMinutesToISOString(isoString: string, minutes: number): string {
+    const date = new Date(isoString);
+    date.setMinutes(date.getMinutes() + minutes);
+    return date.toISOString();
+}
+
 export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onConfirm: () => void }) {
     const params = useParams();
+    const { createEvent, isCreating: isCreatingEvent } = useCalendar();
+    const { createMeeting, isCreating: isCreatingMeeting } = useMeetings();
+
     // State for fetched lists
     const [staffList, setStaffList] = useState<StaffMember[]>([]);
     const [dependants, setDependants] = useState<Dependant[]>([]);
@@ -189,71 +288,91 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
         return <></>;
     }
 
+    const handleConfirm = async () => {
+        setIsConfirming(true);
+        let meetingLink: string | undefined = formData.location.meetingLink;
+
+        try {
+            // Get attendee emails first
+            const attendeeEmails = await getAttendeeEmails(formData, staffList, providerStaff);
+            if (attendeeEmails.length === 0) {
+                throw new Error('No valid attendees found for the meeting');
+            }
+
+            if (!formData.counselor.date || !formData.counselor.selectedSlot) {
+                throw new Error('Date and time are required');
+            }
+
+            if (!formData.counselor.duration) {
+                throw new Error('Session duration is required');
+            }
+
+            const startDateTime = createValidDate(String(formData.counselor.date), String(formData.counselor.selectedSlot));
+            const durationMinutes = typeof formData.counselor.duration === 'string' ? parseInt(formData.counselor.duration) : formData.counselor.duration;
+            const endDateTime = addMinutesToISOString(startDateTime, durationMinutes);
+
+            // Generate meeting link if location is Teams or Zoom and no link exists
+            let isTeamsMeeting = false;
+            if ((formData.location.location === 'MS_TEAMS' || formData.location.location === 'ZOOM') && !meetingLink) {
+                const meetingData: CreateMeetingData = {
+                    subject: `Session with ${providerStaffName}`,
+                    startDateTime,
+                    endDateTime,
+                    attendees: attendeeEmails,
+                    platform: formData.location.location === 'MS_TEAMS' ? 'teams' : 'zoom',
+                    body: `Session Details:\n- Service: ${formData.intervention.service}\n- Intervention: ${formData.intervention.intervention}\n- Location: ${formData.location.location}${formData.location.requirements ? `\nRequirements: ${formData.location.requirements}` : ''}${formData.client.notes ? `\nNotes: ${formData.client.notes}` : ''}`,
+                };
+                const meeting = await createMeeting.mutateAsync(meetingData);
+                meetingLink = meeting.joinUrl;
+                isTeamsMeeting = formData.location.location === 'MS_TEAMS';
+            }
+
+            // Create calendar event with attendees
+            const eventData: CalendarEventData = {
+                subject: `Session with ${providerStaffName}`,
+                startDateTime,
+                endDateTime,
+                body: `Session Details:\n\nClient: ${formData.client?.company || 'N/A'}\nService: ${formData.intervention?.service || 'N/A'}\nProvider: ${formData.counselor?.provider || 'N/A'}\nLocation: ${formData.location?.location || 'N/A'}${formData.location?.location === 'MS_TEAMS' || formData.location?.location === 'ZOOM' ? `\nMeeting Link: ${meetingLink}` : ''}\n\nAdditional Notes:\n${formData.client?.notes || 'No additional notes provided.'}\n\nIf you have any questions, please contact the session organizer.`,
+                location: (formData.location?.location === 'MS_TEAMS' || formData.location?.location === 'ZOOM') ? 'Virtual Meeting Room' : formData.location?.location || 'N/A',
+                isOnlineMeeting: formData.location?.location === 'MS_TEAMS' || formData.location?.location === 'ZOOM',
+                onlineMeetingUrl: (formData.location?.location === 'MS_TEAMS' || formData.location?.location === 'ZOOM') ? meetingLink : undefined,
+                onlineMeetingProvider: formData.location?.location === 'MS_TEAMS' ? 'teamsForBusiness' : formData.location?.location === 'ZOOM' ? 'zoom' : undefined,
+                attendees: attendeeEmails,
+            };
+
+            // Create calendar event with attendees
+            const calendarData = {
+                subject: eventData.subject,
+                startDateTime: eventData.startDateTime,
+                endDateTime: eventData.endDateTime,
+                attendees: eventData.attendees,
+                body: eventData.body,
+                location: eventData.location,
+                joinUrl: eventData.onlineMeetingUrl,
+                isOnlineMeeting: eventData.isOnlineMeeting,
+                onlineMeetingProvider: eventData.onlineMeetingProvider,
+                onlineMeeting: eventData.onlineMeetingUrl ? {
+                    joinUrl: eventData.onlineMeetingUrl
+                } : undefined
+            };
+
+            await createEvent.mutateAsync(calendarData);
+            onConfirm();
+        } catch (error) {
+            console.error('Error confirming session:', error);
+            toast.error(error instanceof Error ? error.message : 'An unexpected error occurred');
+        } finally {
+            setIsConfirming(false);
+        }
+    };
+
     return (
         <div className="w-full flex items-start justify-start mt-6">
             <form
                 className="w-full bg-background rounded-sm p-8 border dark:border-gray-800 space-y-8"
                 onSubmit={async (e) => {
                     e.preventDefault();
-                    setIsConfirming(true);
-                    try {
-                        // Validate required fields
-                        const missingFields: string[] = [];
-
-                        // Client Details validation
-                        if (!formData.client.clientId) missingFields.push('Company');
-                        if (!formData.client.sessionFor) missingFields.push('Session For');
-                        if (formData.client.sessionFor === 'staff' && !formData.client.staff) missingFields.push('Staff Member');
-                        if (formData.client.sessionFor === 'staff' && formData.client.whoFor === 'dependant' && !formData.client.dependant) missingFields.push('Dependant');
-                        if (!formData.client.sessionType) missingFields.push('Session Type');
-                        if (!formData.client.numAttendees) missingFields.push('Number of Attendees');
-
-                        // Intervention validation
-                        if (!formData.intervention.service) missingFields.push('Service');
-                        if (!formData.intervention.intervention) missingFields.push('Intervention');
-
-                        // Counselor validation
-                        if (!formData.counselor.provider) missingFields.push('Provider');
-                        // Check if provider is a company and staff is required
-                        const selectedProvider = providers.find(p => p.id === formData.counselor.provider);
-                        if (selectedProvider?.entityType === 'COMPANY' && !formData.counselor.staff) {
-                            missingFields.push('Provider Staff');
-                        }
-                        if (!formData.counselor.date) missingFields.push('Date');
-                        if (!formData.counselor.selectedSlot) missingFields.push('Time Slot');
-                        if (!formData.counselor.duration) missingFields.push('Duration');
-
-                        // Location validation
-                        if (!formData.location.location) missingFields.push('Location');
-
-                        // If any required fields are missing, show error and return
-                        if (missingFields.length > 0) {
-                            toast.error(`Please provide the following required fields: ${missingFields.join(', ')}`);
-                            setIsConfirming(false);
-                            return;
-                        }
-
-                        // Update session status to SCHEDULED
-                        const res = await fetch(`/api/services/sessions/${params.sessionId}`, {
-                            method: 'PATCH',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ status: 'SCHEDULED' }),
-                        });
-
-                        if (!res.ok) {
-                            const errorData = await res.json().catch(() => ({}));
-                            throw new Error(errorData.error || `Failed to confirm session: ${res.status}`);
-                        }
-
-                        await onConfirm();
-                        toast.success('Session confirmed successfully!');
-                    } catch (error) {
-                        toast.error(error instanceof Error ? error.message : 'Failed to confirm session');
-                    } finally {
-                        setIsConfirming(false);
-                    }
+                    await handleConfirm();
                 }}
             >
                 <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Review Details</h2>

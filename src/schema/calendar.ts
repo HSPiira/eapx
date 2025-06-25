@@ -28,7 +28,7 @@ export const CalendarEventSchema = z.object({
     }),
     attendees: z.array(CalendarAttendeeSchema),
     isOnlineMeeting: z.boolean(),
-    onlineMeetingProvider: z.enum(['teamsForBusiness']).optional(),
+    onlineMeetingProvider: z.enum(['teamsForBusiness', 'zoom']).optional(),
     onlineMeeting: z.object({
         joinUrl: z.string()
     }).optional(),
@@ -45,7 +45,9 @@ export const CreateCalendarInputSchema = z.object({
     endDateTime: z.string(),
     location: z.string().optional(),
     attendees: z.array(z.string().email()).optional(),
-    joinUrl: z.string().optional()
+    joinUrl: z.string().optional(),
+    isOnlineMeeting: z.boolean().optional(),
+    onlineMeetingProvider: z.enum(['teamsForBusiness', 'zoom']).optional()
 });
 
 export type CreateCalendarInput = z.infer<typeof CreateCalendarInputSchema>;

@@ -42,9 +42,14 @@ interface ClientDetailsProps {
 
 const ClientDetails = ({ data, setData, clientId }: ClientDetailsProps) => {
     const sessionFor = data.sessionFor || 'organization';
+    const whoFor = data.whoFor || 'self';
 
     const { data: staffData, isLoading: isStaffLoading, } = useStaff(clientId);
-    const { data: dependantsData, isLoading: isDependantsLoading } = useStaffDependants(clientId, data.staff ?? "");
+    const { data: dependantsData, isLoading: isDependantsLoading } = useStaffDependants(
+        sessionFor === 'staff' ? clientId : undefined,
+        sessionFor === 'staff' ? data.staff ?? "" : undefined,
+        whoFor
+    );
 
     const staffList = useMemo(() => staffData?.data || [], [staffData]);
     const dependants = useMemo(() => dependantsData?.data || [], [dependantsData]);
@@ -52,13 +57,14 @@ const ClientDetails = ({ data, setData, clientId }: ClientDetailsProps) => {
     useValidateSessionType(sessionFor, data, setData, ORG_SESSION_TYPES, STAFF_SESSION_TYPES);
 
     useEffect(() => {
-        if (staffList.length === 1 && !data.staff) {
+        if (sessionFor === 'staff' && staffList.length === 1 && !data.staff) {
             setData({
                 ...data,
                 staff: staffList[0].id,
+                whoFor: 'self',
             });
         }
-    }, [staffList, data, setData]);
+    }, [sessionFor, staffList, data, setData]);
 
     const [staffSearch, setStaffSearch] = React.useState('');
     const [dependantSearch, setDependantSearch] = React.useState('');

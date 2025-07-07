@@ -45,3 +45,9 @@ export async function deleteProvider(id: string): Promise<void> {
         throw new Error(errorData.message || 'Failed to delete provider');
     }
 }
+
+export async function fetchProviderStaff(providerId: string) {
+    const res = await fetch(`/api/providers/${providerId}/staff`);
+    if (!res.ok) throw new Error('Failed to fetch provider staff');
+    return res.json();
+}

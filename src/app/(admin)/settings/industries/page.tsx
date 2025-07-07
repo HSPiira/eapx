@@ -61,24 +61,6 @@ interface IndustriesResponse {
     };
 }
 
-const fetchIndustries = async (params: { page: number; limit: number; search: string; parentId: string | null }): Promise<IndustriesResponse> => {
-    const queryParams = new URLSearchParams({
-        page: params.page.toString(),
-        limit: params.limit.toString(),
-        ...(params.search && { search: params.search }),
-        ...(params.parentId && { parentId: params.parentId }),
-    });
-
-    const response = await fetch(`/api/industries?${queryParams}`);
-
-    if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.details || errorBody.error || 'Failed to fetch industries');
-    }
-
-    return response.json();
-};
-
 const IndustriesPage = () => {
     const [page, setPage] = useState(1);
     const [limit] = useState(10);
@@ -97,12 +79,7 @@ const IndustriesPage = () => {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
-    const { data, isLoading, error, refetch } = useQuery<IndustriesResponse>({
-        queryKey: ['industries', page, limit, search, parentId],
-        queryFn: () => fetchIndustries({ page, limit, search, parentId }),
-        staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
-        gcTime: 1000 * 60 * 30, // Keep unused data in cache for 30 minutes
-    });
+    const { data, isLoading, error, refetch } = useIndustries({ page, limit, search, parentId });
 
     const handleSearch = useCallback((e: React.FormEvent) => {
         e.preventDefault();

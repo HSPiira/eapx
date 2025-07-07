@@ -52,7 +52,23 @@ export default function ProvidersStaffPage() {
     } = useProviderStaff();
 
     // Debug logs
-    console.log('Staff Data:', { staff, isLoadingStaff, staffError });
+    useEffect(() => {
+        if (providersData) {
+            setProviders(providersData.data.map((p: any) => ({ id: p.id, name: p.name, entityType: p.entityType })));
+        }
+    }, [providersData]);
+
+    useEffect(() => {
+        if (interventionsData) {
+            setInterventions(interventionsData.data.map((i: any) => ({ id: i.id, name: i.name, service: i.service.name })));
+        }
+    }, [interventionsData]);
+
+    useEffect(() => {
+        if (servicesData) {
+            setServices(servicesData.data);
+        }
+    }, [servicesData]);
 
     useEffect(() => {
         async function fetchData() {

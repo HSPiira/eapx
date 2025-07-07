@@ -7,6 +7,7 @@ import React, {
     useState,
     useCallback,
 } from 'react';
+import { logger } from '@/lib/logger';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type ColorScheme = 'default' | 'blue' | 'green' | 'purple';
@@ -92,7 +93,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
                 setSettings(migratedSettings);
             }
         } catch (e) {
-            console.error('Failed to load settings:', e);
+            logger.error('Failed to load settings', e);
             // If there's an error, use default settings
             setSettings(defaultSettings);
         } finally {
@@ -145,7 +146,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             // Optional: notify other tabs
             window.dispatchEvent(new Event('storage'));
         } catch (e) {
-            console.error('Error saving settings:', e);
+            logger.error('Error saving settings', e);
         }
     }, [settings]);
 

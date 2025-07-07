@@ -1,21 +1,6 @@
 'use client';
 
-import * as React from "react"
-import {
-    ColumnDef,
-    ColumnFiltersState,
-    SortingState,
-    VisibilityState,
-    flexRender,
-    getCoreRowModel,
-    getFacetedRowModel,
-    getFacetedUniqueValues,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable,
-} from "@tanstack/react-table"
-
+import React from 'react';
 import {
     Table,
     TableBody,
@@ -23,108 +8,72 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
+import { cn } from '@/lib/utils';
 
-import { DataTablePagination } from "@/components/ui/data-table-pagination"
-import { DataTableToolbar } from "@/components/ui/data-table-toolbar"
-
-interface DataTableProps<TData, TValue> {
-    columns: ColumnDef<TData, TValue>[]
-    data: TData[]
-    searchKey?: string
-    searchPlaceholder?: string
+interface Column<T> {
+    header: string;
+    accessor: keyof T | ((item: T) => React.ReactNode);
+    cell?: (item: T) => React.ReactNode;
 }
 
-export function DataTable<TData, TValue>({
-    columns,
-    data,
-    searchKey,
-    searchPlaceholder = "Search...",
-}: DataTableProps<TData, TValue>) {
-    const [rowSelection, setRowSelection] = React.useState({})
-    const [columnVisibility, setColumnVisibility] =
-        React.useState<VisibilityState>({})
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-        []
-    )
-    const [sorting, setSorting] = React.useState<SortingState>([])
+interface DataTableProps<T> {
+    data: T[];
+    columns: Column<T>[];
+    onRowClick?: (item: T) => void;
+    className?: string;
+}
 
-    const table = useReactTable({
-        data,
-        columns,
-        state: {
-            sorting,
-            columnVisibility,
-            rowSelection,
-            columnFilters,
-        },
-        enableRowSelection: true,
-        onRowSelectionChange: setRowSelection,
-        onSortingChange: setSorting,
-        onColumnFiltersChange: setColumnFilters,
-        onColumnVisibilityChange: setColumnVisibility,
-        getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getFacetedRowModel: getFacetedRowModel(),
-        getFacetedUniqueValues: getFacetedUniqueValues(),
-    })
+export function DataTable<T extends { id: string }>({
+    data,
+    columns,
+    onRowClick,
+    className,
+}: DataTableProps<T>) {
+    const renderCell = (item: T, column: Column<T>) => {
+        if (column.cell) {
+            return column.cell(item);
+        }
+
+        if (typeof column.accessor === 'function') {
+            return column.accessor(item);
+        }
+
+        const value = item[column.accessor as keyof T] as any;
+        return value?.toString() || '-';
+    };
 
     return (
-        <div className="space-y-4">
-            <DataTableToolbar table={table} searchKey={searchKey} searchPlaceholder={searchPlaceholder} />
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => {
-                                    return (
-                                        <TableHead key={header.id} colSpan={header.colSpan}>
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                        </TableHead>
-                                    )
-                                })}
-                            </TableRow>
+        <div className="w-full overflow-x-auto rounded-sm border border-border bg-background">
+            <Table className={cn("min-w-full text-sm text-left whitespace-nowrap", className)}>
+                <TableHeader>
+                    <TableRow>
+                        {columns.map((column, index) => (
+                            <TableHead key={index} className="px-6 py-4 font-semibold tracking-wide">
+                                {column.header}
+                            </TableHead>
                         ))}
-                    </TableHeader>
-                    <TableBody>
-                        {table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={columns.length}
-                                    className="h-24 text-center"
-                                >
-                                    No results.
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {data.map((item) => (
+                        <TableRow
+                            key={item.id}
+                            className={cn(
+                                "hover:bg-muted/50 cursor-pointer transition-colors border-b border-border",
+                                { 'cursor-pointer': !!onRowClick }
+                            )}
+                            onClick={() => onRowClick?.(item)}
+                        >
+                            {columns.map((column, index) => (
+                                <TableCell key={index} className="px-6 py-3">
+                                    {renderCell(item, column)}
                                 </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-            <DataTablePagination table={table} />
+                            ))}
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </div>
-    )
-} 
+    );
+}

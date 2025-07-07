@@ -3,7 +3,6 @@
 import React, { useCallback, useState } from 'react';
 import { ServiceTable } from '@/components/admin/services/service-table';
 import { Button, LoadingSpinner } from '@/components/ui';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Dialog,
     DialogContent,
@@ -14,82 +13,14 @@ import {
 } from "@/components/ui/dialog";
 import { ServiceForm } from '@/components/admin/services/service-form';
 import type { ServiceFormData } from '@/components/admin/services/service-form';
-import { toast } from "sonner"
-
-interface Service {
-    id: string;
-    name: string;
-    description: string | null;
-    metadata: Record<string, unknown>;
-    deletedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
-    interventions: Array<{
-        id: string;
-        name: string;
-    }>;
-}
-
-interface ServicesResponse {
-    data: Service[];
-    metadata: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-    };
-}
-
-async function fetchServices(): Promise<ServicesResponse> {
-    const response = await fetch('/api/services', {
-        cache: 'no-store'
-    });
-    if (!response.ok) {
-        throw new Error('Failed to fetch services');
-    }
-    return response.json();
-}
-
-async function createService(data: ServiceFormData): Promise<Service> {
-    const response = await fetch('/api/services', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-        cache: 'no-store'
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create service');
-    }
-
-    return response.json();
-}
+import { useServices, useCreateService } from '@/hooks/services/useServices';
 
 export default function ServicesPage() {
     const [open, setOpen] = useState(false);
-    const queryClient = useQueryClient();
 
-    const { data: services, refetch, isError, isLoading: isQueryLoading } = useQuery<ServicesResponse>({
-        queryKey: ['services'],
-        queryFn: fetchServices,
-        retry: false,
-    });
+    const { data: services, refetch, isError, isLoading: isQueryLoading } = useServices();
 
-    const createServiceMutation = useMutation({
-        mutationFn: createService,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['services'] });
-            setOpen(false);
-            toast.success("Service created successfully!")
-        },
-        onError: (error) => {
-            console.error('Error creating service:', error);
-            toast.error("Failed to create service.")
-        }
-    });
+    const createServiceMutation = useCreateService();
 
     const handleTryAgain = useCallback(async () => {
         try {

@@ -14,12 +14,12 @@ export function useGenericQuery<T>(
   });
 }
 
-export function useGenericMutation<T>(
+export function useGenericMutation<TData, TVariables>(
   key: string[],
-  fn: () => Promise<T>,
-  options?: Partial<UseMutationOptions<T>>
+  fn: (variables: TVariables) => Promise<TData>,
+  options?: Partial<UseMutationOptions<TData, unknown, TVariables>>
 ) {
-  return useMutation<T>({
+  return useMutation<TData, unknown, TVariables>({
     mutationKey: key,
     mutationFn: fn,
     ...defaultQueryOptions,

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import useSWR from 'swr';
+import { useUpcomingSessions } from '@/hooks/sessions/useUpcomingSessions';
 import {
     addDays,
     addWeeks,
@@ -21,6 +21,11 @@ import {
     getHours,
     getMinutes,
 } from 'date-fns';
+
+type ViewType = 'day' | 'week' | 'month';
+
+const VIEWS: ViewType[] = ['day', 'week', 'month'];
+const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => i);
 
 interface Session {
     id: string;
@@ -49,31 +54,10 @@ interface SessionsResponse {
     };
 }
 
-const fetcher = (url: string) => fetch(url, {
-    credentials: 'include',
-    headers: {
-        'Content-Type': 'application/json',
-    }
-}).then(res => {
-    if (!res.ok) throw new Error(`Failed to fetch sessions: ${res.status} ${res.statusText}`);
-    return res.json();
-});
-
-const VIEWS = ['day', 'week', 'month'] as const;
-type ViewType = typeof VIEWS[number];
-
-const TIME_START = 7; // 7 AM
-const TIME_END = 20; // 8 PM
-const TIME_SLOTS = Array.from({ length: TIME_END - TIME_START }, (_, i) => TIME_START + i);
-
 export default function UpcomingSessionsPage() {
     const { status } = useSession();
     const router = useRouter();
-    const { data, error, isLoading } = useSWR<SessionsResponse>(
-        status === 'authenticated' ? '/api/services/sessions?status=SCHEDULED' : null,
-        fetcher,
-        { revalidateOnFocus: false }
-    );
+    const { data, error, isLoading } = useUpcomingSessions();
 
     const [view, setView] = useState<ViewType>('week');
     const [current, setCurrent] = useState(new Date());
@@ -154,7 +138,7 @@ export default function UpcomingSessionsPage() {
                     </span>
                 </div>
                 <div className="flex gap-2">
-                    {VIEWS.map(v => (
+                    {VIEWS.map((v: ViewType) => (
                         <button key={v} className={`px-3 py-1 rounded ${view === v ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200'}`} onClick={() => setView(v)}>{v.charAt(0).toUpperCase() + v.slice(1)}</button>
                     ))}
                 </div>
@@ -170,7 +154,7 @@ export default function UpcomingSessionsPage() {
                     {getMonthMatrix(current).flat().map((day, i) => (
                         <div key={i} className={`bg-white dark:bg-background min-h-[90px] p-1 align-top border-b border-gray-100 dark:border-gray-800 ${isSameMonth(day, current) ? '' : 'text-gray-400 dark:text-gray-600'}`}>
                             <div className="text-xs font-semibold mb-1">{format(day, 'dd')}</div>
-                            {sessions.filter(s => isSameDay(new Date(s.scheduledAt), day)).map(s => (
+                            {sessions.filter((s: Session) => isSameDay(new Date(s.scheduledAt), day)).map((s: Session) => (
                                 <div key={s.id} className="bg-blue-200 dark:bg-blue-800 rounded p-1 mt-1 text-xs cursor-pointer truncate" onClick={() => router.push(`/sessions/${s.id}`)}>
                                     {s.client.name} <span className="block text-[10px]">{format(new Date(s.scheduledAt), 'HH:mm')}</span>
                                 </div>
@@ -194,7 +178,7 @@ export default function UpcomingSessionsPage() {
                             </div>
                         </div>
                     ))}
-                    {TIME_SLOTS.map(hour => (
+                    {TIME_SLOTS.map((hour: number) => (
                         <React.Fragment key={hour}>
                             <div className="h-14 text-xs text-right pr-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-end bg-white dark:bg-gray-900">
                                 {hour}:00
@@ -204,10 +188,10 @@ export default function UpcomingSessionsPage() {
                                     key={day.toString() + hour}
                                     className={`relative h-14 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-background ${idx !== 0 ? 'border-l border-gray-200 dark:border-gray-800' : ''}`}
                                 >
-                                    {sessions.filter(s => {
+                                    {sessions.filter((s: Session) => {
                                         const start = new Date(s.scheduledAt);
                                         return isSameDay(start, day) && getHours(start) === hour;
-                                    }).map(s => {
+                                    }).map((s: Session) => {
                                         const start = new Date(s.scheduledAt);
                                         const minuteOffset = getMinutes(start);
                                         const height = (s.duration / 60) * 56;

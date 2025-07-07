@@ -1,7 +1,7 @@
 import { fetchClients } from "@/api/clients";
 import { useGenericQuery } from "../generic-create";
-import { ClientResponse } from "@/types/client";
+import { ClientsResponse, ClientFiltersState } from "@/types/client";
 
-export function useClients() {
-    return useGenericQuery<ClientResponse>(['clients'], fetchClients);
+export function useClients(filters: ClientFiltersState) {
+    return useGenericQuery<ClientsResponse>(['clients', filters], () => fetchClients(filters));
 } 

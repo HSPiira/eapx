@@ -164,25 +164,12 @@ export function CounselorAvailabilityDetails({ data, setData }: CounselorAvailab
 
     const queryClient = useQueryClient();
 
-    // Prefetch providers and duration data on mount
     useEffect(() => {
-        // Prefetch providers
-        queryClient.prefetchQuery({
-            queryKey: ['providers'],
-            queryFn: async () => {
-                const res = await fetch('/api/providers');
-                if (!res.ok) throw new Error('Failed to fetch providers');
-                return res.json();
-            },
-            staleTime: 5 * 60 * 1000,
-            gcTime: 30 * 60 * 1000,
-        });
-
         // Initialize duration if not set
         if (!data.duration) {
             setData({ ...data, duration: '30' });
         }
-    }, [queryClient, data, setData]);
+    }, [data, setData]);
 
     // Fetch providers
     const { data: providersData, isLoading: loadingProviders } = useQuery({

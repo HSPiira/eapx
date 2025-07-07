@@ -77,7 +77,7 @@ enum EntityStatus {
 model User {
   id                  String     @id @default(cuid())
   email               String?    @unique
-  password            String?
+  password            String? // ENCRYPTED: Hashed using bcrypt
   emailVerified       DateTime?
   lastLoginAt         DateTime?
   preferredLanguage   Language?
@@ -90,8 +90,8 @@ model User {
   banReason           String? // Reason if status is BANNED
   failedLoginAttempts Int        @default(0) // For rate limiting
   lastFailedLogin     DateTime? // For security monitoring
-  mfaSecret           String? // For 2FA
-  mfaBackupCodes      String[] // For 2FA recovery
+  mfaSecret           String? // ENCRYPTED: 2FA secret using AES-256-GCM
+  mfaBackupCodes      String[] // ENCRYPTED: 2FA recovery codes using AES-256-GCM
   metadata            Json?
   deletedAt           DateTime?
   createdAt           DateTime   @default(now())
@@ -125,12 +125,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? // ENCRYPTED: OAuth refresh token using AES-256-GCM
+  access_token      String? // ENCRYPTED: OAuth access token using AES-256-GCM
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? // ENCRYPTED: OIDC ID token using AES-256-GCM
   session_state     String?
   lastLoginAt       DateTime?
   deletedAt         DateTime?

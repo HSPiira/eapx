@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server"
 import { withSecurityHeaders } from "@/middleware/security"
 import { rateLimit } from "@/lib/rate-limit"
 import { isPublicPath } from "@/config/auth"
+import { apiLogger } from "@/lib/logger"
 
 // Rate limit configuration for auth routes
 const authRateLimit = {
@@ -21,7 +22,7 @@ export default async function middleware(request: NextRequest) {
         const rateLimitResult = await rateLimit.check(ip, ua)
 
         if (!rateLimitResult.success) {
-            console.warn("Rate limit exceeded:", { ip, ua })
+            apiLogger.rateLimit(ip, pathname);
             return new NextResponse(
                 JSON.stringify({ error: "Too Many Requests" }),
                 {

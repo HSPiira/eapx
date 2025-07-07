@@ -2,7 +2,7 @@
 import React from 'react';
 import { Calendar, Clock } from 'lucide-react';
 import Link from 'next/link';
-import useSWR from 'swr';
+import { useUnconfirmedSessions } from '@/hooks/sessions/useUnconfirmedSessions';
 
 interface UnconfirmedSession {
     id: string;
@@ -17,18 +17,8 @@ interface UnconfirmedSession {
     // Add more fields as needed
 }
 
-const fetcher = (url: string) => fetch(url, {
-    credentials: 'include',
-    headers: {
-        'Content-Type': 'application/json',
-    }
-}).then(res => {
-    if (!res.ok) throw new Error(`Failed to fetch unconfirmed sessions: ${res.status} ${res.statusText}`);
-    return res.json();
-});
-
 export default function UnconfirmedSessionsPage() {
-    const { data, error, isLoading } = useSWR('/api/services/sessions?status=UNCONFIRMED', fetcher, { revalidateOnFocus: false });
+    const { data, error, isLoading } = useUnconfirmedSessions();
     const sessions: UnconfirmedSession[] = data?.data || [];
 
     if (isLoading) {

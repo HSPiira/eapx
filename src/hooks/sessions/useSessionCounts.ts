@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { SessionCounts } from "@/types/sessions";
 
 export function useSessionCounts() {
-    return useQuery({
+    return useQuery<SessionCounts>({
         queryKey: ['session-counts'],
         queryFn: async () => {
             const [draftRes, unconfirmedRes, scheduledRes] = await Promise.all([

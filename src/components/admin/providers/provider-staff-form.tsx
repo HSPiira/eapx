@@ -42,6 +42,8 @@ interface ProviderStaffFormProps {
     onCancel?: () => void;
     initialData?: Partial<ProviderStaffFormData>;
     providers: { id: string; name: string; entityType?: string }[];
+    interventions?: { id: string; name: string }[];
+    services?: { id: string; name: string }[];
 }
 
 export function ProviderStaffForm({
@@ -50,6 +52,8 @@ export function ProviderStaffForm({
     onCancel,
     initialData,
     providers = [],
+    interventions: _interventions = [],
+    services: _services = [],
 }: ProviderStaffFormProps) {
     const [providerOpen, setProviderOpen] = useState(false);
     const isEditMode = Boolean(initialData && initialData.serviceProviderId);

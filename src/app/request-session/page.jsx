@@ -35,11 +35,7 @@ export default function RequestSessionPage() {
             counselors={counselors}
             beneficiaries={beneficiaries}
             onSubmit={async (data) => {
-                await fetch("/api/session-requests", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data),
-                });
+                await createSessionRequestMutation(data);
             }}
         />
     );

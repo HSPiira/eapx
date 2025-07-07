@@ -86,11 +86,12 @@ export function AvailabilityPicker({
                     <div className="grid grid-cols-4 gap-2 mt-2">
                         {timeSlots.map((slot) => {
                             const start = slot.startTime;
+                            const timeString = dayjs(start).format('HH:mm');
                             return (
                                 <Button
                                     key={start.toISOString()}
                                     type="button"
-                                    variant={selectedTimeSlot === dayjs(start).format('HH:mm') ? "default" : "outline"}
+                                    variant={selectedTimeSlot === timeString ? "default" : "outline"}
                                     className={cn(
                                         "justify-start",
                                         !slot.isAvailable && "opacity-50 cursor-not-allowed"
@@ -98,7 +99,7 @@ export function AvailabilityPicker({
                                     disabled={!slot.isAvailable}
                                     onClick={() => handleTimeSelect(slot)}
                                 >
-                                    {formatTimeSlot ? formatTimeSlot(dayjs(start).format('HH:mm'), timeFormat) : dayjs(start).format('h:mm A')}
+                                    {formatTimeSlot ? formatTimeSlot(timeString, timeFormat) : dayjs(start).format('h:mm A')}
                                 </Button>
                             );
                         })}

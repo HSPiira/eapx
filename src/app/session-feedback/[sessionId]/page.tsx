@@ -106,7 +106,7 @@ export default function FeedbackPage({ params }: FeedbackPageProps) {
         );
     }
 
-    if (!isAuthorized) {
+    if (error) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center max-w-md p-6">

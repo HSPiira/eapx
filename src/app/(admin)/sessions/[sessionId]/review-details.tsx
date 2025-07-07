@@ -205,14 +205,7 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
     const { createEvent, isCreating: isCreatingEvent } = useCalendar();
     const { createMeeting, isCreating: isCreatingMeeting } = useMeetings();
 
-    // State for fetched lists
-    const [staffList, setStaffList] = useState<StaffMember[]>([]);
-    const [dependants, setDependants] = useState<Dependant[]>([]);
-    const [providers, setProviders] = useState<Provider[]>([]);
-    const [providerStaff, setProviderStaff] = useState<ProviderStaff[]>([]);
-    const [services, setServices] = useState<Service[]>([]);
-    const [interventions, setInterventions] = useState<Intervention[]>([]);
-    const [isConfirming, setIsConfirming] = useState(false);
+    
 
     // Style toggle state
     const [style, setStyle] = useState('classic');
@@ -228,29 +221,19 @@ export function ReviewDetails({ formData, onConfirm }: { formData: FormData; onC
         }
     }, [formData.client]);
 
-    // Fetch providers and provider staff if needed
-    useEffect(() => {
-        fetch('/api/providers').then(res => res.json()).then(data => setProviders(data.data || []));
-        if (formData.counselor.provider) {
-            fetch(`/api/providers/${formData.counselor.provider}/staff`).then(res => res.json()).then(data => setProviderStaff(data.data || []));
-        }
-    }, [formData.counselor.provider]);
+    const { data: providersData } = useProviders();
+    const { data: providerStaffData } = useProviderStaff(formData.counselor.provider);
 
-    // Fetch services and interventions if needed
-    useEffect(() => {
-        fetch('/api/services?limit=50').then(res => res.json()).then(data => setServices(data.data || []));
-        if (formData.intervention.service) {
-            fetch(`/api/services/interventions?serviceId=${formData.intervention.service}&limit=50`).then(res => res.json()).then(data => setInterventions(data.data || []));
-        }
-    }, [formData.intervention.service]);
+    const { data: servicesData } = useServices();
+    const { data: interventionsData } = useInterventions();
 
     // Map IDs to names
-    const staffName = staffList.find(s => s.id === formData.client.staff)?.profile?.fullName || staffList.find(s => s.id === formData.client.staff)?.name || formData.client.staff || "-";
-    const dependantName = dependants.find(d => d.id === formData.client.dependant)?.name || formData.client.dependant || "-";
-    const providerName = providers.find(p => p.id === formData.counselor.provider)?.name || formData.counselor.provider || "-";
-    const providerStaffName = providerStaff.find(s => s.id === formData.counselor.staff)?.fullName || formData.counselor.staff || "-";
-    const serviceName = services.find(s => s.id === formData.intervention.service)?.name || formData.intervention.service || "-";
-    const interventionName = interventions.find(i => i.id === formData.intervention.intervention)?.name || formData.intervention.intervention || "-";
+    const staffName = staffListData?.data?.find(s => s.id === formData.client.staff)?.profile?.fullName || staffListData?.data?.find(s => s.id === formData.client.staff)?.name || formData.client.staff || "-";
+    const dependantName = dependantsData?.data?.find(d => d.id === formData.client.dependant)?.name || formData.client.dependant || "-";
+    const providerName = providersData?.data?.find(p => p.id === formData.counselor.provider)?.name || formData.counselor.provider || "-";
+    const providerStaffName = providerStaffData?.data?.find(s => s.id === formData.counselor.staff)?.fullName || formData.counselor.staff || "-";
+    const serviceName = servicesData?.data?.find(s => s.id === formData.intervention.service)?.name || formData.intervention.service || "-";
+    const interventionName = interventionsData?.data?.find(i => i.id === formData.intervention.intervention)?.name || formData.intervention.intervention || "-";
     const locationLabel = getLocationLabel(formData.location.location);
 
     // Build display objects for each section

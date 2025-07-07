@@ -6,3 +6,4 @@ export * from './provider-staff';
 export * from './service-provider-service';
 export * from './provider-onboarding-status';
 export * from './care-session';
+export * from './enums';

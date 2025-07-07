@@ -17,6 +17,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { createMeeting } from "@/api/meetings";
 import { createCalendar } from "@/api/calendars";
 import { sendEmail } from "@/api/email";
+import { useCreateTestSession, useSendFeedbackLink } from '@/hooks/sessions/useTestSession';
 
 export default function ProvidersPage() {
     // Meeting creation states
@@ -401,17 +402,7 @@ If you have any questions, please contact the meeting organizer.`,
             }
 
             // Send feedback request
-            const response = await fetch(`/api/sessions/${createData.sessionId}/send-feedback-link`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to send feedback link');
-            }
+            await sendFeedbackLinkMutation({ sessionId: createData.sessionId, accessToken });
 
             setFeedbackSuccess(true);
         } catch (err) {

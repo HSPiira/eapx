@@ -1,20 +1,12 @@
 'use client';
 
 import StaffList from '@/components/admin/clients/staff/staff-list';
-import { useQuery } from '@tanstack/react-query';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { use } from 'react';
+import { useClientStaff } from '@/hooks/clients/useClientStaff';
 
 interface Params {
     id: string;
-}
-
-async function getClientStaff(clientId: string) {
-    const response = await fetch(`/api/clients/${clientId}/staff`);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch staff: ${response.status} ${response.statusText}`);
-    }
-    return response.json();
 }
 
 export default function ClientStaffPage({
@@ -24,10 +16,7 @@ export default function ClientStaffPage({
 }) {
     const resolvedParams = use(params);
     const { id } = resolvedParams;
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['client-staff', id],
-        queryFn: () => getClientStaff(id),
-    });
+    const { data, isLoading, error } = useClientStaff(id);
 
     if (isLoading) {
         return (

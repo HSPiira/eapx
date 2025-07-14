@@ -13,7 +13,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
     const pathname = usePathname();
     const router = useRouter();
     const [modalOpen, setModalOpen] = useState(false);
-    const [, setIsLoading] = useState(false);
+    
 
     const { data: clientsResponse } = useClients();
     const clients = clientsResponse?.data || [];
@@ -41,18 +41,7 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
 
     const handleCreateDraftSession = async (clientId: string) => {
         try {
-            setIsLoading(true);
-            const res = await fetch('/api/services/sessions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId }),
-            });
-            if (!res.ok) {
-                const responseData = await res.json();
-                console.log(responseData);
-                throw new Error(responseData.error || 'Failed to create draft session');
-            }
-            const { data: draft } = await res.json();
+            const { data: draft } = await createDraftSessionMutation(clientId);
             toast.success('Draft session created!');
             setModalOpen(false);
             router.push(`/sessions/${draft.id}`);
@@ -61,8 +50,6 @@ export default function SessionsLayout({ children }: { children: React.ReactNode
             toast.error('Failed to create draft session', {
                 description: err instanceof Error ? err.message : 'An unknown error occurred',
             });
-        } finally {
-            setIsLoading(false);
         }
     };
 

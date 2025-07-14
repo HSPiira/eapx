@@ -234,14 +234,14 @@ const NotificationSettingsPage = () => {
                     <h2 className="text-lg font-medium text-gray-900 dark:text-white">Quiet Hours</h2>
                     <div className="flex items-center space-x-2 mb-4">
                         <Switch
-                            id="quiet-hours"
-                            checked={settings.quietHours.enabled}
-                            onCheckedChange={(checked) =>
-                                setSettings((prev) => ({
-                                    ...prev,
-                                    quietHours: { ...prev.quietHours, enabled: checked },
-                                }))
-                            }
+                        id="quiet-hours"
+                        checked={localSettings?.quietHours.enabled}
+                        onCheckedChange={(checked) =>
+                            setLocalSettings((prev) => ({
+                                ...prev,
+                                quietHours: { ...prev?.quietHours, enabled: checked },
+                            }))
+                        }
                         />
                         <Label htmlFor="quiet-hours">Enable Quiet Hours</Label>
                     </div>

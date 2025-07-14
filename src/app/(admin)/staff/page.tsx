@@ -1,20 +1,31 @@
+'use client';
+
 import { Plus } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { StaffTable } from "./staff-table"
 
-async function getStaff() {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/staff`, {
-        cache: "no-store",
-    })
-    if (!response.ok) {
-        throw new Error("Failed to fetch staff")
-    }
-    return response.json()
-}
+import { useStaffList } from '@/hooks/staff/useStaffList';
+import { LoadingSpinner } from '@/components/ui';
 
-export default async function StaffPage() {
-    const staff = await getStaff()
+export default function StaffPage() {
+    const { data: staff, isLoading, error } = useStaffList();
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <LoadingSpinner className="w-8 h-8" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center min-h-screen text-red-500">
+                Error: {error.message}
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto py-5">
@@ -28,7 +39,7 @@ export default async function StaffPage() {
                 </Link>
             </div>
             <div className="mt-4">
-                <StaffTable data={staff} />
+                <StaffTable data={staff || []} />
             </div>
         </div>
     )

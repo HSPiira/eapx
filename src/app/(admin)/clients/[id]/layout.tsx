@@ -5,11 +5,12 @@ import { usePathname, useParams, useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Users, FileText, Calendar, MessageSquare, BarChart, ArrowLeft, CheckCircle2, CircleOff, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useClient } from '@/hooks/clients/useClient';
+import { ClientHeader } from '@/components/admin/clients/client-header';
 
 const tabs = [
     { value: 'overview', label: 'Overview', icon: Building2, href: '' },
@@ -20,19 +21,15 @@ const tabs = [
     { value: 'reports', label: 'Reports', icon: BarChart, href: '/reports' },
 ];
 
-async function fetchClient(id: string) {
-    const response = await fetch(`/api/clients/${id}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch client');
-    }
-    return response.json();
-}
-
-export default function ClientDetailsLayout({ children }: { children: React.ReactNode }) {
+export default function ClientLayout({
+    children,
+    params,
+}: {
+    children: React.ReactNode;
+    params: { id: string };
+}) {
     const pathname = usePathname();
-    const params = useParams();
     const router = useRouter();
-    const queryClient = useQueryClient();
     const clientId = params.id as string;
     const basePath = `/clients/${clientId}`;
 
@@ -40,61 +37,60 @@ export default function ClientDetailsLayout({ children }: { children: React.Reac
     const remainingPath = pathname.replace(basePath, '');
     const currentTab = remainingPath === '' ? 'overview' : remainingPath.split('/')[1];
 
-    const { data: client, error, isLoading } = useQuery({
-        queryKey: ['client', clientId],
-        queryFn: () => fetchClient(clientId),
-        retry: 2,
-        retryDelay: 1000,
-    });
+    const { data: client, isLoading, isError } = useClient(clientId);
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center py-8">
+                <LoadingSpinner className="w-8 h-8" />
+            </div>
+        );
+    }
+
+    if (isError || !client) {
+        return (
+            <div className="text-center text-red-500 p-4">
+                <p>Failed to load client details</p>
+                <Button
+                    onClick={() => window.location.reload()} // Simple reload for now
+                    className="mt-2"
+                >
+                    Retry
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto p-6 space-y-6">
-            {error && (
-                <div className="text-center text-red-500 p-4">
-                    <p>Failed to load client details</p>
-                    <Button
-                        onClick={() => queryClient.invalidateQueries({ queryKey: ['client', clientId] })}
-                        className="mt-2"
-                    >
-                        Retry
-                    </Button>
+            <div className="flex items-center gap-4 mb-6">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => router.push('/clients')}
+                    className="hover:bg-muted"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold tracking-tight">{client.data.name}</h1>
+                    {client.data.status === 'ACTIVE' ? (
+                        <CheckCircle className="h-4 w-4 text-green-500 animate-pulse" />
+                    ) : (
+                        <CircleOff className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    {client.data.isVerified && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Verified
+                        </Badge>
+                    )}
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-base text-foreground">
+                        {tabs.find(tab => tab.value === currentTab)?.label || 'Overview'}
+                    </span>
                 </div>
-            )}
-            {isLoading && (
-                <div className="flex justify-center py-8">
-                    <LoadingSpinner className="w-8 h-8" />
-                </div>
-            )}
-            {client && (
-                <div className="flex items-center gap-4 mb-6">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => router.push('/clients')}
-                        className="hover:bg-muted"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-2xl font-bold tracking-tight">{client.name}</h1>
-                        {client.status === 'ACTIVE' ? (
-                            <CheckCircle className="h-4 w-4 text-green-500 animate-pulse" />
-                        ) : (
-                            <CircleOff className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        {client.isVerified && (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Verified
-                            </Badge>
-                        )}
-                        <span className="text-muted-foreground">•</span>
-                        <span className="text-base text-foreground">
-                            {tabs.find(tab => tab.value === currentTab)?.label || 'Overview'}
-                        </span>
-                    </div>
-                </div>
-            )}
+            </div>
             <Tabs value={currentTab} className="w-full">
                 <TabsList className="justify-start">
                     {tabs.map((tab) => {
@@ -121,4 +117,4 @@ export default function ClientDetailsLayout({ children }: { children: React.Reac
             {children}
         </div>
     );
-} 
+}

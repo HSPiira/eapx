@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { getAllScopes } from "@/lib/ms-graph";
+import { securityLogger, logger } from '@/lib/logger';
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -51,15 +52,15 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
     debug: false,
     logger: {
         error(error: Error) {
-            console.error(error)
+            logger.error('NextAuth error', error);
         },
         warn(message: string) {
-            console.warn(message)
+            logger.warn('NextAuth warning', { message });
         },
         debug(message: string) {
             // Only log critical debug messages
             if (message === 'CHUNKING_SESSION_COOKIE') {
-                console.warn('Session cookie size exceeded limit')
+                logger.warn('Session cookie size exceeded limit', { message });
             }
         }
     },
@@ -184,7 +185,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
 
                 return true
             } catch (error) {
-                console.error('Error in signIn callback:', error)
+                securityLogger.error('Error in signIn callback', error);
                 return false
             }
         },
@@ -209,7 +210,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
                 }
                 return session
             } catch (error) {
-                console.error('Error in session callback:', error)
+                logger.error('Error in session callback', error);
                 return session
             }
         },
@@ -238,7 +239,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
                 }
                 return token
             } catch (error) {
-                console.error('Error in jwt callback:', error)
+                logger.error('Error in jwt callback', error);
                 return token
             }
         },
@@ -269,7 +270,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
 
                 return true
             } catch (error) {
-                console.error('Error in authorized callback:', error)
+                securityLogger.error('Error in authorized callback', error);
                 return false
             }
         },
@@ -283,7 +284,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
                 else if (new URL(url).origin === baseUrl) return url
                 return baseUrl
             } catch (error) {
-                console.error('Error in redirect callback:', error)
+                logger.error('Error in redirect callback', error);
                 return baseUrl
             }
         }
@@ -317,7 +318,7 @@ export const createConfig = (prismaClient = prisma): NextAuthConfig => ({
                     }
                 }
             } catch (error) {
-                console.error('Error in signOut event:', error)
+                securityLogger.error('Error in signOut event', error);
             }
         }
     },

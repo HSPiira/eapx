@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         subject,
         body: {
             contentType: 'HTML',
-            content: `${eventBody}${joinUrl ? `<br><br>${location && location.toLowerCase().includes('zoom') ? 'Zoom Meeting Link' : 'Teams Meeting Link'}: ${joinUrl}` : ''}`
+            content: eventBody
         },
         start: {
             dateTime: startDateTime,
@@ -48,9 +48,12 @@ export async function POST(req: NextRequest) {
             },
             type: 'required'
         })),
-        isOnlineMeeting: !!joinUrl,
-        onlineMeetingProvider: joinUrl ? 'teamsForBusiness' : undefined,
-        onlineMeeting: joinUrl ? { joinUrl } : undefined,
+        isOnlineMeeting: location?.toLowerCase().includes('teams') || location?.toLowerCase().includes('zoom'),
+        onlineMeetingProvider: location?.toLowerCase().includes('teams') ? 'teamsForBusiness' :
+            location?.toLowerCase().includes('zoom') ? 'zoom' : undefined,
+        onlineMeeting: joinUrl ? {
+            joinUrl
+        } : undefined,
         responseRequested: true,
         showAs: 'busy'
     };

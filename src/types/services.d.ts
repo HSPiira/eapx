@@ -1,3 +1,5 @@
+export * from '../../components/admin/services/service-form';
+
 export interface Service {
     id: string;
     name: string;

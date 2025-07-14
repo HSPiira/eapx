@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchSessionWithDetails } from "@/api/sessions";
-import { fetchStaffList } from "@/api/staff";
+import { fetchStaff } from "@/api/staff";
 import { fetchDependants } from "@/api/staff-dependants";
 
 export function useSessionDetails(sessionId: string, clientId: string, staffId?: string) {
@@ -13,7 +13,7 @@ export function useSessionDetails(sessionId: string, clientId: string, staffId?:
     // Staff data - fetched in parallel
     const staffQuery = useQuery({
         queryKey: ['staff', clientId],
-        queryFn: () => fetchStaffList(clientId),
+        queryFn: () => fetchStaff(),
         enabled: !!clientId
     });
 

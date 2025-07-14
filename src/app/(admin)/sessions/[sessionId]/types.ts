@@ -37,6 +37,7 @@ export interface CounselorAvailabilityData {
 export interface LocationData {
     location?: string;
     requirements?: string;
+    meetingLink?: string;
 }
 
 export interface FormData {

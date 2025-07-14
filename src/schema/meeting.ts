@@ -9,6 +9,11 @@ export const MeetingSettingsSchema = z.object({
     meetingAuthentication: z.boolean().optional(),
     authenticationOption: z.string().optional(),
     password: z.string().optional(),
+    allowMeetingChat: z.enum(['enabled', 'disabled']).optional(),
+    allowAttendeeToEnableCamera: z.boolean().optional(),
+    allowAttendeeToEnableMic: z.boolean().optional(),
+    allowParticipantsToChangeName: z.boolean().optional(),
+    allowTeamworkReactions: z.boolean().optional(),
 });
 
 export const MeetingParticipantSchema = z.object({

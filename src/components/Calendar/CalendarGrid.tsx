@@ -1,11 +1,7 @@
 import React from 'react';
 import EventCard from './EventCard';
+import { format } from 'date-fns';
 import dayjs from 'dayjs';
-import isBetween from 'dayjs/plugin/isBetween';
-import minMax from 'dayjs/plugin/minMax';
-
-dayjs.extend(isBetween);
-dayjs.extend(minMax);
 
 interface Event {
     id: string;
@@ -227,7 +223,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({ events, onEventSelect, star
                                     <h4>{day.format('D')}</h4>
                                     {dayEvents.map(event => (
                                         <div key={event.id} className="month-event-item" onClick={() => onEventSelect(event)}>
-                                            {dayjs(event.startTime).format('h:mm A')} {event.title}
+                                            {format(new Date(event.startTime), 'h:mm a')} {event.title}
                                         </div>
                                     ))}
                                 </div>

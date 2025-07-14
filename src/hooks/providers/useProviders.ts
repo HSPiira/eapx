@@ -1,7 +1,6 @@
-
-import { fetchProviders } from '@/api/providers';
-import { ProvidersResponse } from '@/types';
-import { useGenericQuery } from '../generic-create';
+import { fetchProviders } from "@/api/providers";
+import { useGenericQuery } from "../generic-create";
+import { ProvidersResponse } from "@/types/provider";
 
 export function useProviders() {
     return useGenericQuery<ProvidersResponse>(['providers'], fetchProviders);

@@ -7,7 +7,7 @@ const BASE_URL = 'http://localhost:3000/api';
 
 // Types
 interface StaffResponse {
-    data: any[];
+    data: unknown[];
     metadata: {
         total: number;
         page: number;
@@ -18,7 +18,7 @@ interface StaffResponse {
 
 interface ErrorResponse {
     error: string;
-    details?: any;
+    details?: unknown;
 }
 
 // Helper function to create a test client
@@ -61,7 +61,7 @@ async function getTestUserToken(): Promise<string> {
 }
 
 // Helper function to check response status
-async function checkResponse(response: Response): Promise<any> {
+async function checkResponse(response: Response): Promise<unknown> {
     const data = await response.json();
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(data)}`);
@@ -87,7 +87,7 @@ async function testGetStaff(clientId: string): Promise<StaffResponse> {
     }
 }
 
-async function testCreateStaff(clientId: string): Promise<any> {
+async function testCreateStaff(clientId: string): Promise<unknown> {
     console.log('\nTesting POST /clients/[id]/staff');
     try {
         const token = await getTestUserToken();

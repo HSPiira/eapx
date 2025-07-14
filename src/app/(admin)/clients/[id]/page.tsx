@@ -37,13 +37,7 @@ interface Client {
     updatedAt: string;
 }
 
-async function fetchClient(id: string): Promise<Client> {
-    const response = await fetch(`/api/clients/${id}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch client');
-    }
-    return response.json();
-}
+
 
 export default function ClientOverviewPage() {
     const params = useParams();
@@ -52,10 +46,7 @@ export default function ClientOverviewPage() {
     const clientId = params.id as string;
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    const { data: client, isLoading, isError } = useQuery<Client>({
-        queryKey: ['client', clientId],
-        queryFn: () => fetchClient(clientId),
-    });
+    const { data: client, isLoading, isError } = useClient(clientId);
 
     if (isLoading) {
         return (
@@ -196,4 +187,4 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
             <span className="text-sm text-muted-foreground">{value}</span>
         </div>
     );
-} 
+}

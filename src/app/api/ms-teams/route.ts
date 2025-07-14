@@ -67,6 +67,25 @@ export async function POST(req: NextRequest) {
                     upn: email,
                     role: 'attendee'
                 }))
+            },
+            isOnlineMeeting: true,
+            onlineMeetingProvider: 'teamsForBusiness',
+            allowMeetingChat: body.settings?.allowMeetingChat || 'enabled',
+            allowAttendeeToEnableCamera: body.settings?.allowAttendeeToEnableCamera ?? true,
+            allowAttendeeToEnableMic: body.settings?.allowAttendeeToEnableMic ?? true,
+            allowParticipantsToChangeName: body.settings?.allowParticipantsToChangeName ?? true,
+            allowTeamworkReactions: body.settings?.allowTeamworkReactions ?? true,
+            audioConferencing: {
+                tollNumber: null,
+                tollFreeNumber: null,
+                conferenceId: null,
+                dialinUrl: null
+            },
+            videoTeleconferenceId: null,
+            externalId: null,
+            joinInformation: {
+                content: body.body || 'Session meeting details will be added when confirming the session.',
+                contentType: 'text'
             }
         };
 

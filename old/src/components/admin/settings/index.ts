@@ -1,1 +1,0 @@
-export {default as SettingsSidebarNav} from './settings-sidebar';
